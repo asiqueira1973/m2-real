@@ -34,7 +34,8 @@ Rotinas (seção 4.4): `itbi` (`ingestao-itbi`), `iptu` (`ingestao-iptu`), `anun
 
 ## Migrations
 - Ficam em `supabase/migrations/`, com prefixo de data. Uma migration aplicada nunca é editada: mudança vira migration nova.
-- Depois de cada migration: rodar os advisors (security e performance), regenerar o `schema.sql` (`supabase db dump --local --schema-only > schema.sql`) e os tipos (`npm run gen:types -w @m2-real/db`).
+- Depois de cada migration: `npm run db:advisors` (security e performance; falha com qualquer `warn`), `npm run db:schema` (regenera o `schema.sql`) e `npm run db:types` (regenera `packages/db/src/types.ts`).
+- Toda tabela `m2_*` nova repete o padrão de grants da migration `20261121120200` (só `select` para anon/authenticated); o teste `supabase/tests/010_estrutura` confere.
 - Todo objeto do banco leva o prefixo `m2_`.
 
 ## Estrutura

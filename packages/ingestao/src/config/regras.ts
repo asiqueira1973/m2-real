@@ -21,3 +21,15 @@ export const ROTINAS = [
 ] as const;
 
 export type Rotina = (typeof ROTINAS)[number];
+
+// ---------------------------------------------------------------------------
+// Regra 11.5 — busca de endereço (função m2_buscar_predio_por_endereco).
+// Os defaults da função SQL espelham estes valores; o MCP (8.9) passa estas
+// constantes explicitamente. Um teste confere que a migration bate com elas.
+// ---------------------------------------------------------------------------
+
+/** Regra 11.5: similaridade trigram mínima do logradouro para aceitar um prédio. */
+export const BUSCA_SIMILARIDADE_MINIMA = 0.4;
+
+/** Regra 11.5: quantos prédios a busca devolve no máximo ("até 5 prédios", 7.4). */
+export const BUSCA_LIMITE_RESULTADOS = 5;

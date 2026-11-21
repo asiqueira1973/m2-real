@@ -15,7 +15,10 @@
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present",
     "db:test": "supabase test db",
-    "ingestao": "npm run cli --workspace @m2-real/ingestao --"
+    "ingestao": "npm run cli --workspace @m2-real/ingestao --",
+    "db:advisors": "supabase db advisors --local --type all --level warn --fail-on warn",
+    "db:schema": "supabase db dump --local -s public -f schema.sql",
+    "db:types": "npm run gen:types --workspace @m2-real/db"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
