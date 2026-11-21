@@ -15,6 +15,9 @@ import type { Building, PlantGroup } from "./montagem.js";
 
 const LOTE = 500;
 
+/** Limite técnico (não é regra do spec): ids por filtro .in, para a URL não passar do limite do PostgREST. */
+const IDS_POR_URL = 100;
+
 export interface ExistingPlant {
   id: string;
   areaIptuReferencia: number;
@@ -91,12 +94,18 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     const idPorChave = new Map(predios.map((p) => [p.chave_predio, p.id]));
     counts.predios += predios.length;
 
-    // 2. Plantas existentes desses prédios.
-    const { data: existentes, error: e2 } = await db
-      .from("m2_plantas")
-      .select("id, predio_id, area_iptu_referencia")
-      .in("predio_id", [...idPorChave.values()]);
-    if (e2) throw new Error(`Falha ao ler m2_plantas: ${e2.message}`);
+    // 2. Plantas existentes desses prédios, em pedaços: o filtro .in vai na URL, que tem
+    // limite de tamanho (bug da 1ª carga real: "URI too long" com 500 UUIDs).
+    const ids = [...idPorChave.values()];
+    const existentes: { id: string; predio_id: string; area_iptu_referencia: number }[] = [];
+    for (let k = 0; k < ids.length; k += IDS_POR_URL) {
+      const { data, error: e2 } = await db
+        .from("m2_plantas")
+        .select("id, predio_id, area_iptu_referencia")
+        .in("predio_id", ids.slice(k, k + IDS_POR_URL));
+      if (e2) throw new Error(`Falha ao ler m2_plantas: ${e2.message}`);
+      existentes.push(...data);
+    }
     const existentesPorPredio = new Map<string, ExistingPlant[]>();
     for (const p of existentes) {
       const lista = existentesPorPredio.get(p.predio_id) ?? [];
