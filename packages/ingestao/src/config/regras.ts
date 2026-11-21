@@ -83,3 +83,14 @@ export const SAUDE_VOLUME_JANELA_EXECUCOES = 3;
 
 /** Queda de cobertura (pontos percentuais) de um bairro entre duas calibrações que gera alerta. */
 export const SAUDE_QUEDA_COBERTURA_PONTOS = 5;
+
+// ---------------------------------------------------------------------------
+// Regra 11.2 — bairro por votação (guias do ITBI no 8.3; prédios do IPTU no 8.2,
+// por decisão do usuário em 21/11/2026, plans/8.2-iptu.md).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.2: o bairro vencedor da votação precisa de pelo menos 60% dos votos. */
+export const BAIRRO_VOTO_FRACAO_MINIMA = 0.6;
+
+/** Regra 11.2: e de pelo menos 2 votos. */
+export const BAIRRO_VOTO_MINIMO = 2;

@@ -3,8 +3,9 @@ import {
   assembleBuildings,
   groupPlans,
   inferFloor,
-  resolveNeighborhood,
+  matchNeighborhoodByField,
   unitType,
+  voteNeighborhood,
   type IptuRow,
   type Neighborhood,
 } from "./montagem.js";
@@ -84,27 +85,37 @@ describe("regra 11.7: plantas por área (3% da mediana)", () => {
   });
 });
 
-describe("bairro do prédio por CEP e campo bairro (11.2; plans/8.2)", () => {
+describe("regra 11.2 aplicada ao prédio: campo bairro (passo 1)", () => {
+  const slugDe = (id: number | null) => BAIRROS.find((b) => b.id === id)?.slug ?? null;
   it.each([
     ["05415010", "PINHEIROS", "pinheiros"],
     ["05415010", "Vila Madalena", "vila-madalena"],
     ["05415010", "ALTO DOS PINHEIROS", "alto-de-pinheiros"],
     ["05010000", "VL POMPEIA", "pompeia"],
-    ["01250000", null, "perdizes"], // prefixo 0125 (Perdizes) é mais longo que 012 (Higienópolis)
     ["01310000", "CERQUEIRA CESAR", "cerqueira-cesar"],
     ["04538000", "ITAIM BIBI", "itaim-bibi"],
   ])("CEP %s, campo %s → %s", (cep, campo, slug) => {
-    const id = resolveNeighborhood(cep, campo, BAIRROS);
-    expect(BAIRROS.find((b) => b.id === id)?.slug).toBe(slug);
+    expect(slugDe(matchNeighborhoodByField(cep, campo, BAIRROS))).toBe(slug);
   });
 
-  it("CEP compartilhado sem campo que decida → indecidível (nulo)", () => {
-    expect(resolveNeighborhood("05415010", null, BAIRROS)).toBeNull();
-    expect(resolveNeighborhood("05415010", "SUMARE", BAIRROS)).toBeNull();
+  it.each([
+    ["01220000", "SANTA CECILIA"], // centro: prefixo 012 é de Higienópolis, mas o campo não é
+    ["04510000", "MOEMA"], // prefixo 045 é do Itaim, mas o campo não é
+    ["05415010", null], // campo vazio não decide no passo 1
+    ["05010000", "TORRE A"], // lixo no campo
+    ["04538000", "JD PAULISTA"], // padrão de Jardins, mas o CEP 045 não é prefixo de Jardins
+  ])("CEP %s, campo %s → nulo", (cep, campo) => {
+    expect(matchNeighborhoodByField(cep, campo, BAIRROS)).toBeNull();
   });
+});
 
-  it("CEP fora dos 10 bairros → nulo", () => {
-    expect(resolveNeighborhood("03000000", "MOOCA", BAIRROS)).toBeNull();
+describe("regra 11.2 aplicada ao prédio: votação (passos 3 e 4)", () => {
+  it("vence com ≥ 60% e ≥ 2 votos, se o prefixo do CEP for do bairro", () => {
+    expect(voteNeighborhood([3, 3, 4], "05415010", BAIRROS)).toBe(3); // 67%
+    expect(voteNeighborhood([3, 4], "05415010", BAIRROS)).toBeNull(); // 50%
+    expect(voteNeighborhood([3], "05415010", BAIRROS)).toBeNull(); // 1 voto
+    expect(voteNeighborhood([3, 3], "01310000", BAIRROS)).toBeNull(); // Pinheiros não tem prefixo 013
+    expect(voteNeighborhood([], "05415010", BAIRROS)).toBeNull();
   });
 });
 
@@ -152,6 +163,12 @@ describe("regras 11.4 e 11.6: montagem de prédios", () => {
     expect(BAIRROS.find((x) => x.id === b.bairroId)?.slug).toBe("perdizes");
   });
 
+  it("Joaquim Antunes resolvido pelo campo; números do imóvel guardados (P3)", () => {
+    const b = buildings.find((x) => x.chavePredio === "081-002-01-1")!;
+    expect(b.origemBairro).toBe("campo");
+    expect(b.numerosImovel).toEqual([577]);
+  });
+
   it("descarta grupo com < 4 apartamentos e linha sem condomínio, com motivo", () => {
     expect(discarded).toEqual(
       expect.arrayContaining([
@@ -159,5 +176,40 @@ describe("regras 11.4 e 11.6: montagem de prédios", () => {
         { chave: "030-002-03-1", motivo: "menos de 4 apartamentos (regra 11.4)", linhas: 3 },
       ]),
     );
+  });
+});
+
+describe("montagem: bairro por voto e prédios fora dos 10 bairros (regra 11.2; P3)", () => {
+  const predio = (cond: string, quadra: string, p: Partial<IptuRow>, n = 4, numeros?: number[]) =>
+    Array.from({ length: n }, (_, i) =>
+      row({ sql: `081${quadra}${cond}${String(i).padStart(2, "0")}1`, numeroCondominio: `${cond}-1`, numero: numeros?.[i] ?? 577, ...p }));
+  const rows = [
+    ...predio("11", "010", { bairro: "PINHEIROS", cep: "05415099" }),
+    ...predio("12", "010", { bairro: "PINHEIROS", cep: "05415099" }),
+    ...predio("13", "010", { bairro: null, cep: "05415099" }), // campo vazio, mesmo CEP → voto por CEP
+    ...predio("14", "010", { bairro: null, cep: "05415098" }), // campo vazio, CEP sem votos → voto por quadra
+    ...predio("15", "020", { bairro: "SANTA CECILIA", cep: "01220000" }), // centro → fora
+    ...predio("16", "030", { bairro: "PINHEIROS", cep: "05415097" }, 4, [115, 117, 125, 127]), // P3: vários números
+  ];
+  const { buildings, discarded } = assembleBuildings(rows, BAIRROS);
+  const por = (cond: string) => buildings.find((b) => b.numeroCondominio === `${cond}-1`);
+
+  it("campo vazio é resolvido pelo voto do CEP de 8 dígitos", () => {
+    expect(por("13")).toMatchObject({ origemBairro: "cep", bairroId: 3 });
+  });
+
+  it("sem voto no CEP, resolve pelo voto da quadra (setor+quadra)", () => {
+    expect(por("14")).toMatchObject({ origemBairro: "quadra", bairroId: 3 });
+  });
+
+  it("prédio do centro com CEP 012 não entra em Higienópolis", () => {
+    expect(por("15")).toBeUndefined();
+    expect(discarded).toEqual(expect.arrayContaining([
+      { chave: "081-020-15-1", motivo: "fora dos 10 bairros ou bairro indecidível (regra 11.2)", linhas: 4 },
+    ]));
+  });
+
+  it("P3: um prédio por condomínio, com todos os números do imóvel", () => {
+    expect(por("16")).toMatchObject({ numerosImovel: [115, 117, 125, 127] });
   });
 });

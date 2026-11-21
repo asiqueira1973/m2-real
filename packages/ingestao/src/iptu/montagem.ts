@@ -2,9 +2,12 @@
  * Montagem de prédios, unidades e plantas a partir das linhas do IPTU (épico 8.2).
  * Funções puras, sem banco, testadas com Vitest. Regras: 11.3 (tipo de unidade),
  * 11.4 (prédio), 11.6 (vagas com cadastro próprio), 11.7 (plantas e andar) e o
- * filtro/atribuição de bairro por CEP (11.2, plans/8.2-iptu.md).
+ * bairro do prédio pela lógica da 11.2 (campo → voto por CEP → voto por quadra, sempre
+ * com o prefixo de CEP), por decisão do usuário em 21/11/2026 (plans/8.2-iptu.md).
  */
 import {
+  BAIRRO_VOTO_FRACAO_MINIMA,
+  BAIRRO_VOTO_MINIMO,
   PLANTA_TOLERANCIA_AREA,
   PREDIO_MIN_APARTAMENTOS,
   USO_APARTAMENTO_PREFIXO,
@@ -64,8 +67,11 @@ export interface Building {
   numeroCondominio: string;
   bairroId: number;
   logradouro: string; // normalizado (regra 11.5)
-  numero: number | null;
+  numero: number | null; // o mais frequente entre os apartamentos
+  /** P3 (decisão do usuário): todos os números de imóvel do condomínio, para a busca. */
+  numerosImovel: number[];
   cep: string;
+  origemBairro: "campo" | "cep" | "quadra";
   anoConstrucao: number | null;
   qtdPavimentos: number | null;
   padraoIptu: string | null;
@@ -112,30 +118,36 @@ export function inferFloor(complemento: string | null | undefined): number | nul
 }
 
 /**
- * Bairro de um prédio (plans/8.2-iptu.md, a partir da regra 11.2).
- * 1. Candidatos: bairros com algum prefixo de CEP que casa com o CEP.
- * 2. Se o campo bairro do IPTU casa com os padrões de um candidato, vale esse.
- * 3. Senão, o candidato de prefixo mais longo, se for único (ex.: 0125 → Perdizes vence 012 → Higienópolis).
- * Recebe: CEP (8 dígitos), campo bairro do IPTU, bairros. Devolve: id do bairro ou nulo (indecidível/fora).
+ * Regra 11.2, passo 1 ("campo"): o campo bairro normalizado casa com os padrões de um
+ * bairro cujo prefixo de CEP também casa com o CEP.
+ * Recebe: CEP (8 dígitos), campo bairro, bairros. Devolve: id do bairro ou nulo.
  */
-export function resolveNeighborhood(
+export function matchNeighborhoodByField(
   cep: string,
   bairroCampo: string | null,
   bairros: readonly Neighborhood[],
 ): number | null {
-  const candidatos = bairros
-    .map((b) => ({ b, prefixo: Math.max(0, ...b.prefixosCep.filter((p) => cep.startsWith(p)).map((p) => p.length)) }))
-    .filter((c) => c.prefixo > 0);
-  if (candidatos.length === 0) return null;
-
   const campo = normalizeText(bairroCampo);
-  if (campo) {
-    const porNome = candidatos.filter((c) => c.b.padroesNome.some((p) => new RegExp(p).test(campo)));
-    if (porNome.length === 1) return porNome[0]!.b.id;
-  }
-  const maior = Math.max(...candidatos.map((c) => c.prefixo));
-  const melhores = candidatos.filter((c) => c.prefixo === maior);
-  return melhores.length === 1 ? melhores[0]!.b.id : null;
+  if (!campo) return null;
+  const achados = bairros.filter(
+    (b) => b.prefixosCep.some((p) => cep.startsWith(p)) && b.padroesNome.some((p) => new RegExp(p).test(campo)),
+  );
+  return achados.length === 1 ? achados[0]!.id : null;
+}
+
+/**
+ * Regra 11.2, passos 3 e 4 (voto por CEP / por quadra): o bairro mais votado vence se
+ * tiver ≥ 60% dos votos e ≥ 2 votos, e se o prefixo de CEP do bairro casar com o CEP.
+ * Recebe: votos (ids de bairro já conhecidos), CEP do item, bairros. Devolve: id ou nulo.
+ */
+export function voteNeighborhood(votos: readonly number[], cep: string, bairros: readonly Neighborhood[]): number | null {
+  if (votos.length === 0) return null;
+  const contagem = new Map<number, number>();
+  for (const v of votos) contagem.set(v, (contagem.get(v) ?? 0) + 1);
+  const [vencedor, n] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]!;
+  if (n < BAIRRO_VOTO_MINIMO || n / votos.length < BAIRRO_VOTO_FRACAO_MINIMA) return null;
+  const bairro = bairros.find((b) => b.id === vencedor);
+  return bairro && bairro.prefixosCep.some((p) => cep.startsWith(p)) ? vencedor : null;
 }
 
 /** Mediana de uma lista não vazia de números. */
@@ -200,7 +212,9 @@ export function assembleBuildings(
   }
   if (semCondominio) discarded.push({ chave: "*", motivo: "sem número de condomínio (regra 11.4)", linhas: semCondominio });
 
-  const buildings: Building[] = [];
+  // Fase 1: grupos com apartamentos suficientes e bairro pelo campo (11.2, passo 1).
+  interface Candidate { chave: string; grupo: IptuRow[]; tipos: UnitType[]; aptos: IptuRow[]; cep: string; bairroId: number | null; origem: Building["origemBairro"] }
+  const candidatos: Candidate[] = [];
   for (const [chave, grupo] of grupos) {
     const tipos = grupo.map((r) => unitType(r.uso));
     const aptos = grupo.filter((_, i) => tipos[i] === "apartamento");
@@ -209,9 +223,38 @@ export function assembleBuildings(
       continue;
     }
     const cep = mode(aptos.map((r) => r.cep))!;
-    const bairroId = resolveNeighborhood(cep, mode(aptos.map((r) => r.bairro)), bairros);
+    // Campo: o bairro casado pela maioria das unidades com campo reconhecível.
+    const porCampo = grupo.map((r) => matchNeighborhoodByField(cep, r.bairro, bairros)).filter((x): x is number => x !== null);
+    const bairroCampo = mode(porCampo);
+    const empate = bairroCampo !== null && new Set(porCampo).size > 1 &&
+      porCampo.filter((x) => x === bairroCampo).length * 2 <= porCampo.length;
+    candidatos.push({ chave, grupo, tipos, aptos, cep, bairroId: empate ? null : bairroCampo, origem: "campo" });
+  }
+
+  // Fase 2: voto por CEP de 8 dígitos e, depois, por setor+quadra, entre os prédios
+  // resolvidos pelo campo (11.2, passos 3 e 4).
+  const conhecidos = candidatos.filter((c) => c.bairroId !== null);
+  const votosCep = groupVotes(conhecidos, (c) => c.cep);
+  const votosQuadra = groupVotes(conhecidos, (c) => c.chave.slice(0, 7));
+  for (const c of candidatos) {
+    if (c.bairroId !== null) continue;
+    const porCep = voteNeighborhood(votosCep.get(c.cep) ?? [], c.cep, bairros);
+    if (porCep !== null) {
+      c.bairroId = porCep;
+      c.origem = "cep";
+      continue;
+    }
+    const porQuadra = voteNeighborhood(votosQuadra.get(c.chave.slice(0, 7)) ?? [], c.cep, bairros);
+    if (porQuadra !== null) {
+      c.bairroId = porQuadra;
+      c.origem = "quadra";
+    }
+  }
+
+  const buildings: Building[] = [];
+  for (const { chave, grupo, tipos, aptos, cep, bairroId, origem } of candidatos) {
     if (bairroId === null) {
-      discarded.push({ chave, motivo: `bairro indecidível pelo CEP ${cep} e pelo campo bairro`, linhas: grupo.length });
+      discarded.push({ chave, motivo: "fora dos 10 bairros ou bairro indecidível (regra 11.2)", linhas: grupo.length });
       continue;
     }
     const { plantas, indexOf } = groupPlans(aptos.map((r) => r.areaConstruida));
@@ -223,8 +266,10 @@ export function assembleBuildings(
       quadra,
       numeroCondominio,
       bairroId,
+      origemBairro: origem,
       logradouro: normalizeAddress(mode(aptos.map((r) => r.logradouro))),
       numero: mode(aptos.map((r) => r.numero)),
+      numerosImovel: [...new Set(grupo.map((r) => r.numero).filter((n): n is number => n !== null))].sort((a, b) => a - b),
       cep,
       anoConstrucao: mode(aptos.map((r) => r.anoConstrucao)),
       qtdPavimentos: maxOrNull(aptos.map((r) => r.pavimentos)),
@@ -246,6 +291,16 @@ export function assembleBuildings(
     });
   }
   return { buildings, discarded };
+}
+
+/** Agrupa os bairros já conhecidos por uma chave (CEP ou setor+quadra) para a votação da 11.2. */
+function groupVotes<T extends { bairroId: number | null }>(itens: readonly T[], chave: (x: T) => string): Map<string, number[]> {
+  const m = new Map<string, number[]>();
+  for (const it of itens) {
+    const k = chave(it);
+    m.set(k, [...(m.get(k) ?? []), it.bairroId!]);
+  }
+  return m;
 }
 
 /** Número de condomínio vazio, ou só com zeros e separadores, conta como "sem condomínio". */
