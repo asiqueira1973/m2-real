@@ -48,6 +48,13 @@ export const USO_VAGA_CONTEM = "GARAGEM";
 export const PREDIO_MIN_APARTAMENTOS = 4;
 
 /**
+ * Regra 11.7 (andar inferido): só números de complemento com até 4 dígitos são número de
+ * apartamento (o maior exemplo do spec é "APTO 1201"). Números maiores são matrícula ou
+ * código ("VG M.98063") e não geram andar. Limite técnico de interpretação, plans/8.2-iptu.md.
+ */
+export const ANDAR_MAX_DIGITOS_NUMERO = 4;
+
+/**
  * Regra 11.7: abre uma planta nova quando a área construída se afasta mais que 3%
  * da mediana da planta corrente. O mesmo limiar casa plantas entre cargas do IPTU,
  * para preservar calibração e confirmação (regra 11.11; plans/8.2-iptu.md).

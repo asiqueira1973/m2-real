@@ -6,6 +6,7 @@
  * com o prefixo de CEP), por decisão do usuário em 21/11/2026 (plans/8.2-iptu.md).
  */
 import {
+  ANDAR_MAX_DIGITOS_NUMERO,
   BAIRRO_VOTO_FRACAO_MINIMA,
   BAIRRO_VOTO_MINIMO,
   PLANTA_TOLERANCIA_AREA,
@@ -112,6 +113,8 @@ export function inferFloor(complemento: string | null | undefined): number | nul
   const m = (complemento ?? "").match(/\d+/);
   if (!m) return null;
   const digits = m[0].replace(/^0+(?=\d)/, "");
+  // Número com mais de 4 dígitos é matrícula/código, não apartamento (bug da 2ª carga real).
+  if (digits.length > ANDAR_MAX_DIGITOS_NUMERO) return null;
   const drop = digits.length <= 2 ? 1 : 2;
   const rest = digits.slice(0, -drop);
   return rest === "" ? 0 : Number(rest);
