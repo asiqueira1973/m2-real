@@ -3,13 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "cli": "tsx src/cli.ts",
+    "cli": "tsx --env-file-if-exists=../../.env.local src/cli.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@m2-real/db": "*"
+    "@m2-real/db": "*",
+    "csv-parse": "^7.0.3",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
+    "@types/yauzl": "^3.4.0",
     "tsx": "^4.23.15"
   }
 }

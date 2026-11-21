@@ -184,7 +184,7 @@ CREATE OR REPLACE FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "tex
   from public.m2_predios p
   join public.m2_bairros b on b.id = p.bairro_id
   cross join partes pt
-  where (pt.numero is null or p.numero = pt.numero)
+  where (pt.numero is null or p.numero = pt.numero or pt.numero = any (p.numeros_imovel))
     and extensions.similarity(p.logradouro, pt.logradouro) >= limiar_similaridade
   order by extensions.similarity(p.logradouro, pt.logradouro) desc, p.numero, p.id
   limit limite;
@@ -746,7 +746,8 @@ CREATE TABLE IF NOT EXISTS "public"."m2_predios" (
     "ultima_coleta_leilao_em" timestamp with time zone,
     "exercicio_iptu" smallint NOT NULL,
     "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "atualizado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+    "atualizado_em" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "numeros_imovel" integer[] DEFAULT '{}'::integer[] NOT NULL
 );
 
 

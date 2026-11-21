@@ -13,6 +13,7 @@ coverage/
 # Brutos grandes ficam fora do git (fixtures são recortes pequenos)
 /*.xlsx
 /*.csv
+/*.zip
 /brutos/
 
 # Supabase local

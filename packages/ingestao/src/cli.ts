@@ -1,10 +1,12 @@
 /**
  * Ponto de entrada da ingestão: `tsx src/cli.ts <rotina> [argumentos]` (seção 18.3).
  *
- * No épico 8.0, só valida o nome da rotina contra a seção 4.4. As rotinas são
- * ligadas aqui nos épicos 8.2 (iptu), 8.3 (itbi), 8.5 (anúncios), 8.5.1 (leilões)
- * e 8.6 (calibração).
+ * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu).
+ * Entram nos épicos seguintes: 8.3 (itbi), 8.5 (anúncios), 8.5.1 (leilões), 8.6 (calibração).
+ * Variáveis de ambiente: .env.local na raiz (carregado pelo script "cli"), seção 18.4.
  */
+import { resolve } from "node:path";
+import { createServiceClient } from "@m2-real/db/server";
 import { ROTINAS, type Rotina } from "./config/regras.js";
 
 /**
@@ -35,15 +37,48 @@ export function parseArgs(argv: readonly string[]): { rotina: Rotina; args: stri
 }
 
 /**
+ * Lê "--opcao valor" dos argumentos restantes.
+ * Recebe: argumentos e o nome da opção (sem "--"). Devolve: o valor ou undefined.
+ */
+export function option(args: readonly string[], nome: string): string | undefined {
+  const i = args.indexOf(`--${nome}`);
+  return i >= 0 ? args[i + 1] : undefined;
+}
+
+/**
+ * Caminho informado pelo usuário, relativo à pasta onde ele rodou o comando
+ * (npm muda o cwd para o workspace; INIT_CWD guarda a pasta original).
+ */
+function userPath(p: string): string {
+  return resolve(process.env.INIT_CWD ?? process.cwd(), p);
+}
+
+/**
  * Executa a rotina pedida.
  * Recebe: argumentos da linha de comando. Devolve: código de saída do processo
- * (0 sucesso, 1 erro). Por ora, toda rotina válida responde "ainda não implementada".
+ * (0 sucesso, 1 erro — o GitHub Actions avisa por e-mail quando é ≠ 0; observabilidade O1).
  */
 export async function main(argv: readonly string[]): Promise<number> {
   try {
-    const { rotina } = parseArgs(argv);
-    console.error(`Rotina "${rotina}" ainda não implementada.`);
-    return 1;
+    const { rotina, args } = parseArgs(argv);
+    switch (rotina) {
+      case "ingestao-iptu": {
+        // Uso: iptu <ano> [--arquivo IPTU_<ano>.zip]; sem arquivo, usa IPTU_ARQUIVO_URL ou o Storage.
+        const ano = Number(args[0]);
+        if (!Number.isInteger(ano) || ano < 2000) throw new Error("Informe o ano do IPTU: npm run ingestao -- iptu 2026 [--arquivo IPTU_2026.zip]");
+        const arquivo = option(args, "arquivo");
+        const { runIptu } = await import("./iptu/rotina.js");
+        await runIptu(createServiceClient(), {
+          ano,
+          arquivo: arquivo ? userPath(arquivo) : undefined,
+          url: process.env.IPTU_ARQUIVO_URL || undefined,
+        });
+        return 0;
+      }
+      default:
+        console.error(`Rotina "${rotina}" ainda não implementada.`);
+        return 1;
+    }
   } catch (erro) {
     console.error((erro as Error).message);
     return 1;
