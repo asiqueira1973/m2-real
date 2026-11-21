@@ -3,7 +3,8 @@
  * - m2_predios: upsert por chave_predio (regra 11.4).
  * - m2_plantas: cada grupo da regra 11.7 reaproveita a planta existente do mesmo prédio
  *   com área de referência a até 3% (preserva área privativa, selo e confirmação — regra
- *   11.11); só grupos sem par viram plantas novas. Plantas antigas sem par não são apagadas
+ *   11.11); só grupos sem par viram plantas novas. Planta confirmada em revisão manual
+ *   casa normalmente, mas nunca é regravada (regra 11.11). Plantas antigas sem par não são apagadas
  *   (podem ter calibrações e anúncios ligados; seção 7.5: sem exclusão).
  * - m2_unidades: upsert por sql.
  * Rodar duas vezes o mesmo arquivo não cria nenhuma linha nova (critério do 8.2).
@@ -21,6 +22,8 @@ const IDS_POR_URL = 100;
 export interface ExistingPlant {
   id: string;
   areaIptuReferencia: number;
+  /** Regra 11.11: confirmada em revisão manual — o pipeline casa, mas nunca altera. */
+  bloqueada?: boolean;
 }
 
 /**
@@ -97,11 +100,11 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     // 2. Plantas existentes desses prédios, em pedaços: o filtro .in vai na URL, que tem
     // limite de tamanho (bug da 1ª carga real: "URI too long" com 500 UUIDs).
     const ids = [...idPorChave.values()];
-    const existentes: { id: string; predio_id: string; area_iptu_referencia: number }[] = [];
+    const existentes: { id: string; predio_id: string; area_iptu_referencia: number; selo: string; fonte_area: string | null }[] = [];
     for (let k = 0; k < ids.length; k += IDS_POR_URL) {
       const { data, error: e2 } = await db
         .from("m2_plantas")
-        .select("id, predio_id, area_iptu_referencia")
+        .select("id, predio_id, area_iptu_referencia, selo, fonte_area")
         .in("predio_id", ids.slice(k, k + IDS_POR_URL));
       if (e2) throw new Error(`Falha ao ler m2_plantas: ${e2.message}`);
       existentes.push(...data);
@@ -109,7 +112,11 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     const existentesPorPredio = new Map<string, ExistingPlant[]>();
     for (const p of existentes) {
       const lista = existentesPorPredio.get(p.predio_id) ?? [];
-      lista.push({ id: p.id, areaIptuReferencia: Number(p.area_iptu_referencia) });
+      lista.push({
+        id: p.id,
+        areaIptuReferencia: Number(p.area_iptu_referencia),
+        bloqueada: p.selo === "confirmada" && p.fonte_area === "revisao_manual", // regra 11.11
+      });
       existentesPorPredio.set(p.predio_id, lista);
     }
 
@@ -118,12 +125,17 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     const unidades: Record<string, unknown>[] = [];
     for (const b of lote) {
       const predioId = idPorChave.get(b.chavePredio)!;
-      const pares = matchPlants(existentesPorPredio.get(predioId) ?? [], b.plantas);
+      const doPredio = existentesPorPredio.get(predioId) ?? [];
+      const bloqueadas = new Set(doPredio.filter((e) => e.bloqueada).map((e) => e.id));
+      const pares = matchPlants(doPredio, b.plantas);
       const idsPlantas = b.plantas.map((g, gi) => {
         const id = pares[gi] ?? randomUUID();
         if (pares[gi]) counts.plantasAtualizadas++;
         else counts.plantasNovas++;
-        plantas.push({ id, predio_id: predioId, area_iptu_referencia: g.areaIptuReferencia, qtd_unidades: g.qtdUnidades });
+        // Regra 11.11: planta confirmada manualmente recebe as unidades, mas não é regravada.
+        if (!bloqueadas.has(id)) {
+          plantas.push({ id, predio_id: predioId, area_iptu_referencia: g.areaIptuReferencia, qtd_unidades: g.qtdUnidades });
+        }
         return id;
       });
       for (const u of b.units) {
