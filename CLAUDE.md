@@ -17,7 +17,7 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 - `packages/ingestao/src/` — pipeline em Node/TS (`itbi/ iptu/ anuncios/ leiloes/ calibracao/ bairros/ config/ shared/`), entrada em `cli.ts`.
 - `packages/db/` — tipos gerados e cliente.
 - `apps/web/` — Next.js: painel em `src/app/(painel)`, MCP em `src/app/api/mcp/route.ts`, acesso com service role só em `src/server/`.
-- `supabase/` — `migrations/`, `seed.sql`, `seed/primeiro_admin.sql`, `tests/` (pgTAP).
+- `supabase/` — `migrations/`, `seed.sql` e `seed/primeiro_admin.sql` (criados no 8.1), `tests/` (pgTAP).
 - `.claude/` — hooks do Anexo B e subagente `verifier`.
 
 ## Comandos (raiz)
@@ -27,7 +27,7 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 | `npm test` | `Test Files  N passed` |
 | `npm run build` | `✓ Compiled successfully` e a tabela de rotas |
 | `npm run db:test` | `All tests successful.` (precisa de `supabase start`) |
-| `npm run ingestao -- itbi 2025` | execução `concluida` em `m2_execucoes_ingestao` |
+| `npm run ingestao -- itbi 2025` | execução `concluida` em `m2_execucoes_ingestao` (a partir do 8.3; no 8.0 responde "ainda não implementada") |
 
 ## Pegadinhas
 - A vaga é vendida em guia separada (regra 11.15).
@@ -36,4 +36,5 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 - 40% das guias vêm sem bairro (regra 11.2).
 - O hook `guard-coleta.sh` bloqueia termos como cpf, devedor, proprietario, telefone, description e `writeFile` em qualquer arquivo não-teste de `anuncios/` e `leiloes/`. Por isso, filtro de campos é **allowlist positiva** (só as chaves da tabela), e o prompt de extração não cita esses termos. Listas negativas só em `*.test.ts`.
 - Nos testes de hook feitos no zsh, use `printf '%s'` e não `echo`: o `echo` do zsh expande `\n` e quebra o JSON.
+- Com várias stacks Supabase na mesma máquina, o `supabase start` pode estourar o health check (analytics, vector, realtime). Use `supabase start -x vector,logflare,realtime,edge-runtime`: o M² Real não usa esses serviços.
 - TypeScript fixado em `~6.0.3`: o `next build` usa a API JS do compilador, que mudou no TS 7 (port nativo).

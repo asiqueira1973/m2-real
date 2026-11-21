@@ -12,14 +12,14 @@ Base de preço real de apartamentos por **prédio e planta**, em 10 bairros de S
 ```bash
 npm install
 cp .env.example .env.local      # preencha as chaves; nunca versione
-supabase start                  # sobe Postgres, Auth e Storage em Docker
-supabase db reset               # aplica supabase/migrations e o seed (10 bairros)
+supabase start -x vector,logflare,realtime,edge-runtime   # Postgres, Auth, REST e Storage em Docker
+supabase db reset               # aplica supabase/migrations e o seed dos 10 bairros (a partir do 8.1)
 ```
 A saída de `supabase start` mostra a `anon key` e a `service_role key` locais. Coloque-as em `.env.local`.
 
 ### Primeiro admin (seção 6.2)
 1. Crie o usuário no Supabase Studio (Authentication → Add user).
-2. Rode `supabase/seed/primeiro_admin.sql` com o e-mail desse usuário.
+2. Rode `supabase/seed/primeiro_admin.sql` (criado no 8.1) com o e-mail desse usuário.
 
 ## Comandos (raiz)
 | Comando | O que faz |
