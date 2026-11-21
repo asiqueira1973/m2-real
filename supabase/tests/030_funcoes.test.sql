@@ -1,7 +1,7 @@
 -- Épico 8.1, critério 3, e funções da 7.4: revisão manual só por admin (seção 5),
 -- observação obrigatória (7.4), vínculos manuais (11.11), normalização e busca (11.5).
 begin;
-select plan(30);
+select plan(34);
 
 -- Fixtures (como postgres).
 insert into auth.users (id, email) values
@@ -26,6 +26,19 @@ insert into public.m2_unidades (id, sql, predio_id, planta_id, tipo_unidade, com
 insert into public.m2_anuncios (id, url, dominio, fonte, execucao_id, area_privativa) values
   ('00000000-0000-0000-0000-0000000000c1', 'https://www.lopes.com.br/x', 'lopes.com.br', 'pagina_condominio',
    '00000000-0000-0000-0000-0000000000e1', 94);
+insert into public.m2_execucoes_ingestao (id, fonte, rotina, referencia)
+values ('00000000-0000-0000-0000-0000000000e2', 'itbi', 'ingestao-itbi', '2025');
+insert into public.m2_transacoes (id, hash_linha, execucao_id, sql, unidade_id, predio_id, bairro_id, origem_bairro,
+  logradouro, natureza, eh_compra_venda, data_transacao, mes_referencia, valor_declarado) values
+  ('00000000-0000-0000-0000-000000000071', 'hash-t1', '00000000-0000-0000-0000-0000000000e2', '08100200011',
+   '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000d2',
+   (select id from public.m2_bairros where slug = 'pinheiros'), 'campo', 'R JOAQUIM ANTUNES',
+   '1.Compra e venda', true, '2025-11-14', '2025-11-01', 1390000);
+insert into public.m2_vendas_consolidadas (id, transacao_apartamento_id, predio_id, unidade_id, planta_id, data_transacao,
+  valor_apartamento, valor_total, selo_area, m2_iptu) values
+  ('00000000-0000-0000-0000-000000000081', '00000000-0000-0000-0000-000000000071', '00000000-0000-0000-0000-0000000000d2',
+   '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a1', '2025-11-14',
+   1390000, 1390000, 'sem_dado', 10530.30);
 insert into public.m2_editais_leilao (id, url, dominio, execucao_id, origem_documento) values
   ('00000000-0000-0000-0000-0000000000f1', 'https://www.portalzuk.com.br/x', 'portalzuk.com.br',
    '00000000-0000-0000-0000-0000000000e1', 'pagina');
@@ -64,6 +77,8 @@ select throws_ok($$select public.m2_casar_edital('00000000-0000-0000-0000-000000
   '42501', null, 'm2_casar_edital por não-admin gera erro');
 select throws_ok($$select public.m2_marcar_planta_especial('00000000-0000-0000-0000-0000000000a1', true)$$,
   '42501', null, 'm2_marcar_planta_especial por não-admin gera erro');
+select throws_ok($$select public.m2_marcar_outlier('00000000-0000-0000-0000-000000000081', true)$$,
+  '42501', null, 'm2_marcar_outlier por não-admin gera erro');
 reset role;
 
 -- Admin.
@@ -99,6 +114,13 @@ select is((public.m2_casar_edital('00000000-0000-0000-0000-0000000000f1', '00000
 select is((public.m2_marcar_planta_especial('00000000-0000-0000-0000-0000000000a2', true)).especial, true, 'admin marca planta especial');
 select throws_ok($$select public.m2_marcar_outlier('00000000-0000-0000-0000-000000000999', true)$$,
   'P0002', null, 'm2_marcar_outlier em venda inexistente gera P0002');
+select lives_ok($$select public.m2_marcar_outlier('00000000-0000-0000-0000-000000000081', true)$$,
+  'admin marca venda fora da curva');
+select results_eq(
+  $$select fora_da_curva, marcado_manual from public.m2_vendas_consolidadas where id = '00000000-0000-0000-0000-000000000081'$$,
+  $$values (true, true)$$, 'marcar_outlier grava fora_da_curva e marcado_manual = true (7.4, regra 11.11)');
+select is((public.m2_marcar_outlier('00000000-0000-0000-0000-000000000081', false)).fora_da_curva, false,
+  'admin desfaz o fora da curva (marcado_manual continua true)');
 reset role;
 
 select * from finish();
