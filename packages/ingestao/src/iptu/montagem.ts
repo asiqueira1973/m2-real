@@ -300,7 +300,10 @@ export function assembleBuildings(
   return { buildings, discarded };
 }
 
-/** Agrupa os bairros já conhecidos por uma chave (CEP ou setor+quadra) para a votação da 11.2. */
+/**
+ * Agrupa os bairros já conhecidos por uma chave (CEP ou setor+quadra) para a votação da 11.2.
+ * Recebe: prédios resolvidos e a função de chave. Devolve: mapa chave → ids de bairro (votos).
+ */
 function groupVotes<T extends { bairroId: number | null }>(itens: readonly T[], chave: (x: T) => string): Map<string, number[]> {
   const m = new Map<string, number[]>();
   for (const it of itens) {
@@ -310,13 +313,19 @@ function groupVotes<T extends { bairroId: number | null }>(itens: readonly T[], 
   return m;
 }
 
-/** Número de condomínio vazio, ou só com zeros e separadores, conta como "sem condomínio". */
+/**
+ * Regra 11.4: número de condomínio vazio, ou só com zeros e separadores ("00-0"), conta como "sem condomínio".
+ * Recebe: campo do IPTU. Devolve: o número como veio, ou nulo.
+ */
 function normalizeCondominium(value: string | null): string | null {
   const v = (value ?? "").trim();
   return /[1-9]/.test(v) ? v : null;
 }
 
-/** Valor mais frequente (ignora nulos); empate → o primeiro que apareceu. */
+/**
+ * Valor mais frequente (moda), usado para os atributos do prédio a partir das unidades.
+ * Recebe: valores (nulos e vazios ignorados). Devolve: o mais frequente; empate → o primeiro; nulo se não houver.
+ */
 function mode<T>(values: readonly (T | null)[]): T | null {
   const counts = new Map<T, number>();
   let best: T | null = null;
@@ -333,11 +342,13 @@ function mode<T>(values: readonly (T | null)[]): T | null {
   return best;
 }
 
+/** Maior valor ignorando nulos. Recebe: números ou nulos. Devolve: o máximo, ou nulo se não houver. */
 function maxOrNull(values: readonly (number | null)[]): number | null {
   const v = values.filter((x): x is number => x !== null);
   return v.length ? Math.max(...v) : null;
 }
 
+/** Arredonda para 2 casas (numeric(10,2) do banco). Recebe: número. Devolve: número arredondado. */
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }

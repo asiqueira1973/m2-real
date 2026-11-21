@@ -81,6 +81,11 @@ export function avaliarSaude(
   return { ok: motivos.length === 0, rotinas, cobertura, motivos };
 }
 
+/**
+ * Avalia uma rotina (observabilidade O2).
+ * Recebe: nome da rotina, execuções dela e o instante. Devolve: estado e motivo legível.
+ * Ordem: travada (seção 12, > 6 h) → falhou → nunca_executada → atrasada → volume_anomalo → ok.
+ */
 function avaliarRotina(rotina: Rotina, execs: readonly ExecucaoResumo[], agora: Date): SaudeRotina {
   const ordenadas = [...execs].sort((a, b) => Date.parse(b.iniciada_em) - Date.parse(a.iniciada_em));
   const concluidas = ordenadas.filter((e) => e.status === "concluida");
@@ -128,7 +133,10 @@ function avaliarRotina(rotina: Rotina, execs: readonly ExecucaoResumo[], agora: 
   return { ...base, estado: "ok", motivo: null };
 }
 
-/** Queda de cobertura por bairro entre as duas fotos mais recentes (D12). */
+/**
+ * Queda de cobertura por bairro entre as duas fotos mais recentes (D12; observabilidade O2).
+ * Recebe: fotos de m2_cobertura_bairros. Devolve: alertas com queda > SAUDE_QUEDA_COBERTURA_PONTOS.
+ */
 function avaliarCobertura(coberturas: readonly CoberturaResumo[]): AlertaCobertura[] {
   const porBairro = new Map<number, CoberturaResumo[]>();
   for (const c of coberturas) porBairro.set(c.bairro_id, [...(porBairro.get(c.bairro_id) ?? []), c]);
@@ -148,6 +156,7 @@ function avaliarCobertura(coberturas: readonly CoberturaResumo[]): AlertaCobertu
   return alertas;
 }
 
+/** Mediana de uma lista não vazia. Recebe: números. Devolve: a mediana. */
 function mediana(v: readonly number[]): number {
   const s = [...v].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);

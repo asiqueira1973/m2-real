@@ -55,7 +55,11 @@ export async function runIptu(db: M2Client, opts: IptuOptions) {
     const bairros = await loadNeighborhoods(db);
     const prefixos = [...new Set(bairros.flatMap((b) => b.prefixosCep))];
     const lidas = await readIptuRows(await openIptuFile(fonte.buffer, fonte.nome), prefixos);
-    const { buildings } = assembleBuildings(lidas.rows, bairros);
+    const { buildings, discarded } = assembleBuildings(lidas.rows, bairros);
+    // Motivos dos descartes (regras 11.2 e 11.4), por tipo, no log da execução do Actions.
+    const motivos = new Map<string, number>();
+    for (const d of discarded) motivos.set(d.motivo, (motivos.get(d.motivo) ?? 0) + d.linhas);
+    for (const [motivo, linhas] of motivos) console.log(`  descartadas: ${linhas} linhas — ${motivo}`);
     const gravados = await writeBuildings(db, buildings);
 
     console.log(

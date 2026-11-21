@@ -108,16 +108,19 @@ export function toRow(rec: Record<string, string | undefined>, cep: string): Ipt
 /** Campos internos que uma linha pode ter (testado contra as chaves de toRow). */
 export const CAMPOS_IPTU_ROW = Object.values(COLUNAS_IPTU);
 
+/** Só os dígitos de um texto (SQL, CEP). Recebe: texto. Devolve: dígitos ("" se vazio). */
 function digits(s: string | undefined): string {
   return (s ?? "").replace(/\D/g, "");
 }
 
+/** Número decimal do CSV (ponto ou vírgula). Recebe: texto. Devolve: número ou nulo se vazio/ilegível. */
 function num(s: string): number | null {
   if (!s) return null;
   const n = Number(s.replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 
+/** Inteiro do CSV; 0 conta como ausente (ano, pavimentos, número). Recebe: texto. Devolve: inteiro ou nulo. */
 function int(s: string): number | null {
   const n = num(s);
   return n === null || n === 0 ? null : Math.trunc(n);
