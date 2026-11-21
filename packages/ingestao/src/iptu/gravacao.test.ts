@@ -66,3 +66,37 @@ describe("writeBuildings: lotes que cabem na URL (bug da 1ª carga real)", () =>
     expect(counts.plantasNovas).toBe(500);
   });
 });
+
+// Regra 11.11 (apontado pelo verifier do 8.2): a carga do IPTU não pode alterar planta
+// confirmada em revisão manual — nem área de referência nem quantidade.
+describe("writeBuildings: regra 11.11, planta confirmada manualmente não é alterada", () => {
+  it("planta 'confirmada' com fonte 'revisao_manual' fica fora do upsert de plantas", async () => {
+    const gravadas: { id: string }[][] = [];
+    const db = {
+      from: (tabela: string) => ({
+        upsert: (linhas: { id?: string; chave_predio?: string }[]) => {
+          if (tabela === "m2_plantas") gravadas.push(linhas as { id: string }[]);
+          return {
+            select: async () => ({ data: linhas.map((l) => ({ id: "predio-1", chave_predio: l.chave_predio })), error: null }),
+            then: (ok: (v: unknown) => void) => ok({ data: null, error: null }),
+          };
+        },
+        select: () => ({
+          in: async () => ({
+            data: [
+              { id: "planta-confirmada", predio_id: "predio-1", area_iptu_referencia: 100, selo: "confirmada", fonte_area: "revisao_manual" },
+              { id: "planta-calibrada", predio_id: "predio-1", area_iptu_referencia: 200, selo: "calibrada", fonte_area: "anuncio" },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    } as unknown as Parameters<typeof writeBuildings>[0];
+    const b = { ...building(1), plantas: [{ areaIptuReferencia: 101, qtdUnidades: 9 }, { areaIptuReferencia: 201, qtdUnidades: 7 }] };
+    const counts = await writeBuildings(db, [b]);
+    const ids = gravadas.flat().map((p) => p.id);
+    expect(ids).not.toContain("planta-confirmada"); // não sobrescreve área/quantidade da confirmada
+    expect(ids).toContain("planta-calibrada"); // as demais continuam atualizadas
+    expect(counts.plantasNovas).toBe(0); // a confirmada continua casada (unidades apontam para ela)
+  });
+});
