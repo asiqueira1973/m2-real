@@ -1,4 +1,6 @@
-# M² Real
+# Fechou por Quanto
+
+Domínio principal: `fechouporquanto.com.br`. O nome do produto mudou na v1.2 do spec (antes "M² Real"); os identificadores técnicos continuam `m2-real` (repositório, pacotes, projetos Supabase/Vercel) e `m2_` (banco).
 
 Base de preço real de apartamentos por **prédio e planta**, em 10 bairros de São Paulo. O preço vem do ITBI e a área privativa sai de calibração, sempre com selo. Os dados são consultados por agentes via MCP e conferidos num painel interno. A especificação completa está em [`spec.md`](spec.md); os planos por épico, em [`plans/`](plans/).
 

@@ -1,4 +1,4 @@
-# CLAUDE.md — M² Real
+# CLAUDE.md — Fechou por Quanto
 
 Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempatam. Os planos aprovados ficam em `plans/` (um por épico); se a implementação divergir, atualize o plano no mesmo commit.
 
@@ -6,6 +6,7 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 **Se um teste falhar, corrija o código, não o teste.** Nunca pule nem apague teste que falha. Bug se corrige com teste primeiro: escreva o teste que reproduz o bug, veja falhar, commite, `touch .claude/fix-mode`, corrija o código, `rm .claude/fix-mode`.
 
 ## Convenções
+- **Nome do produto: Fechou por Quanto** (`fechouporquanto.com.br`, spec v1.2) em todo texto visível (painel, MCP, mensagens da seção 15). Identificadores técnicos continuam `m2-real` / `m2_`: não renomeie repositório, pacotes, banco nem variáveis.
 - **Banco em português `snake_case`, com prefixo `m2_` em todo objeto**: tabelas (`m2_predios`), enums (`m2_selo_area`), funções (`m2_eh_admin()`), triggers, políticas (`m2_predios_leitura_admin`), índices e bucket (`m2_brutos`). Colunas e valores de enum ficam como no spec. Esta é uma divergência declarada do spec (decisão do usuário, 21/11/2026).
 - Código, variáveis e arquivos em inglês. Os tipos gerados (`packages/db/src/types.ts`) mantêm os nomes do banco.
 - Toda função, rotina, rota, trigger e política tem cabeçalho em português: o que faz, o que recebe, o que devolve e qual regra do spec implementa (com número). Lógica não óbvia leva comentário inline citando a regra.
@@ -36,5 +37,5 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 - 40% das guias vêm sem bairro (regra 11.2).
 - O hook `guard-coleta.sh` bloqueia termos como cpf, devedor, proprietario, telefone, description e `writeFile` em qualquer arquivo não-teste de `anuncios/` e `leiloes/`. Por isso, filtro de campos é **allowlist positiva** (só as chaves da tabela), e o prompt de extração não cita esses termos. Listas negativas só em `*.test.ts`.
 - Nos testes de hook feitos no zsh, use `printf '%s'` e não `echo`: o `echo` do zsh expande `\n` e quebra o JSON.
-- Com várias stacks Supabase na mesma máquina, o `supabase start` pode estourar o health check (analytics, vector, realtime). Use `supabase start -x vector,logflare,realtime,edge-runtime`: o M² Real não usa esses serviços.
+- Com várias stacks Supabase na mesma máquina, o `supabase start` pode estourar o health check (analytics, vector, realtime). Use `supabase start -x vector,logflare,realtime,edge-runtime`: o Fechou por Quanto não usa esses serviços.
 - TypeScript fixado em `~6.0.3`: o `next build` usa a API JS do compilador, que mudou no TS 7 (port nativo).

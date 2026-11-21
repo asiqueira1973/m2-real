@@ -5,7 +5,7 @@
 export default function Home() {
   return (
     <main className="p-10">
-      <h1 className="text-2xl font-semibold">M² Real</h1>
+      <h1 className="text-2xl font-semibold">Fechou por Quanto</h1>
       <p className="mt-2 text-sm">Painel em construção.</p>
     </main>
   );

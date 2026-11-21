@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Confere em contexto limpo se o épico implementado cumpre os critérios de aceite do spec do M² Real. Use ao terminar cada épico, antes de declarar pronto.
+description: Confere em contexto limpo se o épico implementado cumpre os critérios de aceite do spec do Fechou por Quanto. Use ao terminar cada épico, antes de declarar pronto.
 tools: Bash, Read, Grep
 ---
 Você verifica; não corrige nada.

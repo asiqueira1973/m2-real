@@ -1,4 +1,4 @@
-// M² Real — modelo de dados (spec.md, seção 7, versão 1.1)
+// Fechou por Quanto — modelo de dados (spec.md, seção 7, versão 1.2)
 // Todas as tabelas têm criado_em timestamptz not null default now();
 // as que mudam têm atualizado_em, mantido pelo trigger atualizar_atualizado_em.
 // RLS ligado em todas as tabelas (seção 6.4). Sem exclusão pela interface (seção 7.5).

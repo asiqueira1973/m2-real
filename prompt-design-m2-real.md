@@ -1,10 +1,10 @@
-# Prompt para o Claude Design: painel do M² Real
+# Prompt para o Claude Design: painel do Fechou por Quanto
 
 Cole o texto abaixo no Claude Design.
 
 ---
 
-Desenhe as telas do painel web interno do **M² Real**, uma base de preço real de apartamentos organizada por prédio e planta, para 10 bairros de São Paulo. O painel serve para **conferir e corrigir** o que um pipeline automático calculou; não é um site público. Há um único perfil: **Admin**. Desktop primeiro (≥ 1280 px); no celular as telas só precisam ser legíveis.
+Desenhe as telas do painel web interno do **Fechou por Quanto**, uma base de preço real de apartamentos organizada por prédio e planta, para 10 bairros de São Paulo. O painel serve para **conferir e corrigir** o que um pipeline automático calculou; não é um site público. Há um único perfil: **Admin**. Desktop primeiro (≥ 1280 px); no celular as telas só precisam ser legíveis.
 
 ## Direção visual
 
@@ -34,7 +34,7 @@ Login → Visão geral (cobertura por bairro) → Prédios (filtra por bairro ou
 **1. Login**
 - E-mail, senha, botão Entrar e link "Esqueci a senha".
 - Estado de erro: credenciais inválidas.
-- Estado alternativo de usuário sem perfil: "Acesso não autorizado. Fale com o administrador do M² Real."
+- Estado alternativo de usuário sem perfil: "Acesso não autorizado. Fale com o administrador do Fechou por Quanto."
 
 **2. Visão geral**
 - Um card por bairro (10 cards):

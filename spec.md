@@ -1,16 +1,16 @@
-# M² Real: base de preço real por prédio e planta (10 bairros de São Paulo)
+# Fechou por Quanto: base de preço real por prédio e planta (10 bairros de São Paulo)
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.1 (inclui editais de leilão no MVP) |
+| Versão | 1.2 (renomeado para Fechou por Quanto) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
-| Data | 20/11/2026 |
-| Nome do produto | **M² Real** (nome de trabalho, ver assunção A1) |
+| Data | 21/11/2026 |
+| Nome do produto | **Fechou por Quanto** (nome definitivo; domínio principal `fechouporquanto.com.br`; ver assunção A1) |
 
 ## Como usar este documento
 
-Este é o documento de referência do M² Real. É o que o Claude Code lê para implementar o sistema. Ele define o que o sistema faz, como os dados são modelados, quais regras de negócio valem e quando cada parte está pronta.
+Este é o documento de referência do Fechou por Quanto. É o que o Claude Code lê para implementar o sistema. Ele define o que o sistema faz, como os dados são modelados, quais regras de negócio valem e quando cada parte está pronta.
 
 **Antes de gerar código, revise a seção 24 (Assunções declaradas).** Uma assunção não revisada vira verdade no minuto em que o agente começa a programar. Os itens da seção 25 (Perguntas abertas) não podem ser assumidos: o agente pergunta.
 
@@ -30,7 +30,7 @@ As seções são numeradas e a numeração é estável. O prompt de implementaç
 
 ## 1. Visão e problema
 
-O M² Real é uma base de dados de preço real de apartamentos, organizada por **prédio e planta**, para 10 bairros de São Paulo: Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi. Ela é consultada por agentes de IA via MCP e conferida num painel web interno.
+O Fechou por Quanto é uma base de dados de preço real de apartamentos, organizada por **prédio e planta**, para 10 bairros de São Paulo: Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi. Ela é consultada por agentes de IA via MCP e conferida num painel web interno.
 
 **O problema.** O preço de venda é público: a prefeitura publica todo mês as guias de ITBI. Esse número sozinho, porém, não serve para comparar imóveis, por três motivos:
 - a área da guia é a área construída do IPTU, que inclui áreas comuns e às vezes as vagas (de 1,4 a 1,9 vez a área privativa, nos casos testados);
@@ -41,7 +41,7 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 
 **Para quem.** No MVP, para o próprio responsável de produto (validação da tese) e para agentes de IA que ele conecta via MCP. Depois, para corretores, investidores e avaliadores (roadmap, seção 28).
 
-**Anti-escopo (o que o M² Real não é):**
+**Anti-escopo (o que o Fechou por Quanto não é):**
 - não é portal de anúncios nem buscador de imóveis à venda;
 - não é avaliador automático com laudo (não emite valor de um imóvel específico);
 - não é ferramenta para o público final no MVP: não tem cadastro aberto nem cobrança;
@@ -778,7 +778,7 @@ Execução `em_andamento` há mais de 6 horas é marcada `falhou` ("tempo esgota
 | `m2_bairro` | `{ bairro: enum dos 10 slugs, meses?: int 1–60 = 24, quartos?: int }` | `{ mediana_m2_privativo, p25, p75, n_vendas, distribuicao_selos, pct_cobertura }` |
 | `comparaveis` | `{ predio_id: uuid, area_privativa?: number, meses?: int = 24, limite?: int 1–30 = 10 }` | vendas do mesmo bairro com área privativa ±20% da informada (ou da planta mais comum do prédio), década de construção ±1, ordenadas por mesma rua, depois mais recentes; mesmos campos de `vendas_predio` |
 
-Todas as respostas incluem `fonte: "ITBI Prefeitura de SP + IPTU GeoSampa + calibração M² Real"` e `atualizado_em` (última calibração concluída).
+Todas as respostas incluem `fonte: "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto"` e `atualizado_em` (última calibração concluída).
 
 ### 13.3 Schema de extração do Firecrawl
 
@@ -846,9 +846,9 @@ Português claro, sem jargão. Mensagens fixas:
 | Situação | Texto |
 |---|---|
 | MCP sem chave/chave inválida | "Chave de API inválida ou revogada." |
-| MCP fora da cobertura | "Este endereço não está na base do M² Real, que hoje cobre Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi." |
+| MCP fora da cobertura | "Este endereço não está na base do Fechou por Quanto, que hoje cobre Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi." |
 | MCP prédio sem vendas no período | "Nenhuma venda registrada neste prédio no período. Use a ferramenta comparaveis para ver vendas parecidas no bairro." |
-| Painel sem perfil | "Acesso não autorizado. Fale com o administrador do M² Real." |
+| Painel sem perfil | "Acesso não autorizado. Fale com o administrador do Fechou por Quanto." |
 | Lista vazia de revisão | "Nada para revisar agora." |
 | Chave criada | "Copie a chave agora. Ela não será mostrada de novo." |
 
@@ -1051,7 +1051,7 @@ Sem telemetria de terceiros no MVP; o próprio `execucoes_ingestao`, o `cobertur
 
 | # | Assunção | Por quê | Se discordar |
 |---|---|---|---|
-| A1 | Nome de trabalho "M² Real" e repositório `m2-real` | Precisava de um nome para pastas e textos | Troque o nome; é busca e substituição |
+| A1 | Nome definitivo "Fechou por Quanto" (domínio principal `fechouporquanto.com.br`). O repositório, as pastas, os pacotes e o banco continuam com `m2-real` / `m2_` | Nome escolhido na v1.2; os identificadores técnicos não mudam para não mexer em banco, deploys e variáveis | Trocar os identificadores técnicos exige migration nova e renomear os projetos Supabase e Vercel |
 | A2 | Histórico do ITBI a partir de 2021 | 5 anos dão vendas suficientes por prédio sem pesar no banco | Dá para voltar a 2006; aumenta volume e tempo |
 | A3 | Só apartamentos residenciais entram nas análises | Foco da tese | As outras guias já ficam gravadas |
 | A4 | Coleta em 3 domínios: Lopes, QuintoAndar e Loft | Foram os que apareceram com páginas de condomínio e área útil nos testes | Acrescente domínios na allowlist |
@@ -1135,7 +1135,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 Modelo de prompt:
 ```
-O M² Real já está implementado e funcionando (ver spec.md e DOCUMENTACAO-TECNICA.md).
+O Fechou por Quanto já está implementado e funcionando (ver spec.md e DOCUMENTACAO-TECNICA.md).
 Quero esta mudança: <descrição ou trecho do spec adicional>.
 Não altere: <telas/rotinas/tabelas que não mudam>.
 Antes de codar, entre em plan mode, me mostre o plano (arquivos, ordem, testes) e,
@@ -1296,7 +1296,7 @@ exit 0
 ```markdown
 ---
 name: verifier
-description: Confere em contexto limpo se o épico implementado cumpre os critérios de aceite do spec do M² Real. Use ao terminar cada épico, antes de declarar pronto.
+description: Confere em contexto limpo se o épico implementado cumpre os critérios de aceite do spec do Fechou por Quanto. Use ao terminar cada épico, antes de declarar pronto.
 tools: Bash, Read, Grep
 ---
 Você verifica; não corrige nada.
@@ -1314,7 +1314,7 @@ Termine com uma linha: PRONTO ou NÃO PRONTO, e os itens que impedem.
 
 ### `REVIEW.md`
 ```markdown
-# Instruções de revisão (M² Real)
+# Instruções de revisão (Fechou por Quanto)
 
 ## Passes
 Marque cada achado com o passe:

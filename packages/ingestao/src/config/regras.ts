@@ -1,5 +1,5 @@
 /**
- * Limiares e parâmetros das regras de negócio do M² Real.
+ * Limiares e parâmetros das regras de negócio do Fechou por Quanto.
  *
  * Seção 18.2 do spec: todo número de regra (3%, 12%, 60%, 8 plantas, 150 prédios,
  * 90 dias…) fica aqui, um por constante, com o número da regra no comentário.

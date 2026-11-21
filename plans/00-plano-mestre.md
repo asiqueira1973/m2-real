@@ -1,4 +1,4 @@
-# Plano mestre — M² Real (spec.md v1.1)
+# Plano mestre — Fechou por Quanto (spec.md v1.2)
 
 ## Contexto
 
@@ -81,6 +81,7 @@ Ferramentas confirmadas: Node 22, npm 10, Supabase CLI 2.122, Docker ativo, jq, 
 - [ ] Testes: T2 (94/95 → calibrada 94,5 / 0,716; com o 107 continua calibrada), planta `confirmada` intocada, Joaquim Antunes ≈ 94 / 0,71.
 
 ### 8.7 Painel: autenticação, visão geral e prédios
+- Nome visível do produto: **Fechou por Quanto** (spec v1.2): título, aba, login e mensagens da seção 15.
 - [ ] Supabase Auth (SSR), checagem de perfil ativo, recuperação de senha; layout com menu lateral (seção 16); Visão geral, Prédios e Ficha (abas Plantas, Vendas, Anúncios, Editais, Histórico); estados vazio, carregando e erro; formatação pt-BR.
 - [ ] Não existe `design/` do Claude Design. Sigo a seção 16 e o `prompt-design-m2-real.md`, e capturo as telas no navegador embutido para conferir.
 
@@ -89,6 +90,7 @@ Ferramentas confirmadas: Node 22, npm 10, Supabase CLI 2.122, Docker ativo, jq, 
 - [ ] O disparo real depende do repositório GitHub: peço autorização para criá-lo aqui.
 
 ### 8.9 Servidor MCP
+- Nome do servidor MCP para o cliente: **Fechou por Quanto**; `fonte` = "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto" (spec v1.2, 13.2).
 - [ ] `app/api/mcp/route.ts` com `mcp-handler@^2` + `@modelcontextprotocol/server@^2` + `zod@^4`. Se essas versões não existirem no npm, paro e pergunto. Autenticação Bearer por hash SHA-256, com atualização de `ultimo_uso_em`; as 5 ferramentas da 13.2; mensagens da seção 15; `fonte` e `atualizado_em` em toda resposta; selo e área em todo m².
 - [ ] `scripts/test-client.mjs`: roda local; contra o preview depois que o projeto Vercel for autorizado.
 

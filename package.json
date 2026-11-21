@@ -2,7 +2,7 @@
   "name": "m2-real",
   "private": true,
   "type": "module",
-  "description": "M² Real: base de preço real por prédio e planta (spec.md v1.1)",
+  "description": "Fechou por Quanto: base de preço real por prédio e planta (spec.md v1.2)",
   "workspaces": [
     "apps/*",
     "packages/*"

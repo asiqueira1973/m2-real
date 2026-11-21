@@ -1,4 +1,4 @@
-# Instruções de revisão (M² Real)
+# Instruções de revisão (Fechou por Quanto)
 
 ## Passes
 Marque cada achado com o passe:

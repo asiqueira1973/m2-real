@@ -1,5 +1,5 @@
 -- =============================================================================
--- Seed dos 10 bairros do M² Real (spec seção 7.6; tabela 11.2; regra 11.2).
+-- Seed dos 10 bairros do Fechou por Quanto (spec seção 7.6; tabela 11.2; regra 11.2).
 -- prefixos_cep: CEPs aceitos para o bairro. padroes_nome: regex aplicadas ao campo
 -- bairro da guia já normalizado (maiúsculas, sem acento, espaços simples).
 -- Idempotente: rodar de novo só reafirma os valores.

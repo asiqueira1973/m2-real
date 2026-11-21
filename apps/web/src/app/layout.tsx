@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "M² Real",
+  title: "Fechou por Quanto",
   description: "Base de preço real por prédio e planta",
 };
 
