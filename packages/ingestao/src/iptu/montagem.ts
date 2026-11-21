@@ -259,7 +259,11 @@ export function assembleBuildings(
     }
     const { plantas, indexOf } = groupPlans(aptos.map((r) => r.areaConstruida));
     const aptoIndex = new Map(aptos.map((r, i) => [r.sql, indexOf[i]!]));
-    const [setor, quadra, numeroCondominio] = chave.split("-") as [string, string, string];
+    // A chave é "setor-quadra-condominio", e o número de condomínio do IPTU também tem
+    // hífen ("01-9"): setor e quadra vêm do SQL; o condomínio, do próprio campo.
+    const setor = grupo[0]!.sql.slice(0, 3);
+    const quadra = grupo[0]!.sql.slice(3, 6);
+    const numeroCondominio = normalizeCondominium(grupo[0]!.numeroCondominio)!;
     buildings.push({
       chavePredio: chave,
       setor,
