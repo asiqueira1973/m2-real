@@ -1,0 +1,414 @@
+// M² Real — modelo de dados (spec.md, seção 7, versão 1.1)
+// Todas as tabelas têm criado_em timestamptz not null default now();
+// as que mudam têm atualizado_em, mantido pelo trigger atualizar_atualizado_em.
+// RLS ligado em todas as tabelas (seção 6.4). Sem exclusão pela interface (seção 7.5).
+
+enum fonte_dado {
+  itbi
+  iptu
+  anuncio
+  pagina_condominio
+  edital_leilao
+  revisao_manual
+  fator_referencia
+}
+
+enum status_execucao {
+  em_andamento
+  concluida
+  falhou
+  substituida
+}
+
+enum tipo_unidade {
+  apartamento
+  vaga
+  outro
+}
+
+enum selo_area {
+  confirmada
+  calibrada
+  indicativa
+  estimada
+  sem_dado
+}
+
+enum status_casamento {
+  casado_planta
+  casado_predio
+  ambiguo
+  sem_predio
+  descartado
+}
+
+enum finalidade_anuncio {
+  venda
+  aluguel
+}
+
+enum origem_bairro {
+  campo
+  cep
+  quadra
+  iptu
+}
+
+enum papel_usuario {
+  admin
+}
+
+enum motivo_revisao {
+  fator_incoerente
+  anuncios_divergentes
+  anuncio_ambiguo
+  planta_especial
+  venda_fora_da_curva
+  edital_divergente
+}
+
+enum status_casamento_edital {
+  casado_unidade
+  casado_predio
+  sem_predio
+  descartado
+}
+
+Table bairros {
+  id smallint [pk, increment]
+  nome text [not null, unique]
+  slug text [not null, unique, note: 'formato ^[a-z0-9-]+$']
+  prefixos_cep "text[]" [not null]
+  padroes_nome "text[]" [not null]
+  ativo boolean [not null, default: true]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  Note: 'Os 10 bairros cobertos (seed, tabela 11.2)'
+}
+
+Table execucoes_ingestao {
+  id uuid [pk, default: `gen_random_uuid()`]
+  fonte fonte_dado [not null]
+  rotina text [not null]
+  referencia text
+  arquivo_url text
+  arquivo_hash text
+  caminho_storage text
+  status status_execucao [not null, default: 'em_andamento']
+  linhas_lidas integer [not null, default: 0]
+  linhas_gravadas integer [not null, default: 0]
+  linhas_descartadas integer [not null, default: 0]
+  mensagem_erro text
+  iniciada_em timestamptz [not null, default: `now()`]
+  concluida_em timestamptz
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  Note: 'Uma linha por execução de rotina (seção 12)'
+}
+
+Table predios {
+  id uuid [pk, default: `gen_random_uuid()`]
+  chave_predio text [not null, unique, note: 'setor-quadra-condominio (regra 11.4)']
+  setor char(3) [not null]
+  quadra char(3) [not null]
+  numero_condominio text [not null]
+  bairro_id smallint [not null]
+  logradouro text [not null]
+  numero integer
+  cep char(8) [not null]
+  ano_construcao smallint
+  qtd_pavimentos smallint
+  padrao_iptu text
+  total_unidades_residenciais integer [not null, default: 0]
+  vagas_cadastro_proprio boolean [not null, default: false]
+  fator_predio "numeric(5,3)"
+  prioridade_coleta integer [not null, default: 0]
+  ultima_coleta_em timestamptz
+  ultima_coleta_leilao_em timestamptz
+  exercicio_iptu smallint [not null]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    bairro_id
+    (logradouro, numero)
+  }
+  // índice trigram (pg_trgm) em logradouro para a busca de endereço (regra 11.5)
+}
+
+Table unidades {
+  id uuid [pk, default: `gen_random_uuid()`]
+  sql char(11) [not null, unique]
+  predio_id uuid [not null]
+  planta_id uuid
+  tipo_unidade tipo_unidade [not null]
+  complemento text
+  uso_iptu text [not null]
+  area_construida "numeric(10,2)" [not null]
+  fracao_ideal "numeric(8,6)"
+  andar_inferido smallint
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    predio_id
+    planta_id
+  }
+}
+
+Table plantas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  predio_id uuid [not null]
+  area_iptu_referencia "numeric(10,2)" [not null]
+  qtd_unidades integer [not null]
+  area_privativa "numeric(8,2)"
+  vagas_inclusas smallint
+  quartos smallint
+  fator "numeric(5,3)"
+  selo selo_area [not null, default: 'sem_dado']
+  fonte_area fonte_dado
+  faixa_erro_pct "numeric(5,1)"
+  especial boolean [not null, default: false]
+  revisao_pendente boolean [not null, default: false]
+  motivo_revisao motivo_revisao
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    predio_id
+  }
+  // update pelo admin só via função confirmar_area_planta (seção 7.4)
+}
+
+Table transacoes {
+  id uuid [pk, default: `gen_random_uuid()`]
+  hash_linha text [not null, unique, note: 'idempotência (regra 11.1)']
+  execucao_id uuid [not null]
+  sql char(11) [not null]
+  unidade_id uuid
+  predio_id uuid
+  bairro_id smallint [not null]
+  origem_bairro origem_bairro [not null]
+  logradouro text [not null]
+  numero integer
+  complemento text
+  cep char(8)
+  natureza text [not null]
+  eh_compra_venda boolean [not null]
+  data_transacao date [not null]
+  mes_referencia date [not null]
+  valor_declarado "numeric(14,2)" [not null]
+  valor_venal_referencia "numeric(14,2)"
+  base_calculo "numeric(14,2)"
+  proporcao_transmitida "numeric(6,4)"
+  tipo_financiamento text
+  valor_financiado "numeric(14,2)" [not null, default: 0]
+  cartorio text
+  matricula text
+  uso_iptu_guia text
+  area_construida_guia "numeric(10,2)"
+  fracao_ideal_guia "numeric(8,6)"
+  unidade_sem_cadastro_proprio boolean [not null, default: false]
+  criado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    sql
+    (predio_id, data_transacao)
+    (bairro_id, data_transacao)
+  }
+  // única exclusão física do sistema: substituição de execução pelo pipeline (seção 7.5)
+}
+
+Table vendas_consolidadas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  transacao_apartamento_id uuid [not null, unique]
+  transacoes_vagas_ids "uuid[]" [not null, default: `'{}'`]
+  predio_id uuid [not null]
+  unidade_id uuid [not null]
+  planta_id uuid
+  data_transacao date [not null]
+  valor_apartamento "numeric(14,2)" [not null]
+  valor_vagas "numeric(14,2)" [not null, default: 0]
+  valor_total "numeric(14,2)" [not null]
+  qtd_vagas_separadas smallint [not null, default: 0]
+  vagas_inclusas_area smallint
+  area_privativa "numeric(8,2)"
+  selo_area selo_area [not null]
+  m2_privativo "numeric(10,2)"
+  m2_iptu "numeric(10,2)" [not null]
+  fora_da_curva boolean [not null, default: false]
+  marcado_manual boolean [not null, default: false]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    (predio_id, data_transacao)
+    planta_id
+  }
+  // recalculada a cada calibração, preservando marcado_manual = true (seção 7.5)
+  // transacoes_vagas_ids é array sem FK (trade-off 7.7)
+}
+
+Table anuncios {
+  id uuid [pk, default: `gen_random_uuid()`]
+  url text [not null, unique]
+  dominio text [not null]
+  fonte fonte_dado [not null]
+  execucao_id uuid [not null]
+  logradouro_extraido text
+  numero_extraido integer
+  nome_condominio text
+  finalidade finalidade_anuncio
+  area_privativa "numeric(8,2)"
+  area_privativa_min "numeric(8,2)"
+  area_privativa_max "numeric(8,2)"
+  quartos smallint
+  vagas smallint
+  andar smallint
+  preco_pedido "numeric(14,2)"
+  predio_id uuid
+  planta_id uuid
+  status_casamento status_casamento [not null, default: 'sem_predio']
+  confianca_casamento "numeric(4,3)"
+  casado_manual boolean [not null, default: false]
+  coletado_em timestamptz [not null, default: `now()`]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    predio_id
+  }
+  // só estes campos podem ser gravados (princípio 4, guard-coleta.sh)
+  // anúncios com mais de 3 anos são apagados pelo pipeline (seção 20)
+}
+
+Table editais_leilao {
+  id uuid [pk, default: `gen_random_uuid()`]
+  url text [not null, unique]
+  url_documento text
+  dominio text [not null]
+  execucao_id uuid [not null]
+  logradouro_extraido text
+  numero_extraido integer
+  complemento_extraido text
+  matricula text
+  cartorio text
+  area_privativa "numeric(8,2)"
+  area_comum "numeric(8,2)"
+  area_total "numeric(8,2)"
+  fracao_ideal "numeric(8,6)"
+  vagas smallint
+  vagas_vinculadas_area boolean
+  valor_avaliacao "numeric(14,2)"
+  data_leilao date
+  origem_documento text [not null, note: 'pagina, edital, laudo ou matricula']
+  predio_id uuid
+  unidade_id uuid
+  status_casamento status_casamento_edital [not null, default: 'sem_predio']
+  casado_manual boolean [not null, default: false]
+  coletado_em timestamptz [not null, default: `now()`]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    predio_id
+    matricula
+  }
+  // O PDF não é guardado; nenhum dado de pessoa (seção 20, guard-coleta.sh)
+  // update pelo admin só via função casar_edital (seção 7.4)
+}
+
+Table calibracoes {
+  id uuid [pk, default: `gen_random_uuid()`]
+  planta_id uuid [not null]
+  area_privativa "numeric(8,2)"
+  vagas_inclusas smallint
+  fator "numeric(5,3)"
+  selo selo_area [not null]
+  fonte fonte_dado [not null]
+  anuncios_ids "uuid[]" [not null, default: `'{}'`]
+  editais_ids "uuid[]" [not null, default: `'{}'`]
+  observacao text
+  autor text [not null]
+  criado_em timestamptz [not null, default: `now()`]
+
+  Note: 'Histórico de toda mudança de área de planta'
+}
+
+// unique (bairro_id, decada_construcao, vagas_cadastro_proprio) nulls not distinct
+Table fatores_referencia {
+  id uuid [pk, default: `gen_random_uuid()`]
+  bairro_id smallint [note: 'nulo = grupo dos 10 bairros']
+  decada_construcao smallint
+  vagas_cadastro_proprio boolean [not null]
+  fator_mediano "numeric(5,3)" [not null]
+  fator_p25 "numeric(5,3)" [not null]
+  fator_p75 "numeric(5,3)" [not null]
+  qtd_plantas integer [not null]
+  calculado_em timestamptz [not null, default: `now()`]
+  criado_em timestamptz [not null, default: `now()`]
+
+  indexes {
+    (bairro_id, decada_construcao, vagas_cadastro_proprio) [unique]
+  }
+}
+
+Table cobertura_bairros {
+  id uuid [pk, default: `gen_random_uuid()`]
+  bairro_id smallint [not null]
+  calculado_em timestamptz [not null, default: `now()`]
+  vendas_24m integer [not null]
+  vendas_confirmada integer [not null]
+  vendas_calibrada integer [not null]
+  vendas_indicativa integer [not null]
+  vendas_estimada integer [not null]
+  vendas_sem_dado integer [not null]
+  pct_cobertura "numeric(5,1)" [not null]
+  criado_em timestamptz [not null, default: `now()`]
+}
+
+Table perfis {
+  id uuid [pk, note: 'fk auth.users.id']
+  email text [not null]
+  papel papel_usuario [not null, default: 'admin']
+  ativo boolean [not null, default: true]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+}
+
+Table chaves_api {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nome text [not null]
+  prefixo char(8) [not null]
+  hash_chave text [not null, unique, note: 'SHA-256 da chave']
+  ativa boolean [not null, default: true]
+  ultimo_uso_em timestamptz
+  criada_por uuid [not null]
+  criado_em timestamptz [not null, default: `now()`]
+  atualizado_em timestamptz [not null, default: `now()`]
+}
+
+Ref: predios.bairro_id > bairros.id
+Ref: unidades.predio_id > predios.id
+Ref: unidades.planta_id > plantas.id
+Ref: plantas.predio_id > predios.id
+Ref: transacoes.execucao_id > execucoes_ingestao.id
+Ref: transacoes.unidade_id > unidades.id
+Ref: transacoes.predio_id > predios.id
+Ref: transacoes.bairro_id > bairros.id
+Ref: vendas_consolidadas.transacao_apartamento_id - transacoes.id
+Ref: vendas_consolidadas.predio_id > predios.id
+Ref: vendas_consolidadas.unidade_id > unidades.id
+Ref: vendas_consolidadas.planta_id > plantas.id
+Ref: anuncios.execucao_id > execucoes_ingestao.id
+Ref: anuncios.predio_id > predios.id
+Ref: anuncios.planta_id > plantas.id
+Ref: editais_leilao.execucao_id > execucoes_ingestao.id
+Ref: editais_leilao.predio_id > predios.id
+Ref: editais_leilao.unidade_id > unidades.id
+Ref: calibracoes.planta_id > plantas.id
+Ref: fatores_referencia.bairro_id > bairros.id
+Ref: cobertura_bairros.bairro_id > bairros.id
+Ref: chaves_api.criada_por > perfis.id

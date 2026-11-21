@@ -1,0 +1,26 @@
+# Dependências e builds
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Segredos (seção 20): só .env.example é versionado
+.env
+.env.*
+!.env.example
+
+# Brutos grandes ficam fora do git (fixtures são recortes pequenos)
+/*.xlsx
+/*.csv
+/brutos/
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Guardrail: modo de correção é estado local (seção 22.1)
+.claude/fix-mode
+.claude/settings.local.json
+
+.DS_Store
