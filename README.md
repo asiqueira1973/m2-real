@@ -34,6 +34,14 @@ A saída de `supabase start` mostra a `anon key` e a `service_role key` locais. 
 
 Rotinas (seção 4.4): `itbi` (`ingestao-itbi`), `iptu` (`ingestao-iptu`), `anuncios` (`coleta-anuncios`), `leiloes` (`coleta-leiloes`) e `calibracao`. Exemplo: `npm run ingestao -- itbi 2025`.
 
+## Carga anual do IPTU (manual, 1× por ano)
+O GeoSampa bloqueia download por script (desafio anti-robô), então a carga do IPTU é manual. Ela é anual (seção 4.4, em fevereiro):
+1. No navegador: GeoSampa → Download de Arquivos → 12_Cadastro → IPTU_INTER → XLS_CSV → `IPTU_<ano>`. Salve na raiz do repositório (o `.zip` fica fora do git).
+2. `npm run ingestao -- iptu <ano> --arquivo IPTU_<ano>.zip`. O comando guarda o bruto em `m2_brutos/iptu/<ano>.zip` e carrega; leva ~1 min.
+3. Sem `--arquivo`, a rotina lê o bruto já guardado no Storage. Com mais de 400 dias sem carga, a avaliação de saúde marca o IPTU como atrasado.
+
+O Storage precisa aceitar arquivos de até 500 MiB (local: `supabase/config.toml`; remoto: configuração do projeto).
+
 ## Migrations
 - Ficam em `supabase/migrations/`, com prefixo de data. Uma migration aplicada nunca é editada: mudança vira migration nova.
 - Depois de cada migration: `npm run db:advisors` (security e performance; falha com qualquer `warn`), `npm run db:schema` (regenera o `schema.sql`) e `npm run db:types` (regenera `packages/db/src/types.ts`).

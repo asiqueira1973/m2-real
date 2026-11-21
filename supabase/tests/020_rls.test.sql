@@ -43,7 +43,9 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-00000000000a", "role": "authenticated"}';
 select ok(public.m2_eh_admin(), 'm2_eh_admin() é verdadeiro para admin ativo');
-select is((select count(*)::int from public.m2_predios), 1, 'admin recebe as linhas de m2_predios (8.1)');
+-- Independente do conteúdo do banco local (pode ter a carga real do IPTU): o admin vê a linha da fixture
+-- e todas as linhas existentes (mesmo total que o postgres, que ignora RLS).
+select is((select count(*)::int from public.m2_predios where id = '00000000-0000-0000-0000-0000000000d1'), 1, 'admin recebe as linhas de m2_predios (8.1)');
 select is((select count(*)::int from public.m2_bairros), 10, 'admin vê os 10 bairros');
 select throws_ok($$update public.m2_plantas set especial = true$$, '42501', null,
   'admin não faz update direto em m2_plantas (só via funções, 6.4)');

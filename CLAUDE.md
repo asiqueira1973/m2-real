@@ -38,4 +38,7 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 - O hook `guard-coleta.sh` bloqueia termos como cpf, devedor, proprietario, telefone, description e `writeFile` em qualquer arquivo não-teste de `anuncios/` e `leiloes/`. Por isso, filtro de campos é **allowlist positiva** (só as chaves da tabela), e o prompt de extração não cita esses termos. Listas negativas só em `*.test.ts`.
 - Nos testes de hook feitos no zsh, use `printf '%s'` e não `echo`: o `echo` do zsh expande `\n` e quebra o JSON.
 - Com várias stacks Supabase na mesma máquina, o `supabase start` pode estourar o health check (analytics, vector, realtime). Use `supabase start -x vector,logflare,realtime,edge-runtime`: o Fechou por Quanto não usa esses serviços.
+- IPTU: download só manual (desafio anti-robô do GeoSampa); CSV em UTF-8, `;`, CRLF. O campo bairro vem vazio na maioria: o bairro do prédio sai da lógica da 11.2 (campo → voto por CEP → voto por quadra).
+- Número de condomínio do IPTU tem hífen ("01-9"): nunca reconstrua a partir da chave `setor-quadra-condominio`.
+- Filtro `.in(...)` do supabase-js vai na URL: no máximo ~100 UUIDs por chamada ("URI too long").
 - TypeScript fixado em `~6.0.3`: o `next build` usa a API JS do compilador, que mudou no TS 7 (port nativo).

@@ -57,9 +57,12 @@ select is(public.m2_normalizar_endereco('Higienópolis'), 'HIGIENOPOLIS', 'sem a
 -- Busca de endereço (7.4; regra 11.5; critério do 8.9 antecipado no banco).
 select is((select predio_id from public.m2_buscar_predio_por_endereco('rua caiubi 324') limit 1),
   '00000000-0000-0000-0000-0000000000d1'::uuid, 'buscar "rua caiubi 324" traz a Caiubi, 324 em primeiro');
-select is((select count(*)::int from public.m2_buscar_predio_por_endereco('R. Caiubi, 324')), 1,
-  'com número, só o número exato (Caiubi 100 fica de fora)');
-select is((select count(*)::int from public.m2_buscar_predio_por_endereco('rua caiubi')), 2,
+-- Asserções restritas às fixtures: o banco local pode ter a carga real do IPTU (épico 8.2).
+select is((select array_agg(predio_id order by predio_id) from public.m2_buscar_predio_por_endereco('R. Caiubi, 324', 0.4, 50)
+            where predio_id in ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000d3')),
+  array['00000000-0000-0000-0000-0000000000d1'::uuid], 'com número, só o número exato (Caiubi 100 fica de fora)');
+select is((select count(*)::int from public.m2_buscar_predio_por_endereco('rua caiubi', 0.4, 200)
+            where predio_id in ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000d3')), 2,
   'sem número, devolve os prédios similares (os dois da Caiubi)');
 select is((select count(*)::int from public.m2_buscar_predio_por_endereco('Avenida Paulista, 1000')), 0,
   'endereço sem prédio similar devolve vazio (MCP mostra "fora da cobertura")');
