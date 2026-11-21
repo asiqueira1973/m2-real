@@ -1,0 +1,13 @@
+/* Estilos globais (seção 16): fundo branco, texto #1D1D1F, primária #0071E3, Inter. */
+@import "tailwindcss";
+
+@theme {
+  --color-primaria: #0071e3;
+  --color-texto: #1d1d1f;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-texto);
+}

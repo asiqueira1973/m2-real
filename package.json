@@ -1,0 +1,25 @@
+{
+  "name": "m2-real",
+  "private": true,
+  "type": "module",
+  "description": "M² Real: base de preço real por prédio e planta (spec.md v1.1)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "build": "npm run build --workspaces --if-present",
+    "db:test": "supabase test db",
+    "ingestao": "npm run cli --workspace @m2-real/ingestao --"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.1"
+  }
+}

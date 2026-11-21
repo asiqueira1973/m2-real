@@ -1,0 +1,15 @@
+{
+  "name": "@m2-real/ingestao",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cli": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@m2-real/db": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

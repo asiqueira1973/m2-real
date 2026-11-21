@@ -1,0 +1,11 @@
+{
+  "name": "@m2-real/db",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "gen:types": "supabase gen types typescript --local --schema public > src/types.ts"
+  }
+}

@@ -24,3 +24,6 @@ supabase/.branches/
 .claude/settings.local.json
 
 .DS_Store
+
+# Gerado pelo Next a cada build
+next-env.d.ts
