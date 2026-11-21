@@ -66,6 +66,10 @@ describe("regra 11.7: andar inferido do complemento", () => {
     ["AP 5", 0],
     ["CASA", null],
     [null, null],
+    // Bug da 2ª carga real: vaga com matrícula no complemento virava andar 12035025 (estoura smallint).
+    ["VG M.98063", null],
+    ["VG MAT 55363", null],
+    ["VG M78745 5 ORI", null],
   ])("%s → %s", (comp, andar) => expect(inferFloor(comp)).toBe(andar));
 });
 
