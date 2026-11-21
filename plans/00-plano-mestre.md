@@ -97,6 +97,21 @@ Ferramentas confirmadas: Node 22, npm 10, Supabase CLI 2.122, Docker ativo, jq, 
 ### Encerramento
 - [ ] `DOCUMENTACAO-TECNICA.md` com os 6 itens da seção 19, a partir do código real; `CLAUDE.md`, `README.md` e `schema.sql` em dia.
 
+## Observabilidade das cargas (pedido do usuário, 21/11/2026)
+Objetivo: nenhuma carga recorrente pode falhar ou parar em silêncio enquanto o MCP responde com dado velho. Os detalhes estão em `plans/8.2-iptu.md`.
+- **8.2:**
+  - O1 `executarRotina`: registra a execução, marca como falhou o que estiver travado há mais de 6 h e sai com código ≠ 0 em erro, o que dispara o e-mail do GitHub;
+  - O2 `avaliarSaude`: estados ok, atrasada, falhou, travada e volume_anomalo, mais a queda de cobertura.
+- **8.7/8.8:** O4, selo de saúde por rotina no painel.
+- **8.8:** O3, workflow diário `vigia`, que falha quando há problema (e-mail do GitHub) e faz uma sonda sintética.
+- **8.9:** O5, `dados_desatualizados` e `motivo_desatualizacao` em toda resposta do MCP. É divergência aprovada da 13.2 (só acrescenta campos).
+- Limiares aprovados (em `config/regras.ts`):
+  - atraso: ITBI 35 dias, IPTU 400, anúncios, leilões e calibração 8;
+  - volume abaixo de 50% da mediana das 3 últimas;
+  - cobertura com queda acima de 5 pontos;
+  - travada há mais de 6 h.
+- Canal de alerta: e-mail nativo do GitHub Actions.
+
 ## Fora do escopo (não implementar)
 28.2 a 28.7 (cartório/ONR, modelo estatístico do fator, outras cidades, produto externo, preço pedido x fechado, desconto de vagas).
 
