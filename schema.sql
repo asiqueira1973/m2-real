@@ -469,6 +469,22 @@ $$;
 ALTER FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id" "uuid", "unidade_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_cobertura_atual"() RETURNS TABLE("bairro_id" smallint, "bairro_nome" "text", "calculado_em" timestamp with time zone, "vendas_24m" integer, "vendas_confirmada" integer, "vendas_calibrada" integer, "vendas_indicativa" integer, "vendas_estimada" integer, "vendas_sem_dado" integer, "pct_cobertura" numeric)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select distinct on (c.bairro_id)
+         c.bairro_id, b.nome, c.calculado_em, c.vendas_24m, c.vendas_confirmada, c.vendas_calibrada,
+         c.vendas_indicativa, c.vendas_estimada, c.vendas_sem_dado, c.pct_cobertura
+    from public.m2_cobertura_bairros c
+    join public.m2_bairros b on b.id = c.bairro_id
+   order by c.bairro_id, c.calculado_em desc, c.id;
+$$;
+
+
+ALTER FUNCTION "public"."m2_cobertura_atual"() OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_plantas" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "predio_id" "uuid" NOT NULL,
@@ -621,6 +637,57 @@ $$;
 ALTER FUNCTION "public"."m2_ligar_transacoes_unidades"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_listar_predios"("bairro" integer, "selo" "public"."m2_selo_area", "so_revisao" boolean, "busca" "text", "janela_meses" integer, "limite" integer, "deslocamento" integer) RETURNS TABLE("id" "uuid", "logradouro" "text", "numero" integer, "bairro_id" smallint, "bairro_nome" "text", "ano_construcao" smallint, "total_unidades" integer, "qtd_plantas" integer, "pior_selo" "public"."m2_selo_area", "vendas_janela" integer, "revisao_pendente" boolean, "total" bigint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with
+  termo as (
+    select nullif(trim(regexp_replace(public.m2_normalizar_endereco(coalesce(busca, '')), '\d+', '', 'g')), '') as texto,
+           (regexp_match(coalesce(busca, ''), '\d+'))[1]::integer as numero
+  ),
+  plantas as (
+    select pl.predio_id,
+           count(*)::integer as qtd,
+           min(array_position(array['sem_dado','estimada','indicativa','calibrada','confirmada']::public.m2_selo_area[], pl.selo)) as pior,
+           bool_or(pl.revisao_pendente) as revisao
+      from public.m2_plantas pl
+     group by pl.predio_id
+  ),
+  vendas as (
+    select v.predio_id, count(*)::integer as qtd
+      from public.m2_vendas_consolidadas v
+     where v.data_transacao >= (current_date - make_interval(months => janela_meses))
+     group by v.predio_id
+  ),
+  filtrados as (
+    select p.id, p.logradouro, p.numero, p.bairro_id, b.nome as bairro_nome, p.ano_construcao,
+           p.total_unidades_residenciais as total_unidades, coalesce(pl.qtd, 0) as qtd_plantas,
+           (array['sem_dado','estimada','indicativa','calibrada','confirmada']::public.m2_selo_area[])[pl.pior] as pior_selo,
+           coalesce(v.qtd, 0) as vendas_janela, coalesce(pl.revisao, false) as revisao_pendente
+      from public.m2_predios p
+      join public.m2_bairros b on b.id = p.bairro_id
+      left join plantas pl on pl.predio_id = p.id
+      left join vendas v on v.predio_id = p.id
+      cross join termo t
+     where (m2_listar_predios.bairro is null or p.bairro_id = m2_listar_predios.bairro)
+       and (not coalesce(so_revisao, false) or coalesce(pl.revisao, false))
+       and (t.texto is null or p.logradouro like '%' || t.texto || '%')
+       and (t.numero is null or p.numero = t.numero or t.numero = any (p.numeros_imovel))
+  )
+  select f.id, f.logradouro, f.numero, f.bairro_id, f.bairro_nome, f.ano_construcao, f.total_unidades, f.qtd_plantas,
+         f.pior_selo, f.vendas_janela, f.revisao_pendente, count(*) over () as total
+    from filtrados f
+   where m2_listar_predios.selo is null or f.pior_selo = m2_listar_predios.selo
+   order by f.vendas_janela desc, f.logradouro, f.numero, f.id
+   limit least(greatest(coalesce(limite, 50), 1), 100)
+  offset greatest(coalesce(deslocamento, 0), 0);
+$$;
+
+
+ALTER FUNCTION "public"."m2_listar_predios"("bairro" integer, "selo" "public"."m2_selo_area", "so_revisao" boolean, "busca" "text", "janela_meses" integer, "limite" integer, "deslocamento" integer) OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_vendas_consolidadas" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "transacao_apartamento_id" "uuid" NOT NULL,
@@ -771,6 +838,20 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_ultimas_execucoes"() RETURNS TABLE("rotina" "text", "status" "public"."m2_status_execucao", "iniciada_em" timestamp with time zone, "concluida_em" timestamp with time zone, "linhas_lidas" integer, "linhas_gravadas" integer, "mensagem_erro" "text")
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select distinct on (e.rotina)
+         e.rotina, e.status, e.iniciada_em, e.concluida_em, e.linhas_lidas, e.linhas_gravadas, e.mensagem_erro
+    from public.m2_execucoes_ingestao e
+   order by e.rotina, e.iniciada_em desc, e.id;
+$$;
+
+
+ALTER FUNCTION "public"."m2_ultimas_execucoes"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) RETURNS TABLE("sql" "text", "unidade_id" "uuid", "predio_id" "uuid", "bairro_id" smallint)
@@ -1571,6 +1652,12 @@ GRANT ALL ON FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id"
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_cobertura_atual"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_cobertura_atual"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."m2_cobertura_atual"() TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."m2_plantas" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_plantas" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_plantas" TO "authenticated";
@@ -1596,6 +1683,12 @@ GRANT ALL ON FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao
 
 REVOKE ALL ON FUNCTION "public"."m2_ligar_transacoes_unidades"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_ligar_transacoes_unidades"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_listar_predios"("bairro" integer, "selo" "public"."m2_selo_area", "so_revisao" boolean, "busca" "text", "janela_meses" integer, "limite" integer, "deslocamento" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_listar_predios"("bairro" integer, "selo" "public"."m2_selo_area", "so_revisao" boolean, "busca" "text", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."m2_listar_predios"("bairro" integer, "selo" "public"."m2_selo_area", "so_revisao" boolean, "busca" "text", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "service_role";
 
 
 
@@ -1625,6 +1718,12 @@ GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "serv
 
 REVOKE ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_ultimas_execucoes"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_ultimas_execucoes"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."m2_ultimas_execucoes"() TO "service_role";
 
 
 

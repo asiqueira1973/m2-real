@@ -421,6 +421,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"m2_cobertura_atual":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "bairro_id": number,"bairro_nome": string,"calculado_em": string,"pct_cobertura": number,"vendas_24m": number,"vendas_calibrada": number,"vendas_confirmada": number,"vendas_estimada": number,"vendas_indicativa": number,"vendas_sem_dado": number
+            }[]
+                           },
 "m2_confirmar_area_planta":
 { Args: { "area_privativa": number,"observacao": string,"planta_id": string,"vagas_inclusas": number }; Returns: {
               "area_iptu_referencia": number,
@@ -454,6 +459,11 @@ isOneToOne: false
                            },
 "m2_ligar_transacoes_unidades":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"m2_listar_predios":
+{ Args: { "bairro": number,"busca": string,"deslocamento": number,"janela_meses": number,"limite": number,"selo": Database["public"]['Enums']["m2_selo_area"],"so_revisao": boolean }; Returns: {
+              "ano_construcao": number,"bairro_id": number,"bairro_nome": string,"id": string,"logradouro": string,"numero": number,"pior_selo": Database["public"]['Enums']["m2_selo_area"],"qtd_plantas": number,"revisao_pendente": boolean,"total": number,"total_unidades": number,"vendas_janela": number
+            }[]
                            },
 "m2_marcar_outlier":
 { Args: { "fora_da_curva": boolean,"venda_id": string }; Returns: {
@@ -514,6 +524,11 @@ isOneToOne: false
                            },
 "m2_substituir_fatores_referencia":
 { Args: { "linhas": Json }; Returns: number
+                           },
+"m2_ultimas_execucoes":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "concluida_em": string,"iniciada_em": string,"linhas_gravadas": number,"linhas_lidas": number,"mensagem_erro": string,"rotina": string,"status": Database["public"]['Enums']["m2_status_execucao"]
+            }[]
                            },
 "m2_unidades_por_sql":
 { Args: { "sqls": (string)[] }; Returns: {
