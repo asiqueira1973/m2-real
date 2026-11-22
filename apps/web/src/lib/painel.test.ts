@@ -89,3 +89,15 @@ describe("resumo das vendas da ficha", () => {
     expect(parsePeriod("999", 24)).toBe(24);
   });
 });
+
+// Bug do teste no navegador (22/11/2026): com o banco fora do ar, a leitura do perfil falhou,
+// o layout entendeu "sem perfil" e DESCONECTOU o admin com "Acesso não autorizado". Falha de
+// leitura não é ausência de perfil: tem de virar erro (estado de erro da tela), sem sair.
+describe("acesso: falha ao ler o perfil não desconecta", () => {
+  it("erro na leitura do perfil → 'erro', não 'sem-perfil'", () => {
+    expect(accessDecision(true, null, { message: "fetch failed" })).toBe("erro");
+  });
+  it("sem erro e sem perfil continua 'sem-perfil'", () => {
+    expect(accessDecision(true, null, null)).toBe("sem-perfil");
+  });
+});
