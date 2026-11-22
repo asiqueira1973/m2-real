@@ -16,7 +16,8 @@ const tokenRoute = await import("@/app/oauth/token/route");
 const metadados = await import("@/app/.well-known/oauth-protected-resource/[[...recurso]]/route");
 
 const SEGREDO = "x".repeat(40);
-const CLIENTE = { id: "11111111-1111-4111-8111-111111111111", nome: "Claude", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] };
+const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
+const CLIENTE = { id: "11111111-1111-4111-8111-111111111111", nome: "Claude", redirect_uris: [REDIRECT] };
 const CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 
 beforeEach(() => {
@@ -40,7 +41,7 @@ describe("6.5: registro e pedido de autorização", () => {
   });
   it("pedido válido; inválido devolve erro e nunca redireciona", async () => {
     findClient.mockResolvedValue(CLIENTE);
-    const base = { response_type: "code", client_id: CLIENTE.id, redirect_uri: CLIENTE.redirect_uris[0], code_challenge: CHALLENGE, code_challenge_method: "S256", state: "s" };
+    const base = { response_type: "code", client_id: CLIENTE.id, redirect_uri: REDIRECT, code_challenge: CHALLENGE, code_challenge_method: "S256", state: "s" };
     expect(await checkAuthorizeParams(base)).toMatchObject({ ok: true, req: { state: "s" } });
     expect(await checkAuthorizeParams({ ...base, redirect_uri: "https://malicioso.test/cb" })).toEqual({ ok: false, error: "invalid_request" });
     expect(await checkAuthorizeParams({ ...base, code_challenge_method: "plain" })).toEqual({ ok: false, error: "invalid_request" });
@@ -59,7 +60,7 @@ describe("6.5: registro e pedido de autorização", () => {
 describe("6.5, passo 5: POST /oauth/token", () => {
   const post = (campos: Record<string, string>) =>
     tokenRoute.POST(new Request("https://x/oauth/token", { method: "POST", body: new URLSearchParams(campos) }));
-  const valido = { grant_type: "authorization_code", code: "c", client_id: CLIENTE.id, redirect_uri: CLIENTE.redirect_uris[0], code_verifier: "v".repeat(43) };
+  const valido = { grant_type: "authorization_code", code: "c", client_id: CLIENTE.id, redirect_uri: REDIRECT, code_verifier: "v".repeat(43) };
   it("grant errado, verifier curto, cliente desconhecido e código inválido", async () => {
     expect((await (await post({ ...valido, grant_type: "password" })).json()).error).toBe("unsupported_grant_type");
     expect((await (await post({ ...valido, code_verifier: "curto" })).json()).error).toBe("invalid_request");
