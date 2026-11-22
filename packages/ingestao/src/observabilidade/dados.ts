@@ -4,9 +4,9 @@
  * tipado do banco. As leituras são limitadas (bem abaixo do max_rows de 1.000).
  */
 import type { M2Client } from "@m2-real/db";
-import { VIGIA_COBERTURAS_LIDAS, VIGIA_EXECUCOES_LIDAS } from "../config/regras.js";
-import { withRetry } from "../shared/retry.js";
-import { avaliarSaude, type CoberturaResumo, type ExecucaoResumo, type RelatorioSaude } from "./saude.js";
+import { VIGIA_COBERTURAS_LIDAS, VIGIA_EXECUCOES_LIDAS } from "../config/regras";
+import { withRetry } from "../shared/retry";
+import { avaliarSaude, type CoberturaResumo, type ExecucaoResumo, type RelatorioSaude } from "./saude";
 
 /**
  * Lê as execuções e as fotos de cobertura mais recentes e avalia a saúde.

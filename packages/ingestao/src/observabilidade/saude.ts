@@ -12,7 +12,7 @@ import {
   SAUDE_VOLUME_FRACAO_MINIMA,
   SAUDE_VOLUME_JANELA_EXECUCOES,
   type Rotina,
-} from "../config/regras.js";
+} from "../config/regras";
 
 export type StatusExecucao = "em_andamento" | "concluida" | "falhou" | "substituida";
 export type EstadoSaude = "ok" | "atrasada" | "falhou" | "travada" | "volume_anomalo" | "nunca_executada";
