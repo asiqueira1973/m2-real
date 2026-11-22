@@ -193,3 +193,40 @@ describe("coleta: contagem da execução quando o teto para a rodada no meio do 
     expect(resultado).toEqual({ linhasLidas: 2, linhasGravadas: 2, linhasDescartadas: 0 });
   });
 });
+
+// Regra 11.11 (apontado pelo verifier do 8.5): o pipeline NUNCA altera anúncio com
+// casado_manual = true — nem vínculo nem campos extraídos. E se a leitura de casado_manual
+// falhar, a gravação não pode seguir às cegas (sobrescreveria o vínculo do admin).
+import { saveAd } from "./rotina.js";
+
+describe("saveAd: regra 11.11", () => {
+  const linha = { url: "https://www.lopes.com.br/x", area_privativa: 99, predio_id: "p", planta_id: "pl", status_casamento: "casado_planta" } as never;
+  function db(leitura: { data: unknown; error: unknown }) {
+    const gravacoes: unknown[] = [];
+    const cliente = {
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: async () => leitura }) }),
+        upsert: (l: unknown) => { gravacoes.push(l); return Promise.resolve({ data: null, error: null }); },
+      }),
+    } as unknown as Parameters<typeof saveAd>[0];
+    return { cliente, gravacoes };
+  }
+
+  it("anúncio casado à mão pelo admin não é alterado (nada é gravado)", async () => {
+    const { cliente, gravacoes } = db({ data: { casado_manual: true }, error: null });
+    expect(await saveAd(cliente, linha)).toBe("mantido_manual");
+    expect(gravacoes).toHaveLength(0);
+  });
+
+  it("anúncio novo ou não manual é gravado", async () => {
+    const { cliente, gravacoes } = db({ data: null, error: null });
+    expect(await saveAd(cliente, linha)).toBe("gravado");
+    expect(gravacoes).toHaveLength(1);
+  });
+
+  it("erro ao ler casado_manual não grava (falha em vez de sobrescrever o vínculo do admin)", async () => {
+    const { cliente, gravacoes } = db({ data: null, error: { message: "permission denied" } });
+    await expect(saveAd(cliente, linha, { esperasMs: [] })).rejects.toThrow(/permission denied/);
+    expect(gravacoes).toHaveLength(0);
+  });
+});

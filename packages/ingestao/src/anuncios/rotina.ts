@@ -206,7 +206,7 @@ async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
  * Grava a página (upsert por url). Anúncio com casado_manual = true (regra 11.11) mantém o
  * vínculo do admin: só os campos extraídos são atualizados.
  */
-async function saveAd(db: M2Client, linha: ReturnType<typeof buildAnuncioRow>): Promise<void> {
+export async function saveAd(db: M2Client, linha: ReturnType<typeof buildAnuncioRow>): Promise<void> {
   const { data: atual } = await db.from("m2_anuncios").select("casado_manual").eq("url", linha.url as string).maybeSingle();
   const final = atual?.casado_manual
     ? Object.fromEntries(Object.entries(linha).filter(([k]) => !["predio_id", "planta_id", "status_casamento", "confianca_casamento"].includes(k)))
