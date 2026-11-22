@@ -30,7 +30,9 @@ export function FormularioAuth({ acao, campos, botao, aviso }: {
       {campos.map((c) => (
         <div key={c.nome} className="space-y-1.5">
           <Label htmlFor={c.nome}>{c.rotulo}</Label>
-          <Input id={c.nome} name={c.nome} type={c.tipo} autoComplete={c.autocomplete} required />
+          {/* O React 19 limpa o formulário depois da ação; o e-mail volta pelo estado (senha nunca). */}
+          <Input id={c.nome} name={c.nome} type={c.tipo} autoComplete={c.autocomplete} required
+            key={estado.valores?.[c.nome] ?? ""} defaultValue={c.tipo === "password" ? undefined : estado.valores?.[c.nome]} />
         </div>
       ))}
       {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}

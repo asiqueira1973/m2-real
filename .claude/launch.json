@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--workspace",
+        "@m2-real/web",
+        "--",
+        "--port",
+        "3010"
+      ],
+      "port": 3010,
+      "autoPort": false
+    }
+  ]
+}
