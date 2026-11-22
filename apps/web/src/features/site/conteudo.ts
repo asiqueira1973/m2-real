@@ -81,34 +81,27 @@ export const SELOS = {
 export const PERGUNTAS = {
   rotulo: "Perguntas de exemplo",
   titulo: "Pergunte como você perguntaria a um colega.",
-  texto: "Copie uma pergunta e cole no seu assistente. Antes, selecione o Fechou por Quanto na conversa.",
+  texto: "Pergunte pelo endereço do prédio. Copie uma pergunta e cole no seu assistente; antes, selecione o Fechou por Quanto na conversa.",
   grupos: [
     {
       quem: "Para quem vai comprar",
       perguntas: [
         "Por quanto foram vendidos os apartamentos da Rua João Ramalho, 586 nos últimos dois anos?",
-        "Qual o m² mediano de apartamentos de 3 quartos em Perdizes?",
+        "Quais foram as vendas mais recentes no prédio da Rua Iguatemi, 150?",
       ],
     },
     {
       quem: "Para quem vai vender",
       perguntas: [
-        "Tenho um apartamento de 95 m² no Itaim Bibi. Por quanto foram vendidos os parecidos na região?",
-        "Qual a faixa de preço do m² em Jardins nos últimos 24 meses?",
+        "Por quanto foi vendido o apartamento mais caro da Rua Bela Cintra, 2302 nos últimos três anos?",
+        "Quanto valia a vaga de garagem nas últimas vendas da Rua João Ramalho, 586?",
       ],
     },
     {
       quem: "Para corretores e avaliadores",
       perguntas: [
-        "Compare o m² mediano de Pinheiros, Vila Madalena e Alto de Pinheiros.",
-        "Quantas vendas teve o prédio da Rua Iguatemi, 150 e qual foi a mais recente?",
-      ],
-    },
-    {
-      quem: "Para começar",
-      perguntas: [
-        "O que é o Fechou por Quanto e quais bairros ele cobre?",
-        "O que significam os selos Calibrada e Estimada?",
+        "Quantas vendas teve o prédio da Rua Manuel Henrique Lopes, 105 em 2026, e por quanto?",
+        "Qual foi a venda mais barata e a mais cara da Rua Iguatemi, 150 no último ano?",
       ],
     },
   ],
