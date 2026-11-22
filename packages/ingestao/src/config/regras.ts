@@ -229,8 +229,17 @@ export const LEILAO_DOMINIOS_PADRAO = [
   "lancejudicial.com.br",
 ] as const;
 
-/** Limite técnico: tamanho máximo de PDF enviado à Claude API (limite de requisição de 32 MB). */
-export const PDF_TAMANHO_MAXIMO_BYTES = 32 * 1024 * 1024;
+/**
+ * Limite técnico: tamanho máximo do PDF enviado à Claude API. A requisição aceita 32 MB e o PDF
+ * vai em base64 (+33%), então o PDF cru fica em 23 MB (24 MB em base64 já dá os 32 MB, sem folga para o resto).
+ */
+export const PDF_TAMANHO_MAXIMO_BYTES = 23 * 1024 * 1024;
+
+/** Limite técnico: tokens de saída da leitura do PDF (a resposta é só o JSON da 13.4). */
+export const PDF_MAX_TOKENS_RESPOSTA = 4096;
+
+/** Limite técnico: guias lidas por matrícula no casamento da 11.20 (uma matrícula é de uma unidade). */
+export const LEILAO_GUIAS_POR_MATRICULA = 100;
 
 /** Seção 4.2: leitura de PDFs de leilão com o Sonnet da geração atual. */
 export const MODELO_EXTRACAO_PDF = "claude-sonnet-5";

@@ -5,7 +5,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { MODELO_EXTRACAO_PDF, PDF_TAMANHO_MAXIMO_BYTES } from "../config/regras.js";
+import { MODELO_EXTRACAO_PDF, PDF_MAX_TOKENS_RESPOSTA, PDF_TAMANHO_MAXIMO_BYTES } from "../config/regras.js";
 import { fromDocument, PROMPT_DOCUMENTO, SCHEMA_DOCUMENTO, type EditalExtraido } from "./extracao.js";
 
 /** Só o que este módulo usa do cliente da Anthropic (o teste injeta um falso). */
@@ -35,7 +35,7 @@ export async function downloadPdf(url: string, fazerFetch: typeof fetch = fetch)
 export async function readDocument(cliente: LeitorClaude, pdf: Buffer, urlDocumento: string): Promise<EditalExtraido | null> {
   const resposta = await cliente.messages.parse({
     model: MODELO_EXTRACAO_PDF,
-    max_tokens: 4096,
+    max_tokens: PDF_MAX_TOKENS_RESPOSTA,
     messages: [
       {
         role: "user",

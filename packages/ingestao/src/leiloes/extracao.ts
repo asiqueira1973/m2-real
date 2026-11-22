@@ -181,7 +181,7 @@ function positivo(v: unknown): number | null {
  * extração pegou a área de outro lote da página (ex.: a vaga listada junto com o apartamento).
  * Recebe: área total e área privativa. Devolve: a total, ou nulo se for impossível.
  */
-function coherentTotal(total: number | null, privativa: number | null): number | null {
+export function coherentTotal(total: number | null, privativa: number | null): number | null {
   return total !== null && privativa !== null && total < privativa ? null : total;
 }
 
