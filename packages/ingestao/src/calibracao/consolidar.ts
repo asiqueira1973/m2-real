@@ -149,6 +149,7 @@ function distanciaMatricula(a: string | null, b: string | null): number {
  * - com m2_privativo: na janela de FORA_CURVA_JANELA_MESES meses que termina na data da venda,
  *   se o prédio tem ≥ FORA_CURVA_MIN_VENDAS_PREDIO vendas com m², a referência é a mediana do
  *   prédio; senão, a mediana do bairro no mesmo selo. Fora se m² < 0,6 × ou > 1,6 × a referência.
+ *   A própria venda não entra na referência nem na contagem (decisão do usuário, 22/11/2026).
  * Recebe: vendas consolidadas e, opcionalmente, o valor do admin para vendas marcadas à mão
  * (regra 11.11: o pipeline não altera). Devolve: as mesmas vendas com foraDaCurva preenchido.
  */
@@ -168,11 +169,11 @@ export function marcarForaDaCurva(
     }
     if (v.m2Privativo === null) return { ...v, foraDaCurva: false };
     const inicio = mesesAntes(v.dataTransacao, FORA_CURVA_JANELA_MESES);
-    const doPredio = janela(porPredio.get(v.predioId) ?? [], inicio, v.dataTransacao);
+    const doPredio = janela(porPredio.get(v.predioId) ?? [], inicio, v.dataTransacao, v);
     const referencia =
       doPredio.length >= FORA_CURVA_MIN_VENDAS_PREDIO
         ? doPredio
-        : janela(porBairroSelo.get(`${v.bairroId}|${v.seloArea}`) ?? [], inicio, v.dataTransacao);
+        : janela(porBairroSelo.get(`${v.bairroId}|${v.seloArea}`) ?? [], inicio, v.dataTransacao, v);
     if (!referencia.length) return { ...v, foraDaCurva: false };
     const med = mediana(referencia);
     return { ...v, foraDaCurva: v.m2Privativo < FORA_CURVA_FATOR_MIN * med || v.m2Privativo > FORA_CURVA_FATOR_MAX * med };
@@ -195,13 +196,14 @@ function agrupar(vs: readonly VendaConsolidada[], chave: (v: VendaConsolidada) =
 }
 
 /**
- * Regra 11.16 (janela de 36 meses): m² privativo das vendas entre inicio (exclusivo) e fim (inclusive).
- * Recebe: vendas ordenadas por data e as datas-limite. Devolve: os m² da janela (busca binária).
+ * Regra 11.16 (janela de 36 meses): m² privativo das vendas entre inicio (exclusivo) e fim (inclusive),
+ * sem a própria venda (decisão do usuário, 22/11/2026).
+ * Recebe: vendas ordenadas por data, as datas-limite e a venda avaliada. Devolve: os m² da janela (busca binária).
  */
-function janela(ordenadas: readonly VendaConsolidada[], inicio: string, fim: string): number[] {
+function janela(ordenadas: readonly VendaConsolidada[], inicio: string, fim: string, propria: VendaConsolidada): number[] {
   const lo = buscar(ordenadas, (d) => d > inicio);
   const hi = buscar(ordenadas, (d) => d > fim);
-  return ordenadas.slice(lo, hi).map((v) => v.m2Privativo!);
+  return ordenadas.slice(lo, hi).filter((v) => v.transacaoApartamentoId !== propria.transacaoApartamentoId).map((v) => v.m2Privativo!);
 }
 
 /**
