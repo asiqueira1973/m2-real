@@ -133,7 +133,10 @@ function distribuirVagas(aptos: readonly GuiaCompraVenda[], vagas: readonly Guia
   return resultado;
 }
 
-/** Diferença numérica entre matrículas; sem matrícula de um dos lados → infinito (vai para o fim da fila). */
+/**
+ * Regra 11.15 (proximidade da matrícula): diferença numérica entre duas matrículas.
+ * Recebe: matrícula do apartamento e da vaga. Devolve: |a − b|, ou infinito se faltar uma (vai para o fim da fila).
+ */
 function distanciaMatricula(a: string | null, b: string | null): number {
   const na = a ? Number(a) : NaN;
   const nb = b ? Number(b) : NaN;
@@ -176,7 +179,10 @@ export function marcarForaDaCurva(
   });
 }
 
-/** Agrupa (mantendo a ordem por data) as vendas por uma chave. */
+/**
+ * Regra 11.16: agrupa as vendas (já ordenadas por data) por prédio ou por bairro+selo.
+ * Recebe: vendas e função de chave. Devolve: chave → vendas, na mesma ordem.
+ */
 function agrupar(vs: readonly VendaConsolidada[], chave: (v: VendaConsolidada) => string): Map<string, VendaConsolidada[]> {
   const m = new Map<string, VendaConsolidada[]>();
   for (const v of vs) {
@@ -188,14 +194,20 @@ function agrupar(vs: readonly VendaConsolidada[], chave: (v: VendaConsolidada) =
   return m;
 }
 
-/** m² das vendas (ordenadas por data) entre inicio (exclusivo) e fim (inclusive), por busca binária. */
+/**
+ * Regra 11.16 (janela de 36 meses): m² privativo das vendas entre inicio (exclusivo) e fim (inclusive).
+ * Recebe: vendas ordenadas por data e as datas-limite. Devolve: os m² da janela (busca binária).
+ */
 function janela(ordenadas: readonly VendaConsolidada[], inicio: string, fim: string): number[] {
   const lo = buscar(ordenadas, (d) => d > inicio);
   const hi = buscar(ordenadas, (d) => d > fim);
   return ordenadas.slice(lo, hi).map((v) => v.m2Privativo!);
 }
 
-/** Primeiro índice cuja data satisfaz o predicado (monótono). */
+/**
+ * Busca binária usada pela janela da regra 11.16.
+ * Recebe: vendas ordenadas por data e um predicado monótono sobre a data. Devolve: primeiro índice que o satisfaz.
+ */
 function buscar(ordenadas: readonly VendaConsolidada[], ok: (data: string) => boolean): number {
   let lo = 0;
   let hi = ordenadas.length;
@@ -207,20 +219,26 @@ function buscar(ordenadas: readonly VendaConsolidada[], ok: (data: string) => bo
   return lo;
 }
 
-/** Data AAAA-MM-DD menos n meses. */
+/**
+ * Início da janela da regra 11.16. Recebe: data AAAA-MM-DD e n meses. Devolve: a data n meses antes.
+ */
 function mesesAntes(data: string, n: number): string {
   const [a, m, d] = data.split("-").map(Number) as [number, number, number];
   return new Date(Date.UTC(a, m - 1 - n, d)).toISOString().slice(0, 10);
 }
 
-/** Mediana de uma lista não vazia. */
+/**
+ * Mediana de referência da regra 11.16. Recebe: lista não vazia de m². Devolve: a mediana.
+ */
 function mediana(v: readonly number[]): number {
   const s = [...v].sort((a, b) => a - b);
   const k = Math.floor(s.length / 2);
   return s.length % 2 ? s[k]! : (s[k - 1]! + s[k]!) / 2;
 }
 
-/** Arredonda para 2 casas (numeric(14,2) e (10,2) do banco). */
+/**
+ * Arredonda para 2 casas, como numeric(14,2) e numeric(10,2) da 7.2. Recebe: número. Devolve: número arredondado.
+ */
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }

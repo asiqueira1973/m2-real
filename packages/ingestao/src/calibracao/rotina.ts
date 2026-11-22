@@ -32,6 +32,9 @@ export async function runCalibration(db: M2Client) {
       `Calibração: ${ligadas} guias ligadas a unidades (9.2); ${guias.length} guias de compra e venda lidas; ` +
         `${gravadas} vendas consolidadas (${comVagas} com vagas separadas, ${fora} fora da curva); ${apagadas} vendas obsoletas apagadas.`,
     );
-    return { linhasLidas: guias.length, linhasGravadas: gravadas, linhasDescartadas: guias.length - gravadas };
+    // Descartadas = guias que não viraram venda nem foram agregadas como vaga (11.14, vaga sem
+    // apartamento, unidade "outro"); as vagas agregadas não são descarte.
+    const vagasAgregadas = vendas.reduce((s, v) => s + v.qtdVagasSeparadas, 0);
+    return { linhasLidas: guias.length, linhasGravadas: gravadas, linhasDescartadas: guias.length - gravadas - vagasAgregadas };
   });
 }
