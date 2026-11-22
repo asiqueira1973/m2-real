@@ -28,7 +28,9 @@ export const PROMPT_PAGINA_LEILAO =
   "Extraia apenas os campos do schema, sem acrescentar nada. tipo_pagina: 'edital_leilao' para a página de " +
   "um lote de leilão de imóvel. area_privativa_m2 é a área privativa ou útil da unidade; nunca use a área total " +
   "nesse campo (a total vai em area_total_m2). matricula: só o número da matrícula. data_leilao: data da primeira " +
-  "praça, no formato AAAA-MM-DD. links_documentos: URLs completas dos PDFs do lote (edital, laudo, matrícula). " +
+  "praça, no formato AAAA-MM-DD. Se a página listar mais de um lote, use só o lote do apartamento (nunca misture " +
+  "campos de lotes diferentes, como a área de uma vaga). complemento: só a identificação da unidade (apartamento, " +
+  "bloco), nunca outro número do endereço. links_documentos: URLs completas dos PDFs do lote (edital, laudo, matrícula). " +
   "Não transcreva nomes de pessoas nem números de documentos de identificação. Deixe vazio o que a página não informa.";
 
 /** Schema da 13.4 para o PDF (Claude API, structured outputs). Campos opcionais = nulos. */
@@ -115,7 +117,7 @@ export function fromLotPage(resposta: unknown): { edital: EditalExtraido; links:
       cartorio: null,
       area_privativa: positivo(r.area_privativa_m2),
       area_comum: null,
-      area_total: positivo(r.area_total_m2),
+      area_total: coherentTotal(positivo(r.area_total_m2), positivo(r.area_privativa_m2)),
       fracao_ideal: null,
       vagas: inteiro(r.vagas),
       vagas_vinculadas_area: null,
@@ -146,7 +148,7 @@ export function fromDocument(resposta: unknown, urlDocumento: string): EditalExt
     cartorio: texto(r.cartorio),
     area_privativa: positivo(r.area_privativa_m2),
     area_comum: positivo(r.area_comum_m2),
-    area_total: positivo(r.area_total_m2),
+    area_total: coherentTotal(positivo(r.area_total_m2), positivo(r.area_privativa_m2)),
     fracao_ideal: fracao(r.fracao_ideal),
     vagas: inteiro(r.vagas),
     vagas_vinculadas_area: typeof r.vagas_vinculadas_area === "boolean" ? r.vagas_vinculadas_area : null,
@@ -172,6 +174,15 @@ function positivo(v: unknown): number | null {
   const s = texto(v);
   const n = typeof v === "number" ? v : Number(s?.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+}
+
+/**
+ * Área total coerente com a privativa: na mesma unidade, a total nunca é menor. Menor indica que a
+ * extração pegou a área de outro lote da página (ex.: a vaga listada junto com o apartamento).
+ * Recebe: área total e área privativa. Devolve: a total, ou nulo se for impossível.
+ */
+function coherentTotal(total: number | null, privativa: number | null): number | null {
+  return total !== null && privativa !== null && total < privativa ? null : total;
 }
 
 /** Inteiro não negativo ou nulo. */
