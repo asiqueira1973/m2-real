@@ -248,6 +248,24 @@ $$;
 ALTER FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_bloqueia_cliente"("p_cliente_id" "uuid", "p_bloquear" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not (select public.m2_eh_admin()) then
+    raise exception 'acesso_negado';
+  end if;
+  update public.m2_clientes
+     set bloqueado_em = case when p_bloquear then coalesce(bloqueado_em, now()) else null end
+   where id = p_cliente_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_bloqueia_cliente"("p_cliente_id" "uuid", "p_bloquear" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "text", "limiar_similaridade" real DEFAULT 0.4, "limite" integer DEFAULT 5) RETURNS TABLE("predio_id" "uuid", "logradouro" "text", "numero" integer, "endereco" "text", "bairro" "text", "bairro_slug" "text", "ano_construcao" smallint, "total_unidades" integer, "similaridade" real)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -469,6 +487,24 @@ $$;
 ALTER FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id" "uuid", "unidade_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_clientes_mcp"() RETURNS TABLE("id" "uuid", "email" "text", "criado_em" timestamp with time zone, "bloqueado_em" timestamp with time zone, "ultimo_uso_em" timestamp with time zone, "chamadas_24h" integer, "tokens_ativos" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select c.id, c.email, c.criado_em, c.bloqueado_em,
+         (select max(t.ultimo_uso_em) from public.m2_tokens_mcp t where t.cliente_id = c.id),
+         coalesce((select sum(u.chamadas)::integer from public.m2_uso_mcp u join public.m2_tokens_mcp t on t.id = u.token_id
+                    where t.cliente_id = c.id and u.janela > now() - interval '24 hours'), 0),
+         (select count(*)::integer from public.m2_tokens_mcp t where t.cliente_id = c.id and t.revogado_em is null)
+    from public.m2_clientes c
+   where (select public.m2_eh_admin())
+   order by c.criado_em desc;
+$$;
+
+
+ALTER FUNCTION "public"."m2_clientes_mcp"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_cobertura_atual"() RETURNS TABLE("bairro_id" smallint, "bairro_nome" "text", "calculado_em" timestamp with time zone, "vendas_24m" integer, "vendas_confirmada" integer, "vendas_calibrada" integer, "vendas_indicativa" integer, "vendas_estimada" integer, "vendas_sem_dado" integer, "pct_cobertura" numeric)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -561,6 +597,33 @@ $$;
 ALTER FUNCTION "public"."m2_confirmar_area_planta"("planta_id" "uuid", "area_privativa" numeric, "vagas_inclusas" smallint, "observacao" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_cria_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_cliente_id" "uuid", "p_redirect_uri" "text", "p_code_challenge" "text", "p_validade_s" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  v_uris text[];
+begin
+  select redirect_uris into v_uris from public.m2_oauth_clientes where id = p_oauth_cliente_id;
+  if v_uris is null then
+    raise exception 'invalid_client';
+  end if;
+  if not (p_redirect_uri = any (v_uris)) or p_code_challenge !~ '^[A-Za-z0-9_-]{43}$' then
+    raise exception 'invalid_request';
+  end if;
+  if not exists (select 1 from public.m2_clientes where id = p_cliente_id and bloqueado_em is null) then
+    raise exception 'access_denied';
+  end if;
+  delete from public.m2_oauth_codigos where expira_em < now() - interval '1 day';
+  insert into public.m2_oauth_codigos (codigo_hash, oauth_cliente_id, cliente_id, redirect_uri, code_challenge, expira_em)
+  values (p_codigo_hash, p_oauth_cliente_id, p_cliente_id, p_redirect_uri, p_code_challenge, now() + make_interval(secs => p_validade_s));
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."m2_cria_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_cliente_id" "uuid", "p_redirect_uri" "text", "p_code_challenge" "text", "p_validade_s" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_eh_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -576,6 +639,39 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_eh_admin"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_entra_cliente"("p_sub" "text", "p_email" "text", "p_limite_novos_dia" integer) RETURNS TABLE("cliente_id" "uuid", "situacao" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_c public.m2_clientes;
+begin
+  select * into v_c from public.m2_clientes where google_sub = p_sub;
+  if v_c.id is not null then
+    if v_c.bloqueado_em is not null then
+      return query select v_c.id, 'bloqueada'::text;
+      return;
+    end if;
+    update public.m2_clientes set email = p_email where id = v_c.id and email is distinct from p_email;
+    return query select v_c.id, 'existente'::text;
+    return;
+  end if;
+  perform pg_advisory_xact_lock(hashtext('m2_entra_cliente'));
+  if (select count(*) from public.m2_clientes where criado_em > now() - interval '24 hours') >= p_limite_novos_dia then
+    return query select null::uuid, 'pausado'::text;
+    return;
+  end if;
+  insert into public.m2_clientes (google_sub, email) values (p_sub, p_email)
+  on conflict (google_sub) do update set email = excluded.email
+  returning * into v_c;
+  return query select v_c.id, 'nova'::text;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_entra_cliente"("p_sub" "text", "p_email" "text", "p_limite_novos_dia" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) RETURNS TABLE("tipo" "text", "item_id" "uuid", "motivo" "public"."m2_motivo_revisao", "predio_id" "uuid", "logradouro" "text", "numero" integer, "bairro_nome" "text", "vendas_janela" integer, "area_iptu" numeric, "area_privativa" numeric, "fator" numeric, "fator_predio" numeric, "selo" "public"."m2_selo_area", "areas_anuncios" numeric[], "areas_editais" numeric[], "data_venda" "date", "unidade" "text", "valor_total" numeric, "m2_privativo" numeric, "total_motivo" bigint)
@@ -927,6 +1023,43 @@ $$;
 ALTER FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_troca_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_redirect_uri" "text", "p_challenge_do_verifier" "text", "p_token_hash" "text", "p_token_prefixo" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_c public.m2_oauth_codigos;
+  v_token uuid;
+begin
+  select * into v_c from public.m2_oauth_codigos where codigo_hash = p_codigo_hash for update;
+  if v_c.codigo_hash is null then
+    return null;
+  end if;
+  if v_c.usado_em is not null then
+    update public.m2_tokens_mcp set revogado_em = now() where id = v_c.token_id and revogado_em is null;
+    return null;
+  end if;
+  if v_c.expira_em <= now()
+     or v_c.oauth_cliente_id <> p_oauth_cliente_id
+     or v_c.redirect_uri is distinct from p_redirect_uri
+     or v_c.code_challenge is distinct from p_challenge_do_verifier then
+    return null;
+  end if;
+  if exists (select 1 from public.m2_clientes where id = v_c.cliente_id and bloqueado_em is not null) then
+    return null;
+  end if;
+  insert into public.m2_tokens_mcp (cliente_id, oauth_cliente_id, prefixo, hash_token)
+  values (v_c.cliente_id, p_oauth_cliente_id, p_token_prefixo, p_token_hash)
+  returning id into v_token;
+  update public.m2_oauth_codigos set usado_em = now(), token_id = v_token where codigo_hash = p_codigo_hash;
+  return v_c.cliente_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_troca_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_redirect_uri" "text", "p_challenge_do_verifier" "text", "p_token_hash" "text", "p_token_prefixo" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_ultimas_execucoes"() RETURNS TABLE("rotina" "text", "status" "public"."m2_status_execucao", "iniciada_em" timestamp with time zone, "concluida_em" timestamp with time zone, "linhas_lidas" integer, "linhas_gravadas" integer, "mensagem_erro" "text")
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -953,6 +1086,51 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_usa_token_mcp"("p_hash" "text", "p_por_minuto" integer, "p_por_dia" integer) RETURNS TABLE("token_id" "uuid", "permitido" boolean, "espera_s" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_token uuid;
+  v_minuto timestamptz := date_trunc('minute', now());
+  v_no_minuto integer;
+  v_no_dia integer;
+  v_mais_antiga timestamptz;
+begin
+  select t.id into v_token
+    from public.m2_tokens_mcp t join public.m2_clientes c on c.id = t.cliente_id
+   where t.hash_token = p_hash and t.revogado_em is null and c.bloqueado_em is null;
+  if v_token is null then
+    return;
+  end if;
+  perform pg_advisory_xact_lock(hashtext(v_token::text));
+  select coalesce(sum(u.chamadas) filter (where u.janela = v_minuto), 0),
+         coalesce(sum(u.chamadas), 0),
+         min(u.janela)
+    into v_no_minuto, v_no_dia, v_mais_antiga
+    from public.m2_uso_mcp u
+   where u.token_id = v_token and u.janela > now() - interval '24 hours';
+  if v_no_dia >= p_por_dia then
+    -- Libera quando a janela mais antiga das últimas 24 h sair da conta.
+    return query select v_token, false, greatest(1, ceil(extract(epoch from (v_mais_antiga + interval '24 hours' + interval '1 minute' - now())))::integer);
+    return;
+  end if;
+  if v_no_minuto >= p_por_minuto then
+    return query select v_token, false, greatest(1, ceil(extract(epoch from (v_minuto + interval '1 minute' - now())))::integer);
+    return;
+  end if;
+  insert into public.m2_uso_mcp as u (token_id, janela, chamadas) values (v_token, v_minuto, 1)
+  on conflict on constraint m2_uso_mcp_pkey do update set chamadas = u.chamadas + 1;
+  update public.m2_tokens_mcp set ultimo_uso_em = now() where id = v_token;
+  delete from public.m2_uso_mcp where m2_uso_mcp.token_id = v_token and janela < now() - interval '2 days';
+  return query select v_token, true, 0;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_usa_token_mcp"("p_hash" "text", "p_por_minuto" integer, "p_por_dia" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_vendas_remover_obsoletas"("manter" "uuid"[]) RETURNS integer
@@ -1036,6 +1214,19 @@ CREATE TABLE IF NOT EXISTS "public"."m2_chaves_api" (
 ALTER TABLE "public"."m2_chaves_api" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."m2_clientes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "google_sub" "text" NOT NULL,
+    "email" "text" NOT NULL,
+    "bloqueado_em" timestamp with time zone,
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "atualizado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_clientes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_cobertura_bairros" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "bairro_id" smallint NOT NULL,
@@ -1095,6 +1286,33 @@ CREATE TABLE IF NOT EXISTS "public"."m2_fatores_referencia" (
 ALTER TABLE "public"."m2_fatores_referencia" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."m2_oauth_clientes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "nome" "text" NOT NULL,
+    "redirect_uris" "text"[] NOT NULL,
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_oauth_clientes" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."m2_oauth_codigos" (
+    "codigo_hash" "text" NOT NULL,
+    "oauth_cliente_id" "uuid" NOT NULL,
+    "cliente_id" "uuid" NOT NULL,
+    "redirect_uri" "text" NOT NULL,
+    "code_challenge" "text" NOT NULL,
+    "expira_em" timestamp with time zone NOT NULL,
+    "usado_em" timestamp with time zone,
+    "token_id" "uuid",
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_oauth_codigos" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_perfis" (
     "id" "uuid" NOT NULL,
     "email" "text" NOT NULL,
@@ -1135,6 +1353,21 @@ CREATE TABLE IF NOT EXISTS "public"."m2_predios" (
 
 
 ALTER TABLE "public"."m2_predios" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."m2_tokens_mcp" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "cliente_id" "uuid" NOT NULL,
+    "oauth_cliente_id" "uuid",
+    "prefixo" "text" NOT NULL,
+    "hash_token" "text" NOT NULL,
+    "revogado_em" timestamp with time zone,
+    "ultimo_uso_em" timestamp with time zone,
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_tokens_mcp" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."m2_transacoes" (
@@ -1193,6 +1426,16 @@ CREATE TABLE IF NOT EXISTS "public"."m2_unidades" (
 ALTER TABLE "public"."m2_unidades" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."m2_uso_mcp" (
+    "token_id" "uuid" NOT NULL,
+    "janela" timestamp with time zone NOT NULL,
+    "chamadas" integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_uso_mcp" OWNER TO "postgres";
+
+
 ALTER TABLE ONLY "public"."m2_anuncios"
     ADD CONSTRAINT "m2_anuncios_pkey" PRIMARY KEY ("id");
 
@@ -1233,6 +1476,16 @@ ALTER TABLE ONLY "public"."m2_chaves_api"
 
 
 
+ALTER TABLE ONLY "public"."m2_clientes"
+    ADD CONSTRAINT "m2_clientes_google_sub_key" UNIQUE ("google_sub");
+
+
+
+ALTER TABLE ONLY "public"."m2_clientes"
+    ADD CONSTRAINT "m2_clientes_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."m2_cobertura_bairros"
     ADD CONSTRAINT "m2_cobertura_bairros_pkey" PRIMARY KEY ("id");
 
@@ -1263,6 +1516,16 @@ ALTER TABLE ONLY "public"."m2_fatores_referencia"
 
 
 
+ALTER TABLE ONLY "public"."m2_oauth_clientes"
+    ADD CONSTRAINT "m2_oauth_clientes_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."m2_oauth_codigos"
+    ADD CONSTRAINT "m2_oauth_codigos_pkey" PRIMARY KEY ("codigo_hash");
+
+
+
 ALTER TABLE ONLY "public"."m2_perfis"
     ADD CONSTRAINT "m2_perfis_pkey" PRIMARY KEY ("id");
 
@@ -1283,6 +1546,16 @@ ALTER TABLE ONLY "public"."m2_predios"
 
 
 
+ALTER TABLE ONLY "public"."m2_tokens_mcp"
+    ADD CONSTRAINT "m2_tokens_mcp_hash_token_key" UNIQUE ("hash_token");
+
+
+
+ALTER TABLE ONLY "public"."m2_tokens_mcp"
+    ADD CONSTRAINT "m2_tokens_mcp_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."m2_transacoes"
     ADD CONSTRAINT "m2_transacoes_hash_linha_key" UNIQUE ("hash_linha");
 
@@ -1300,6 +1573,11 @@ ALTER TABLE ONLY "public"."m2_unidades"
 
 ALTER TABLE ONLY "public"."m2_unidades"
     ADD CONSTRAINT "m2_unidades_sql_key" UNIQUE ("sql");
+
+
+
+ALTER TABLE ONLY "public"."m2_uso_mcp"
+    ADD CONSTRAINT "m2_uso_mcp_pkey" PRIMARY KEY ("token_id", "janela");
 
 
 
@@ -1333,6 +1611,10 @@ CREATE INDEX "m2_chaves_api_criada_por_idx" ON "public"."m2_chaves_api" USING "b
 
 
 
+CREATE INDEX "m2_clientes_criado_em_idx" ON "public"."m2_clientes" USING "btree" ("criado_em");
+
+
+
 CREATE INDEX "m2_cobertura_bairros_bairro_idx" ON "public"."m2_cobertura_bairros" USING "btree" ("bairro_id", "calculado_em");
 
 
@@ -1357,6 +1639,22 @@ CREATE INDEX "m2_fatores_referencia_bairro_idx" ON "public"."m2_fatores_referenc
 
 
 
+CREATE INDEX "m2_oauth_codigos_cliente_idx" ON "public"."m2_oauth_codigos" USING "btree" ("cliente_id");
+
+
+
+CREATE INDEX "m2_oauth_codigos_expira_idx" ON "public"."m2_oauth_codigos" USING "btree" ("expira_em");
+
+
+
+CREATE INDEX "m2_oauth_codigos_oauth_cliente_idx" ON "public"."m2_oauth_codigos" USING "btree" ("oauth_cliente_id");
+
+
+
+CREATE INDEX "m2_oauth_codigos_token_idx" ON "public"."m2_oauth_codigos" USING "btree" ("token_id");
+
+
+
 CREATE INDEX "m2_plantas_predio_idx" ON "public"."m2_plantas" USING "btree" ("predio_id");
 
 
@@ -1370,6 +1668,14 @@ CREATE INDEX "m2_predios_logradouro_numero_idx" ON "public"."m2_predios" USING "
 
 
 CREATE INDEX "m2_predios_logradouro_trgm_idx" ON "public"."m2_predios" USING "gin" ("logradouro" "extensions"."gin_trgm_ops");
+
+
+
+CREATE INDEX "m2_tokens_mcp_cliente_idx" ON "public"."m2_tokens_mcp" USING "btree" ("cliente_id");
+
+
+
+CREATE INDEX "m2_tokens_mcp_oauth_cliente_idx" ON "public"."m2_tokens_mcp" USING "btree" ("oauth_cliente_id");
 
 
 
@@ -1401,6 +1707,10 @@ CREATE INDEX "m2_unidades_predio_idx" ON "public"."m2_unidades" USING "btree" ("
 
 
 
+CREATE INDEX "m2_uso_mcp_janela_idx" ON "public"."m2_uso_mcp" USING "btree" ("janela");
+
+
+
 CREATE INDEX "m2_vendas_consolidadas_data_idx" ON "public"."m2_vendas_consolidadas" USING "btree" ("data_transacao");
 
 
@@ -1426,6 +1736,10 @@ CREATE OR REPLACE TRIGGER "m2_bairros_atualizado_em" BEFORE UPDATE ON "public"."
 
 
 CREATE OR REPLACE TRIGGER "m2_chaves_api_atualizado_em" BEFORE UPDATE ON "public"."m2_chaves_api" FOR EACH ROW EXECUTE FUNCTION "public"."m2_atualizar_atualizado_em"();
+
+
+
+CREATE OR REPLACE TRIGGER "m2_clientes_atualizado_em" BEFORE UPDATE ON "public"."m2_clientes" FOR EACH ROW EXECUTE FUNCTION "public"."m2_atualizar_atualizado_em"();
 
 
 
@@ -1515,6 +1829,21 @@ ALTER TABLE ONLY "public"."m2_fatores_referencia"
 
 
 
+ALTER TABLE ONLY "public"."m2_oauth_codigos"
+    ADD CONSTRAINT "m2_oauth_codigos_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."m2_clientes"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."m2_oauth_codigos"
+    ADD CONSTRAINT "m2_oauth_codigos_oauth_cliente_id_fkey" FOREIGN KEY ("oauth_cliente_id") REFERENCES "public"."m2_oauth_clientes"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."m2_oauth_codigos"
+    ADD CONSTRAINT "m2_oauth_codigos_token_id_fkey" FOREIGN KEY ("token_id") REFERENCES "public"."m2_tokens_mcp"("id") ON DELETE SET NULL;
+
+
+
 ALTER TABLE ONLY "public"."m2_perfis"
     ADD CONSTRAINT "m2_perfis_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
@@ -1527,6 +1856,16 @@ ALTER TABLE ONLY "public"."m2_plantas"
 
 ALTER TABLE ONLY "public"."m2_predios"
     ADD CONSTRAINT "m2_predios_bairro_id_fkey" FOREIGN KEY ("bairro_id") REFERENCES "public"."m2_bairros"("id");
+
+
+
+ALTER TABLE ONLY "public"."m2_tokens_mcp"
+    ADD CONSTRAINT "m2_tokens_mcp_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."m2_clientes"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."m2_tokens_mcp"
+    ADD CONSTRAINT "m2_tokens_mcp_oauth_cliente_id_fkey" FOREIGN KEY ("oauth_cliente_id") REFERENCES "public"."m2_oauth_clientes"("id") ON DELETE SET NULL;
 
 
 
@@ -1557,6 +1896,11 @@ ALTER TABLE ONLY "public"."m2_unidades"
 
 ALTER TABLE ONLY "public"."m2_unidades"
     ADD CONSTRAINT "m2_unidades_predio_id_fkey" FOREIGN KEY ("predio_id") REFERENCES "public"."m2_predios"("id");
+
+
+
+ALTER TABLE ONLY "public"."m2_uso_mcp"
+    ADD CONSTRAINT "m2_uso_mcp_token_id_fkey" FOREIGN KEY ("token_id") REFERENCES "public"."m2_tokens_mcp"("id") ON DELETE CASCADE;
 
 
 
@@ -1616,6 +1960,9 @@ CREATE POLICY "m2_chaves_api_leitura_admin" ON "public"."m2_chaves_api" FOR SELE
 
 
 
+ALTER TABLE "public"."m2_clientes" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."m2_cobertura_bairros" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1644,6 +1991,12 @@ CREATE POLICY "m2_fatores_referencia_leitura_admin" ON "public"."m2_fatores_refe
 
 
 
+ALTER TABLE "public"."m2_oauth_clientes" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."m2_oauth_codigos" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."m2_perfis" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1665,6 +2018,9 @@ CREATE POLICY "m2_predios_leitura_admin" ON "public"."m2_predios" FOR SELECT TO 
 
 
 
+ALTER TABLE "public"."m2_tokens_mcp" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."m2_transacoes" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1677,6 +2033,9 @@ ALTER TABLE "public"."m2_unidades" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "m2_unidades_leitura_admin" ON "public"."m2_unidades" FOR SELECT TO "authenticated" USING (( SELECT "public"."m2_eh_admin"() AS "m2_eh_admin"));
 
+
+
+ALTER TABLE "public"."m2_uso_mcp" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."m2_vendas_consolidadas" ENABLE ROW LEVEL SECURITY;
@@ -1713,6 +2072,12 @@ GRANT ALL ON FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prior
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_bloqueia_cliente"("p_cliente_id" "uuid", "p_bloquear" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_bloqueia_cliente"("p_cliente_id" "uuid", "p_bloquear" boolean) TO "service_role";
+GRANT ALL ON FUNCTION "public"."m2_bloqueia_cliente"("p_cliente_id" "uuid", "p_bloquear" boolean) TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "text", "limiar_similaridade" real, "limite" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "text", "limiar_similaridade" real, "limite" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "text", "limiar_similaridade" real, "limite" integer) TO "service_role";
@@ -1743,6 +2108,12 @@ GRANT ALL ON FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id"
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_clientes_mcp"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"() TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_cobertura_atual"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_cobertura_atual"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_cobertura_atual"() TO "service_role";
@@ -1761,9 +2132,19 @@ GRANT ALL ON FUNCTION "public"."m2_confirmar_area_planta"("planta_id" "uuid", "a
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_cria_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_cliente_id" "uuid", "p_redirect_uri" "text", "p_code_challenge" "text", "p_validade_s" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_cria_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_cliente_id" "uuid", "p_redirect_uri" "text", "p_code_challenge" "text", "p_validade_s" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_eh_admin"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_eh_admin"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_eh_admin"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_entra_cliente"("p_sub" "text", "p_email" "text", "p_limite_novos_dia" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_entra_cliente"("p_sub" "text", "p_email" "text", "p_limite_novos_dia" integer) TO "service_role";
 
 
 
@@ -1823,6 +2204,11 @@ GRANT ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "json
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_troca_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_redirect_uri" "text", "p_challenge_do_verifier" "text", "p_token_hash" "text", "p_token_prefixo" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_troca_codigo_oauth"("p_codigo_hash" "text", "p_oauth_cliente_id" "uuid", "p_redirect_uri" "text", "p_challenge_do_verifier" "text", "p_token_hash" "text", "p_token_prefixo" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_ultimas_execucoes"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_ultimas_execucoes"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_ultimas_execucoes"() TO "service_role";
@@ -1831,6 +2217,11 @@ GRANT ALL ON FUNCTION "public"."m2_ultimas_execucoes"() TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_usa_token_mcp"("p_hash" "text", "p_por_minuto" integer, "p_por_dia" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_usa_token_mcp"("p_hash" "text", "p_por_minuto" integer, "p_por_dia" integer) TO "service_role";
 
 
 
@@ -1883,6 +2274,10 @@ GRANT INSERT("criada_por") ON TABLE "public"."m2_chaves_api" TO "authenticated";
 
 
 
+GRANT ALL ON TABLE "public"."m2_clientes" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."m2_cobertura_bairros" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_cobertura_bairros" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_cobertura_bairros" TO "authenticated";
@@ -1901,6 +2296,14 @@ GRANT SELECT ON TABLE "public"."m2_fatores_referencia" TO "authenticated";
 
 
 
+GRANT ALL ON TABLE "public"."m2_oauth_clientes" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."m2_oauth_codigos" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."m2_perfis" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_perfis" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_perfis" TO "authenticated";
@@ -1913,6 +2316,10 @@ GRANT SELECT ON TABLE "public"."m2_predios" TO "authenticated";
 
 
 
+GRANT ALL ON TABLE "public"."m2_tokens_mcp" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."m2_transacoes" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_transacoes" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_transacoes" TO "authenticated";
@@ -1922,6 +2329,10 @@ GRANT SELECT ON TABLE "public"."m2_transacoes" TO "authenticated";
 GRANT ALL ON TABLE "public"."m2_unidades" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_unidades" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_unidades" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."m2_uso_mcp" TO "service_role";
 
 
 

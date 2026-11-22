@@ -91,6 +91,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"m2_clientes": {
+                  Row: {
+                    "atualizado_em": string,"bloqueado_em": string | null,"criado_em": string,"email": string,"google_sub": string,"id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "atualizado_em"?: string,"bloqueado_em"?: string | null,"criado_em"?: string,"email": string,"google_sub": string,"id"?: string
+                  }
+                  Update: {
+                    "atualizado_em"?: string,"bloqueado_em"?: string | null,"criado_em"?: string,"email"?: string,"google_sub"?: string,"id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"m2_cobertura_bairros": {
                   Row: {
                     "bairro_id": number,"calculado_em": string,"criado_em": string,"id": string,"pct_cobertura": number,"vendas_24m": number,"vendas_calibrada": number,"vendas_confirmada": number,"vendas_estimada": number,"vendas_indicativa": number,"vendas_sem_dado": number
@@ -177,6 +191,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"m2_oauth_clientes": {
+                  Row: {
+                    "criado_em": string,"id": string,"nome": string,"redirect_uris": (string)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "criado_em"?: string,"id"?: string,"nome": string,"redirect_uris": (string)[]
+                  }
+                  Update: {
+                    "criado_em"?: string,"id"?: string,"nome"?: string,"redirect_uris"?: (string)[]
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"m2_oauth_codigos": {
+                  Row: {
+                    "cliente_id": string,"code_challenge": string,"codigo_hash": string,"criado_em": string,"expira_em": string,"oauth_cliente_id": string,"redirect_uri": string,"token_id": string | null,"usado_em": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cliente_id": string,"code_challenge": string,"codigo_hash": string,"criado_em"?: string,"expira_em": string,"oauth_cliente_id": string,"redirect_uri": string,"token_id"?: string | null,"usado_em"?: string | null
+                  }
+                  Update: {
+                    "cliente_id"?: string,"code_challenge"?: string,"codigo_hash"?: string,"criado_em"?: string,"expira_em"?: string,"oauth_cliente_id"?: string,"redirect_uri"?: string,"token_id"?: string | null,"usado_em"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "m2_oauth_codigos_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "m2_clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "m2_oauth_codigos_oauth_cliente_id_fkey"
+      columns: ["oauth_cliente_id"]
+isOneToOne: false
+      referencedRelation: "m2_oauth_clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "m2_oauth_codigos_token_id_fkey"
+      columns: ["token_id"]
+isOneToOne: false
+      referencedRelation: "m2_tokens_mcp"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"m2_perfis": {
                   Row: {
                     "ativo": boolean,"atualizado_em": string,"criado_em": string,"email": string,"id": string,"papel": Database["public"]['Enums']["m2_papel_usuario"]
@@ -228,6 +288,32 @@ isOneToOne: false
       columns: ["bairro_id"]
 isOneToOne: false
       referencedRelation: "m2_bairros"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"m2_tokens_mcp": {
+                  Row: {
+                    "cliente_id": string,"criado_em": string,"hash_token": string,"id": string,"oauth_cliente_id": string | null,"prefixo": string,"revogado_em": string | null,"ultimo_uso_em": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cliente_id": string,"criado_em"?: string,"hash_token": string,"id"?: string,"oauth_cliente_id"?: string | null,"prefixo": string,"revogado_em"?: string | null,"ultimo_uso_em"?: string | null
+                  }
+                  Update: {
+                    "cliente_id"?: string,"criado_em"?: string,"hash_token"?: string,"id"?: string,"oauth_cliente_id"?: string | null,"prefixo"?: string,"revogado_em"?: string | null,"ultimo_uso_em"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "m2_tokens_mcp_cliente_id_fkey"
+      columns: ["cliente_id"]
+isOneToOne: false
+      referencedRelation: "m2_clientes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "m2_tokens_mcp_oauth_cliente_id_fkey"
+      columns: ["oauth_cliente_id"]
+isOneToOne: false
+      referencedRelation: "m2_oauth_clientes"
       referencedColumns: ["id"]
     }
                   ]
@@ -295,6 +381,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"m2_uso_mcp": {
+                  Row: {
+                    "chamadas": number,"janela": string,"token_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chamadas"?: number,"janela": string,"token_id": string
+                  }
+                  Update: {
+                    "chamadas"?: number,"janela"?: string,"token_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "m2_uso_mcp_token_id_fkey"
+      columns: ["token_id"]
+isOneToOne: false
+      referencedRelation: "m2_tokens_mcp"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"m2_vendas_consolidadas": {
                   Row: {
                     "area_privativa": number | null,"atualizado_em": string,"criado_em": string,"data_transacao": string,"fora_da_curva": boolean,"id": string,"m2_iptu": number,"m2_privativo": number | null,"marcado_manual": boolean,"planta_id": string | null,"predio_id": string,"qtd_vagas_separadas": number,"selo_area": Database["public"]['Enums']["m2_selo_area"],"transacao_apartamento_id": string,"transacoes_vagas_ids": (string)[],"unidade_id": string,"vagas_inclusas_area": number | null,"valor_apartamento": number,"valor_total": number,"valor_vagas": number
@@ -347,6 +453,9 @@ isOneToOne: false
                            },
 "m2_atualizar_prioridades":
 { Args: { "ids": (string)[],"prioridades": (number)[] }; Returns: number
+                           },
+"m2_bloqueia_cliente":
+{ Args: { "p_bloquear": boolean,"p_cliente_id": string }; Returns: undefined
                            },
 "m2_buscar_predio_por_endereco":
 { Args: { "limiar_similaridade"?: number,"limite"?: number,"texto": string }; Returns: {
@@ -421,6 +530,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"m2_clientes_mcp":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "bloqueado_em": string,"chamadas_24h": number,"criado_em": string,"email": string,"id": string,"tokens_ativos": number,"ultimo_uso_em": string
+            }[]
+                           },
 "m2_cobertura_atual":
 { Args: Record<PropertyKey, never>; Returns: {
               "bairro_id": number,"bairro_nome": string,"calculado_em": string,"pct_cobertura": number,"vendas_24m": number,"vendas_calibrada": number,"vendas_confirmada": number,"vendas_estimada": number,"vendas_indicativa": number,"vendas_sem_dado": number
@@ -451,8 +565,16 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"m2_cria_codigo_oauth":
+{ Args: { "p_cliente_id": string,"p_code_challenge": string,"p_codigo_hash": string,"p_oauth_cliente_id": string,"p_redirect_uri": string,"p_validade_s": number }; Returns: undefined
+                           },
 "m2_eh_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"m2_entra_cliente":
+{ Args: { "p_email": string,"p_limite_novos_dia": number,"p_sub": string }; Returns: {
+              "cliente_id": string,"situacao": string
+            }[]
                            },
 "m2_fila_revisao":
 { Args: { "bairro": number,"deslocamento": number,"janela_meses": number,"limite": number,"motivo": Database["public"]['Enums']["m2_motivo_revisao"] }; Returns: {
@@ -535,6 +657,9 @@ isOneToOne: false
 "m2_substituir_fatores_referencia":
 { Args: { "linhas": Json }; Returns: number
                            },
+"m2_troca_codigo_oauth":
+{ Args: { "p_challenge_do_verifier": string,"p_codigo_hash": string,"p_oauth_cliente_id": string,"p_redirect_uri": string,"p_token_hash": string,"p_token_prefixo": string }; Returns: string
+                           },
 "m2_ultimas_execucoes":
 { Args: Record<PropertyKey, never>; Returns: {
               "concluida_em": string,"iniciada_em": string,"linhas_gravadas": number,"linhas_lidas": number,"mensagem_erro": string,"rotina": string,"status": Database["public"]['Enums']["m2_status_execucao"]
@@ -543,6 +668,11 @@ isOneToOne: false
 "m2_unidades_por_sql":
 { Args: { "sqls": (string)[] }; Returns: {
               "bairro_id": number,"predio_id": string,"sql": string,"unidade_id": string
+            }[]
+                           },
+"m2_usa_token_mcp":
+{ Args: { "p_hash": string,"p_por_dia": number,"p_por_minuto": number }; Returns: {
+              "espera_s": number,"permitido": boolean,"token_id": string
             }[]
                            },
 "m2_vendas_remover_obsoletas":
