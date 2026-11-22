@@ -149,6 +149,30 @@ $$;
 ALTER FUNCTION "public"."m2_atualizar_atualizado_em"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_atualizados integer;
+begin
+  if coalesce(array_length(ids, 1), 0) <> coalesce(array_length(prioridades, 1), 0) then
+    raise exception 'ids e prioridades com tamanhos diferentes.' using errcode = '22023';
+  end if;
+  update public.m2_predios p
+     set prioridade_coleta = x.prioridade
+    from unnest(m2_atualizar_prioridades.ids, m2_atualizar_prioridades.prioridades) as x(id, prioridade)
+   where p.id = x.id
+     and p.prioridade_coleta is distinct from x.prioridade;
+  get diagnostics v_atualizados = row_count;
+  return v_atualizados;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_buscar_predio_por_endereco"("texto" "text", "limiar_similaridade" real DEFAULT 0.4, "limite" integer DEFAULT 5) RETURNS TABLE("predio_id" "uuid", "logradouro" "text", "numero" integer, "endereco" "text", "bairro" "text", "bairro_slug" "text", "ano_construcao" smallint, "total_unidades" integer, "similaridade" real)
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -1401,6 +1425,11 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 REVOKE ALL ON FUNCTION "public"."m2_atualizar_atualizado_em"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_atualizar_atualizado_em"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) TO "service_role";
 
 
 

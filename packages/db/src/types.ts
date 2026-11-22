@@ -339,7 +339,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "m2_buscar_predio_por_endereco":
+            "m2_atualizar_prioridades":
+{ Args: { "ids": (string)[],"prioridades": (number)[] }; Returns: number
+                           },
+"m2_buscar_predio_por_endereco":
 { Args: { "limiar_similaridade"?: number,"limite"?: number,"texto": string }; Returns: {
               "ano_construcao": number,"bairro": string,"bairro_slug": string,"endereco": string,"logradouro": string,"numero": number,"predio_id": string,"similaridade": number,"total_unidades": number
             }[]

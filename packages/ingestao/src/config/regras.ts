@@ -145,3 +145,49 @@ export const FORA_CURVA_FATOR_MAX = 1.6;
 
 /** Regra 11.16: fora da curva se valor_declarado < 0,5 × o valor venal de referência. */
 export const FORA_CURVA_VENAL_FRACAO = 0.5;
+
+// ---------------------------------------------------------------------------
+// Épico 8.5 — coleta de anúncios (regras 11.8, 11.13; seções 12 e 17; assunção A4).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.13: coletar no máximo os 150 prédios de maior prioridade por rodada. */
+export const COLETA_MAX_PREDIOS = 150;
+
+/** Regra 11.13: prédio coletado não é recoletado antes de 90 dias. */
+export const COLETA_RECOLETA_DIAS = 90;
+
+/** Regra 11.13: vendas de compra e venda dos últimos 24 meses entram na prioridade. */
+export const PRIORIDADE_JANELA_MESES = 24;
+
+/** Regra 11.13: peso do pior selo das plantas do prédio na prioridade de coleta. */
+export const PRIORIDADE_PESO_SELO = {
+  sem_dado: 4,
+  estimada: 3,
+  indicativa: 2,
+  calibrada: 0,
+  confirmada: 0,
+} as const;
+
+/** Épico 8.5: até 5 resultados da busca são raspados por prédio. */
+export const COLETA_RESULTADOS_POR_PREDIO = 5;
+
+/** Assunção A4: domínios da allowlist de anúncios e páginas de condomínio (seção 20: sai daqui se pedir para parar). */
+export const ANUNCIO_DOMINIOS = ["lopes.com.br", "quintoandar.com.br", "loft.com.br"] as const;
+
+/** Regra 11.8: similaridade mínima do logradouro para casar anúncio com prédio. */
+export const CASAMENTO_SIMILARIDADE_MINIMA = 0.6;
+
+/** Regra 11.8: a planta escolhida tem área IPTU a até 12% da área IPTU estimada pelo anúncio. */
+export const CASAMENTO_TOLERANCIA_PLANTA = 0.12;
+
+/** Seção 12: em 429/5xx do Firecrawl, até 3 tentativas com espera de 10, 30 e 90 s. */
+export const FIRECRAWL_ESPERAS_S = [10, 30, 90] as const;
+
+/** Seção 17: teto padrão de créditos do Firecrawl por execução (FIRECRAWL_MAX_CREDITOS_EXECUCAO). */
+export const FIRECRAWL_MAX_CREDITOS_PADRAO = 600;
+
+/** Custo previsto de uma busca (créditos), só para decidir se cabe no teto; a conta usa o creditsUsed real. */
+export const FIRECRAWL_CUSTO_BUSCA = 2;
+
+/** Custo previsto de um scrape com extração JSON (créditos), idem. */
+export const FIRECRAWL_CUSTO_SCRAPE = 5;

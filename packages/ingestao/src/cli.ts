@@ -88,6 +88,15 @@ export async function main(argv: readonly string[]): Promise<number> {
         });
         return 0;
       }
+      case "coleta-anuncios": {
+        // Uso: anuncios [--predio <chave_predio>]; teto em FIRECRAWL_MAX_CREDITOS_EXECUCAO (seção 17).
+        const apiKey = process.env.FIRECRAWL_API_KEY;
+        if (!apiKey) throw new Error("FIRECRAWL_API_KEY não definida (seção 18.4).");
+        const teto = process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO ? Number(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO) : undefined;
+        const { runAdsCollection } = await import("./anuncios/rotina.js");
+        await runAdsCollection(createServiceClient(), { apiKey, maxCreditos: teto, predio: option(args, "predio") });
+        return 0;
+      }
       case "calibracao": {
         // Uso: calibracao. Por ora: ligação tardia (9.2) e vendas consolidadas (8.4); o resto entra no 8.6.
         const { runCalibration } = await import("./calibracao/rotina.js");
