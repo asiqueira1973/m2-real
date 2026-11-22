@@ -150,8 +150,39 @@ export async function readRows(
   }
 }
 
-/** Faz o parse de uma aba em stream, montando cada <row> a partir das <c>. */
-async function readSheet(idx: ZipIndex, caminho: string, strings: string[], onRow: (linha: number, v: CellValue[]) => void) {
+/**
+ * Primeira linha de cada aba aceita, sem ler o resto (o stream é interrompido após a 1ª linha).
+ * Usado para achar cabeçalhos antes da leitura completa (abas sem cabeçalho, ITBI 2024).
+ * Recebe: o .xlsx e o filtro de abas. Devolve: mapa aba → valores da 1ª linha.
+ */
+export async function readFirstRows(buffer: Buffer, aceitarAba: (nome: string) => boolean): Promise<Map<string, CellValue[]>> {
+  const idx = await openZip(buffer);
+  const primeiras = new Map<string, CellValue[]>();
+  try {
+    const abas = await sheetsOf(idx);
+    const strings = await sharedStrings(idx);
+    for (const aba of abas) {
+      if (!aceitarAba(aba.nome)) continue;
+      await readSheet(idx, aba.caminho, strings, (_l, v) => primeiras.set(aba.nome, v), 1);
+    }
+  } finally {
+    idx.zip.close();
+  }
+  return primeiras;
+}
+
+/**
+ * Faz o parse de uma aba em stream, montando cada <row> a partir das <c>.
+ * Com maxLinhas, para de ler depois dessa quantidade de linhas.
+ */
+async function readSheet(
+  idx: ZipIndex,
+  caminho: string,
+  strings: string[],
+  onRow: (linha: number, v: CellValue[]) => void,
+  maxLinhas = Infinity,
+) {
+  let emitidas = 0;
   const p = new SaxesParser();
   let linha = 0;
   let valores: CellValue[] = [];
@@ -188,10 +219,14 @@ async function readSheet(idx: ZipIndex, caminho: string, strings: string[], onRo
       col++;
     } else if (t.name === "row") {
       for (let i = 0; i < valores.length; i++) if (valores[i] === undefined) valores[i] = null;
-      onRow(linha, valores);
+      if (emitidas < maxLinhas) onRow(linha, valores);
+      emitidas++;
     }
   });
-  for await (const chunk of entryChunks(idx, caminho)) p.write(chunk);
+  for await (const chunk of entryChunks(idx, caminho)) {
+    p.write(chunk);
+    if (emitidas >= maxLinhas) return; // sai do laço: o gerador fecha o stream da entrada
+  }
   p.close();
 }
 
