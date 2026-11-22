@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/google/callback — retorno do Google (seção 6.5, passo 2; regra 11.18; 8.10).
+ * GET /api/auth/google/callback — retorno do Google (seção 6.5, passo 2; regra 11.21; 8.10).
  * 1) confere o state; 2) troca o código (PKCE) e valida o id_token com email_verified; 3) entra ou
  * cria a conta (limite diário de contas novas; bloqueada não entra); 4) abre a sessão e volta para a
  * autorização. Erros voltam para /oauth/entrar?erro=falha|pausado|bloqueada.

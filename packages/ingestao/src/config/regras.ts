@@ -331,16 +331,16 @@ export const MEDIANA_SELOS = ["estimada", "indicativa", "calibrada", "confirmada
 export const MCP_SAUDE_CACHE_MS = 5 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
-// Épico 8.10 — OAuth do MCP e contas de cliente (seções 6.3 e 6.5; regras 11.18 e 11.19).
+// Épico 8.10 — OAuth do MCP e contas de cliente (seções 6.3 e 6.5; regras 11.21 e 11.22).
 // ---------------------------------------------------------------------------
 
-/** Regra 11.18: contas de cliente novas aceitas nas últimas 24 h (quem já tem conta entra sempre). */
+/** Regra 11.21: contas de cliente novas aceitas nas últimas 24 h (quem já tem conta entra sempre). */
 export const CLIENTES_NOVOS_POR_DIA = 50;
 
-/** Regra 11.19: chamadas ao MCP por token OAuth no minuto corrente. */
+/** Regra 11.22: chamadas ao MCP por token OAuth no minuto corrente. */
 export const MCP_CHAMADAS_POR_MINUTO = 30;
 
-/** Regra 11.19: chamadas ao MCP por token OAuth nas últimas 24 h. */
+/** Regra 11.22: chamadas ao MCP por token OAuth nas últimas 24 h. */
 export const MCP_CHAMADAS_POR_DIA = 1000;
 
 /** 6.5, passo 4: validade do código de autorização, em segundos (10 min). */
@@ -360,3 +360,18 @@ export const LOGIN_GOOGLE_COOKIE_SEGUNDOS = 600;
 
 /** 6.5: validade da sessão do cliente nas telas do OAuth, em dias. */
 export const SESSAO_CLIENTE_DIAS = 30;
+
+/** 6.5, passo 3: clientes OAuth registrados por hora (freio contra quem enche a tabela). */
+export const OAUTH_REGISTROS_POR_HORA = 200;
+
+/** 6.5, passo 3: clientes OAuth que nunca autorizaram nada são apagados depois destes dias. */
+export const OAUTH_CLIENTE_SEM_USO_DIAS = 30;
+
+/** 6.5, passo 2: tempo máximo da troca do código com o Google, em ms. */
+export const GOOGLE_TOKEN_TIMEOUT_MS = 5000;
+
+/** Seção 15 / regra 11.22: a partir deste tempo de espera (s), a mensagem fala em minutos. */
+export const LIMITE_MENSAGEM_MINUTOS_S = 120;
+
+/** Seção 16: contas conectadas por página na tela Chaves de API (abaixo do corte de 1.000 do PostgREST). */
+export const CONTAS_CONECTADAS_POR_PAGINA = 50;

@@ -1,4 +1,4 @@
-// Épico 8.10: OAuth do MCP, login com Google, sessão do cliente e limites (6.3, 6.5; 11.18, 11.19).
+// Épico 8.10: OAuth do MCP, login com Google, sessão do cliente e limites (6.3, 6.5; 11.21, 11.22).
 import { exportJWK, generateKeyPair, SignJWT, createLocalJWKSet } from "jose";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -116,7 +116,7 @@ describe("6.5, passo 2: id_token do Google", () => {
   });
 });
 
-describe("6.3 e 11.19: credencial do MCP", () => {
+describe("6.3 e 11.22: credencial do MCP", () => {
   const db = (rpc: unknown[], chave: unknown = null) => ({
     rpc: async () => ({ data: rpc, error: null }),
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: chave, error: null }) }) }) }),

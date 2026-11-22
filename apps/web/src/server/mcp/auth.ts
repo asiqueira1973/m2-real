@@ -1,6 +1,6 @@
 /**
  * Autenticação do MCP (seção 6.3): Authorization: Bearer <credencial>. Duas credenciais (8.10):
- *  - token OAuth `fpq_mcp_…` (m2_tokens_mcp), com o limite de chamadas da regra 11.19;
+ *  - token OAuth `fpq_mcp_…` (m2_tokens_mcp), com o limite de chamadas da regra 11.22;
  *  - chave do painel (m2_chaves_api ativa), sem limite (é do admin).
  * Só o hash SHA-256 é guardado. O 401 aponta os metadados do recurso (RFC 9728), que é o que faz
  * o cliente MCP abrir o fluxo OAuth sozinho. SÓ SERVIDOR.
@@ -9,7 +9,7 @@ import type { M2Client } from "@m2-real/db";
 import { MCP_CHAMADAS_POR_DIA, MCP_CHAMADAS_POR_MINUTO } from "@m2-real/ingestao/regras";
 import { hashKey } from "@/lib/chaves";
 import { limiteAtingido } from "@/server/oauth/mensagens";
-import { MCP_TOKEN_PREFIX, resourceMetadataUrl } from "@/server/oauth/server";
+import { corsHeaders, MCP_TOKEN_PREFIX, resourceMetadataUrl } from "@/server/oauth/server";
 
 /** Seção 15: mensagem para chave ausente, inválida ou revogada. */
 export const MENSAGEM_CHAVE_INVALIDA = "Chave de API inválida ou revogada.";
@@ -42,7 +42,7 @@ export type Credencial =
   | { tipo: "token"; id: string; permitido: boolean; esperaS: number };
 
 /**
- * Confere a credencial. Token OAuth: confere, aplica o limite (11.19), conta a chamada e grava
+ * Confere a credencial. Token OAuth: confere, aplica o limite (11.22), conta a chamada e grava
  * ultimo_uso_em numa ida ao banco (m2_usa_token_mcp). Chave: verifyKey.
  * Recebe: cliente service role e a credencial. Devolve: a credencial válida ou nulo.
  */
@@ -61,11 +61,11 @@ export async function verifyCredential(db: M2Client, valor: string): Promise<Cre
 export function unauthorized(): Response {
   return Response.json({ erro: MENSAGEM_CHAVE_INVALIDA }, {
     status: 401,
-    headers: { "WWW-Authenticate": `Bearer realm="fechouporquanto", resource_metadata="${resourceMetadataUrl()}"` },
+    headers: { ...corsHeaders(), "WWW-Authenticate": `Bearer realm="fechouporquanto", resource_metadata="${resourceMetadataUrl()}"` },
   });
 }
 
-/** Regra 11.19: resposta 429 com Retry-After e a mensagem da seção 15. Recebe: segundos até liberar. */
+/** Regra 11.22: resposta 429 com Retry-After e a mensagem da seção 15. Recebe: segundos até liberar. */
 export function tooManyRequests(esperaS: number): Response {
-  return Response.json({ erro: limiteAtingido(esperaS) }, { status: 429, headers: { "Retry-After": String(esperaS) } });
+  return Response.json({ erro: limiteAtingido(esperaS) }, { status: 429, headers: { ...corsHeaders(), "Retry-After": String(esperaS) } });
 }

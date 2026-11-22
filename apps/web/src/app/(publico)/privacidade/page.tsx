@@ -26,7 +26,7 @@ const SECOES = [
     "Os dados ficam em um banco Supabase e o site roda na Vercel. A contagem de uso é apagada depois de 2 dias. A conta fica guardada enquanto existir; você pode pedir a exclusão a qualquer momento pelo e-mail acima, e ela é feita em até 15 dias.",
   ] },
   { titulo: "Seus direitos", paragrafos: [
-    "Pela LGPD, você pode pedir acesso, correção ou exclusão dos seus dados e revogar a conexão. Para revogar, remova o conector no seu assistente ou escreva para alexandre@dablab.com.br.",
+    "Pela LGPD, você pode pedir acesso, correção ou exclusão dos seus dados e revogar a conexão. Remover o conector no seu assistente faz ele parar de usar a conexão, mas o acesso só é cancelado no Fechou por Quanto quando você pede: escreva para alexandre@dablab.com.br e a conta é bloqueada ou excluída.",
   ] },
 ] as const;
 

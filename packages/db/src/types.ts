@@ -531,8 +531,8 @@ isOneToOne: false
         isSetofReturn: false
       } },
 "m2_clientes_mcp":
-{ Args: Record<PropertyKey, never>; Returns: {
-              "bloqueado_em": string,"chamadas_24h": number,"criado_em": string,"email": string,"id": string,"tokens_ativos": number,"ultimo_uso_em": string
+{ Args: { "deslocamento": number,"limite": number }; Returns: {
+              "bloqueado_em": string,"chamadas_24h": number,"criado_em": string,"email": string,"id": string,"tokens_ativos": number,"total": number,"ultimo_uso_em": string
             }[]
                            },
 "m2_cobertura_atual":
@@ -653,6 +653,9 @@ isOneToOne: false
                            },
 "m2_normalizar_endereco":
 { Args: { "texto": string }; Returns: string
+                           },
+"m2_registra_cliente_oauth":
+{ Args: { "p_dias_sem_uso": number,"p_limite_hora": number,"p_nome": string,"p_redirect_uris": (string)[] }; Returns: string
                            },
 "m2_substituir_fatores_referencia":
 { Args: { "linhas": Json }; Returns: number

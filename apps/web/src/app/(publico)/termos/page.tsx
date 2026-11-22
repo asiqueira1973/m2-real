@@ -1,5 +1,5 @@
 /**
- * [Público] Termos de uso (épico 8.10; regras 11.18 e 11.19). Exigidos pela tela de consentimento
+ * [Público] Termos de uso (épico 8.10; regras 11.21 e 11.22). Exigidos pela tela de consentimento
  * do Google e mostrados a quem conecta o MCP.
  */
 import type { Metadata } from "next";

@@ -4,6 +4,7 @@
  * Monta a URL de consentimento, troca o código e valida o id_token. SÓ SERVIDOR.
  */
 import { createHash, randomBytes } from "node:crypto";
+import { GOOGLE_TOKEN_TIMEOUT_MS } from "@m2-real/ingestao/regras";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { siteOrigin } from "@/server/oauth/server";
 
@@ -57,7 +58,7 @@ export async function exchangeGoogleCode(code: string, codeVerifier: string): Pr
       grant_type: "authorization_code",
       code_verifier: codeVerifier,
     }),
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(GOOGLE_TOKEN_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`google_token_${res.status}`);
   const body = (await res.json()) as { id_token?: string };

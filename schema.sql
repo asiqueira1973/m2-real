@@ -487,22 +487,29 @@ $$;
 ALTER FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id" "uuid", "unidade_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."m2_clientes_mcp"() RETURNS TABLE("id" "uuid", "email" "text", "criado_em" timestamp with time zone, "bloqueado_em" timestamp with time zone, "ultimo_uso_em" timestamp with time zone, "chamadas_24h" integer, "tokens_ativos" integer)
+CREATE OR REPLACE FUNCTION "public"."m2_clientes_mcp"("limite" integer, "deslocamento" integer) RETURNS TABLE("id" "uuid", "email" "text", "criado_em" timestamp with time zone, "bloqueado_em" timestamp with time zone, "ultimo_uso_em" timestamp with time zone, "chamadas_24h" integer, "tokens_ativos" integer, "total" integer)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select c.id, c.email, c.criado_em, c.bloqueado_em,
-         (select max(t.ultimo_uso_em) from public.m2_tokens_mcp t where t.cliente_id = c.id),
+  with pagina as (
+    select c.*, count(*) over ()::integer as total
+      from public.m2_clientes c
+     where (select public.m2_eh_admin())
+     order by c.criado_em desc, c.id
+     limit limite offset deslocamento
+  )
+  select p.id, p.email, p.criado_em, p.bloqueado_em,
+         (select max(t.ultimo_uso_em) from public.m2_tokens_mcp t where t.cliente_id = p.id),
          coalesce((select sum(u.chamadas)::integer from public.m2_uso_mcp u join public.m2_tokens_mcp t on t.id = u.token_id
-                    where t.cliente_id = c.id and u.janela > now() - interval '24 hours'), 0),
-         (select count(*)::integer from public.m2_tokens_mcp t where t.cliente_id = c.id and t.revogado_em is null)
-    from public.m2_clientes c
-   where (select public.m2_eh_admin())
-   order by c.criado_em desc;
+                    where t.cliente_id = p.id and u.janela > now() - interval '24 hours'), 0),
+         (select count(*)::integer from public.m2_tokens_mcp t where t.cliente_id = p.id and t.revogado_em is null),
+         p.total
+    from pagina p
+   order by p.criado_em desc, p.id;
 $$;
 
 
-ALTER FUNCTION "public"."m2_clientes_mcp"() OWNER TO "postgres";
+ALTER FUNCTION "public"."m2_clientes_mcp"("limite" integer, "deslocamento" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_cobertura_atual"() RETURNS TABLE("bairro_id" smallint, "bairro_nome" "text", "calculado_em" timestamp with time zone, "vendas_24m" integer, "vendas_confirmada" integer, "vendas_calibrada" integer, "vendas_indicativa" integer, "vendas_estimada" integer, "vendas_sem_dado" integer, "pct_cobertura" numeric)
@@ -998,6 +1005,30 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_normalizar_endereco"("texto" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_redirect_uris" "text"[], "p_limite_hora" integer, "p_dias_sem_uso" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_id uuid;
+begin
+  perform pg_advisory_xact_lock(hashtext('m2_registra_cliente_oauth'));
+  delete from public.m2_oauth_clientes o
+   where o.criado_em < now() - make_interval(days => p_dias_sem_uso)
+     and not exists (select 1 from public.m2_oauth_codigos c where c.oauth_cliente_id = o.id)
+     and not exists (select 1 from public.m2_tokens_mcp t where t.oauth_cliente_id = o.id);
+  if (select count(*) from public.m2_oauth_clientes where criado_em > now() - interval '1 hour') >= p_limite_hora then
+    return null;
+  end if;
+  insert into public.m2_oauth_clientes (nome, redirect_uris) values (p_nome, p_redirect_uris) returning id into v_id;
+  return v_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_redirect_uris" "text"[], "p_limite_hora" integer, "p_dias_sem_uso" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") RETURNS integer
@@ -1640,6 +1671,10 @@ CREATE INDEX "m2_fatores_referencia_bairro_idx" ON "public"."m2_fatores_referenc
 
 
 
+CREATE INDEX "m2_oauth_clientes_criado_em_idx" ON "public"."m2_oauth_clientes" USING "btree" ("criado_em");
+
+
+
 CREATE INDEX "m2_oauth_codigos_cliente_idx" ON "public"."m2_oauth_codigos" USING "btree" ("cliente_id");
 
 
@@ -2109,9 +2144,9 @@ GRANT ALL ON FUNCTION "public"."m2_casar_edital"("edital_id" "uuid", "predio_id"
 
 
 
-REVOKE ALL ON FUNCTION "public"."m2_clientes_mcp"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"() TO "service_role";
-GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"() TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."m2_clientes_mcp"("limite" integer, "deslocamento" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"("limite" integer, "deslocamento" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."m2_clientes_mcp"("limite" integer, "deslocamento" integer) TO "authenticated";
 
 
 
@@ -2197,6 +2232,11 @@ GRANT ALL ON FUNCTION "public"."m2_mediana_bairro"("bairro_slug" "text", "janela
 REVOKE ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_redirect_uris" "text"[], "p_limite_hora" integer, "p_dias_sem_uso" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_redirect_uris" "text"[], "p_limite_hora" integer, "p_dias_sem_uso" integer) TO "service_role";
 
 
 

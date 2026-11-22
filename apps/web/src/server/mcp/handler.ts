@@ -2,7 +2,7 @@
  * Servidor MCP do Fechou por Quanto (seções 6.3 e 13.2; épico 8.9). SÓ SERVIDOR: usa a credencial de
  * serviço (fica em src/server/, como manda o CLAUDE.md; a rota só reexporta). Stateless (mcp-handler 2.x).
  * Exige Authorization: Bearer <chave ou token OAuth> (401 com a mensagem da seção 15; 429 no limite
- * da regra 11.19).
+ * da regra 11.22).
  */
 import { createServiceClient } from "@m2-real/db/server";
 import { createMcpHandler } from "mcp-handler";

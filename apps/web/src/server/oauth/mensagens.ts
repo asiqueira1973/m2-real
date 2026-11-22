@@ -1,6 +1,8 @@
 /**
- * Mensagens fixas da seção 15 do fluxo OAuth e dos limites do MCP (épico 8.10; regras 11.18 e 11.19).
+ * Mensagens fixas da seção 15 do fluxo OAuth e dos limites do MCP (épico 8.10; regras 11.21 e 11.22).
  */
+import { LIMITE_MENSAGEM_MINUTOS_S } from "@m2-real/ingestao/regras";
+
 export const MENSAGENS_OAUTH = {
   entrarTitulo: "Conectar ao Fechou por Quanto",
   entrarTexto: "Entre com sua conta Google para conectar seu assistente às vendas de apartamentos do Fechou por Quanto.",
@@ -33,11 +35,12 @@ export const ERROS_OAUTH = {
   servidor: "Erro interno. Tente de novo.",
   registroCorpo: "Envie redirect_uris (1 a 5) e, se quiser, client_name.",
   registroUri: "redirect_uri precisa ser https, ou http em localhost.",
+  registroLimite: "Muitos registros de cliente agora. Tente de novo em alguns minutos.",
 } as const;
 
-/** Regra 11.19: mensagem de limite atingido. Recebe: segundos até liberar. */
+/** Regra 11.22: mensagem de limite atingido. Recebe: segundos até liberar. */
 export const limiteAtingido = (segundos: number) =>
-  `Limite de uso atingido. Tente de novo em ${segundos >= 120 ? `${Math.ceil(segundos / 60)} minutos` : `${segundos} segundos`}.`;
+  `Limite de uso atingido. Tente de novo em ${segundos >= LIMITE_MENSAGEM_MINUTOS_S ? `${Math.ceil(segundos / 60)} minutos` : `${segundos} segundos`}.`;
 
 export type ErroLogin = keyof typeof MENSAGENS_OAUTH.erroLogin;
 export const isErroLogin = (v: unknown): v is ErroLogin => typeof v === "string" && v in MENSAGENS_OAUTH.erroLogin;

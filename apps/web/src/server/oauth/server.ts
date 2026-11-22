@@ -7,7 +7,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { createServiceClient } from "@m2-real/db/server";
-import { OAUTH_CLIENTE_NOME_MAX, OAUTH_CODIGO_SEGUNDOS, OAUTH_REDIRECT_URIS_MAX, OAUTH_REDIRECT_URI_MAX } from "@m2-real/ingestao/regras";
+import { OAUTH_CLIENTE_NOME_MAX, OAUTH_CLIENTE_SEM_USO_DIAS, OAUTH_CODIGO_SEGUNDOS, OAUTH_REGISTROS_POR_HORA, OAUTH_REDIRECT_URIS_MAX, OAUTH_REDIRECT_URI_MAX } from "@m2-real/ingestao/regras";
 import { hashKey } from "@/lib/chaves";
 
 /** 6.3: prefixo dos tokens OAuth (distingue do formato das chaves do painel). */
@@ -75,15 +75,18 @@ export type OAuthClient = { id: string; nome: string; redirect_uris: string[] };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-/** RFC 7591: registra um cliente. Recebe: nome e redirect_uris já conferidos. Devolve: o cliente. */
-export async function registerClient(nome: string, uris: string[]): Promise<OAuthClient> {
-  const { data, error } = await createServiceClient()
-    .from("m2_oauth_clientes")
-    .insert({ nome: nome.slice(0, OAUTH_CLIENTE_NOME_MAX), redirect_uris: uris.slice(0, OAUTH_REDIRECT_URIS_MAX) })
-    .select("id, nome, redirect_uris")
-    .single();
+/**
+ * RFC 7591: registra um cliente pela m2_registra_cliente_oauth, que aplica o limite por hora e
+ * apaga clientes antigos que nunca autorizaram nada (6.5, passo 3).
+ * Recebe: nome e redirect_uris já conferidos. Devolve: o cliente, ou nulo se o limite estourou.
+ */
+export async function registerClient(nome: string, uris: string[]): Promise<OAuthClient | null> {
+  const c = { nome: nome.slice(0, OAUTH_CLIENTE_NOME_MAX), redirect_uris: uris.slice(0, OAUTH_REDIRECT_URIS_MAX) };
+  const { data, error } = await createServiceClient().rpc("m2_registra_cliente_oauth", {
+    p_nome: c.nome, p_redirect_uris: c.redirect_uris, p_limite_hora: OAUTH_REGISTROS_POR_HORA, p_dias_sem_uso: OAUTH_CLIENTE_SEM_USO_DIAS,
+  });
   if (error) throw new Error(`Falha ao registrar cliente OAuth: ${error.message}`);
-  return data;
+  return data ? { id: data, ...c } : null;
 }
 
 /** Busca um cliente pelo client_id. Devolve: o cliente ou nulo (id malformado também é nulo). */

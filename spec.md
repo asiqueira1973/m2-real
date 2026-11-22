@@ -173,7 +173,7 @@ Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (pessoa que conecta
 | Marcar venda como outlier ou desfazer | ✅ | ❌ | ✅ automático |
 | Disparar execução manual de ingestão | ✅ via botão que aciona o workflow do GitHub | ❌ | — |
 | Criar/revogar chave de API do MCP | ✅ | ❌ | ❌ |
-| Criar a própria conta de cliente e conectar um assistente (OAuth, 6.5) | — | ✅ com Google, sujeito à regra 11.18 | ❌ |
+| Criar a própria conta de cliente e conectar um assistente (OAuth, 6.5) | — | ✅ com Google, sujeito à regra 11.21 | ❌ |
 | Bloquear/desbloquear conta de cliente | ✅ | ❌ | ❌ |
 | Criar outro admin | ❌ no painel (só por seed/SQL, seção 6) | ❌ | ❌ |
 | Excluir dados | ❌ (sem exclusão pela interface; seção 7.5) | ❌ | ✅ só substituição de execução (regra 11.1) |
@@ -197,7 +197,7 @@ Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (pessoa que conecta
 Não existe tela para criar admin no MVP.
 
 ### 6.3 Cliente MCP
-- Chamadas a `/api/mcp` (e `/mcp`) exigem o cabeçalho `Authorization: Bearer <credencial>`. Credencial é o token OAuth `fpq_mcp_…` (6.5), com os limites da regra 11.19, ou a chave de API do painel, sem limite.
+- Chamadas a `/api/mcp` (e `/mcp`) exigem o cabeçalho `Authorization: Bearer <credencial>`. Credencial é o token OAuth `fpq_mcp_…` (6.5), com os limites da regra 11.22, ou a chave de API do painel, sem limite.
 - Sem credencial válida: 401 com `WWW-Authenticate: Bearer resource_metadata="<site>/.well-known/oauth-protected-resource"`, que faz o cliente MCP abrir o OAuth sozinho. No limite: 429 com `Retry-After`.
 - A chave é gerada no painel (tela "Chaves de API"), mostrada **uma única vez**, e guardada no banco só como hash SHA-256 (`chaves_api.hash_chave`).
 - Chave revogada ou inexistente recebe 401 com a mensagem da seção 15.
@@ -675,8 +675,8 @@ Critérios de aceite:
 ### 8.10 MCP com OAuth e cadastro aberto
 - [ ] `/mcp` sem credencial responde 401 com `resource_metadata`, e os metadados da 6.5 respondem.
 - [ ] Registro de cliente, consentimento e troca de código funcionam com PKCE; pedido inválido não redireciona; código reusado revoga o token.
-- [ ] Login com Google cria a conta de cliente com só `sub` e e-mail; limite diário de contas novas (11.18).
-- [ ] Token OAuth acessa as 5 ferramentas; acima do limite (11.19), 429 com `Retry-After`; conta bloqueada no painel perde o acesso na hora.
+- [ ] Login com Google cria a conta de cliente com só `sub` e e-mail; limite diário de contas novas (11.21).
+- [ ] Token OAuth acessa as 5 ferramentas; acima do limite (11.22), 429 com `Retry-After`; conta bloqueada no painel perde o acesso na hora.
 - [ ] A chave de API do painel continua valendo (`scripts/test-client.mjs` passa).
 - [ ] Conectar no Claude.ai só com a URL `https://fechouporquanto.com.br/mcp` e chamar `buscar_predio`.
 
@@ -740,11 +740,11 @@ Todas são do perfil **[Admin]**.
 | 11.14 | Unidade sem cadastro próprio | Guia com fração ideal ≥ 1 (ou nula) e complemento que indica unidade (regex `\b(AP|APTO|APART|UNID|TORRE|T\s?\d|BL|CJ|SALA)\b`) → `unidade_sem_cadastro_proprio = true`. Não entra em vendas consolidadas nem em medianas | ingestão |
 | 11.15 | Consolidação de vagas | Para cada guia de compra e venda de unidade `apartamento`: agregar as guias de compra e venda de unidades `vaga` do mesmo prédio, com a mesma `data_transacao`, ainda não agregadas, até no máximo 3. Se houver mais vagas que apartamentos vendidos no mesmo prédio e data, distribuir pela proximidade da matrícula (menor diferença numérica). Vagas sem apartamento ficam fora | ingestão |
 | 11.16 | Venda fora da curva | Com ≥ 3 vendas do prédio nos 36 meses: fora se `m2_privativo` < 0,6 × ou > 1,6 × a mediana do prédio. Com menos: usar a mediana do bairro no mesmo selo. Vendas com `valor_declarado` < 0,5 × o valor venal de referência também são marcadas. Ficam fora das medianas devolvidas pelo MCP, mas aparecem na lista de vendas com a marca | ingestão |
-| 11.18 | Limite de contas novas | No máximo 50 contas de cliente criadas nas últimas 24 h. Acima disso, o login mostra a mensagem da seção 15. Quem já tem conta entra sempre; conta bloqueada não entra | OAuth (8.10) |
-| 11.19 | Limite de uso do MCP | Por token OAuth: até 30 chamadas no minuto corrente e 1.000 nas últimas 24 h. A chamada recusada não conta e recebe 429 com o tempo de espera. Chaves do painel não têm limite | MCP (8.10) |
 | 11.17 | Medianas do MCP | m² mediano de prédio ou bairro = mediana de `m2_privativo` das vendas de compra e venda não fora da curva, com selo ≥ `estimada`, na janela pedida (padrão 24 meses). Sempre devolver junto: n de vendas, distribuição por selo e se há vagas inclusas na área | MCP |
 | 11.19 | Alvos da coleta de leilões | (a) Prédios com guia do ITBI de natureza "4.Arrematação" ou "17.Resolução da alienação fiduciária" nos últimos 36 meses; (b) os 100 prédios de maior `prioridade_coleta` (regra 11.13) sem nenhuma planta `confirmada`. Cada prédio é buscado no máximo uma vez a cada 180 dias (`ultima_coleta_leilao_em`) | ingestão |
 | 11.20 | Casamento edital → prédio → unidade | Prédio: mesmo critério de endereço da regra 11.8. Unidade, por ordem de força: (1) `matricula` igual à de uma guia do ITBI de uma unidade do prédio → `casado_unidade`; (2) complemento normalizado igual ao de uma unidade do prédio ("APTO 52" = "AP 52" = "APARTAMENTO 52") → `casado_unidade`; (3) senão → `casado_predio`, sem efeito na área (vai para a lista de evidências sem vínculo). Edital de prédio fora dos 10 bairros é descartado | ingestão |
+| 11.21 | Limite de contas novas | No máximo 50 contas de cliente criadas nas últimas 24 h. Acima disso, o login mostra a mensagem da seção 15. Quem já tem conta entra sempre; conta bloqueada não entra | OAuth (8.10) |
+| 11.22 | Limite de uso do MCP | Por token OAuth: até 30 chamadas no minuto corrente e 1.000 nas últimas 24 h. A chamada recusada não conta e recebe 429 com o tempo de espera. Chaves do painel não têm limite | MCP (8.10) |
 | 11.18 | O que não é automático | A **descontar o valor das vagas inclusas** no preço não é feito no MVP: o m² é devolvido com a informação `vagas_inclusas_area` e o agente decide. Também não há correção monetária dos preços antigos | — |
 
 **Tabela 11.2: bairros, CEPs e grafias aceitas**
@@ -795,6 +795,8 @@ Execução `em_andamento` há mais de 6 horas é marcada `falhou` ("tempo esgota
 | `/api/chaves/[id]/revogar` | POST | sessão de admin | `ativa = false` |
 
 ### 13.2 Ferramentas do MCP (`/api/mcp`, somente leitura)
+
+Autenticação: token OAuth (6.5), com os limites da regra 11.22, ou chave de API do painel (6.3). Também responde em `/mcp`.
 
 | Ferramenta | Entrada (zod) | Saída |
 |---|---|---|
@@ -877,9 +879,9 @@ Português claro, sem jargão. Mensagens fixas:
 | Painel sem perfil | "Acesso não autorizado. Fale com o administrador do Fechou por Quanto." |
 | Lista vazia de revisão | "Nada para revisar agora." |
 | Chave criada | "Copie a chave agora. Ela não será mostrada de novo." |
-| MCP no limite de uso (11.19) | "Limite de uso atingido. Tente de novo em N segundos." (ou "N minutos" a partir de 2 min) |
+| MCP no limite de uso (11.22) | "Limite de uso atingido. Tente de novo em N segundos." (ou "N minutos" a partir de 2 min) |
 | Login: falha no Google | "Não foi possível entrar com o Google. Tente de novo." |
-| Login: cadastros pausados (11.18) | "Os cadastros novos estão pausados por hoje. Tente de novo amanhã." |
+| Login: cadastros pausados (11.21) | "Os cadastros novos estão pausados por hoje. Tente de novo amanhã." |
 | Login: conta bloqueada | "Esta conta está bloqueada. Fale com o administrador do Fechou por Quanto." |
 | Consentimento | "<cliente> quer acessar o Fechou por Quanto"; "Poderá: buscar prédios e consultar vendas, fichas, comparáveis e o m² dos bairros cobertos."; "Não poderá: alterar dados nem ver qualquer informação pessoal." |
 | Pedido OAuth inválido | "Pedido de conexão inválido. Volte ao seu assistente e comece a conexão de novo." |

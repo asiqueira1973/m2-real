@@ -1,5 +1,5 @@
 /**
- * Contas de cliente MCP (seção 5; 6.5; regra 11.18; épico 8.10). SÓ SERVIDOR.
+ * Contas de cliente MCP (seção 5; 6.5; regra 11.21; épico 8.10). SÓ SERVIDOR.
  */
 import { createServiceClient } from "@m2-real/db/server";
 import { CLIENTES_NOVOS_POR_DIA } from "@m2-real/ingestao/regras";
@@ -9,7 +9,7 @@ import { SESSAO_CLIENTE_COOKIE, verifyClientSession } from "@/server/auth/sessao
 export type Situacao = "existente" | "nova" | "bloqueada" | "pausado";
 
 /**
- * Entrada pelo Google (6.5, passo 2; regra 11.18). Recebe: sub e e-mail verificados.
+ * Entrada pelo Google (6.5, passo 2; regra 11.21). Recebe: sub e e-mail verificados.
  * Devolve: o id da conta (nulo se pausado) e a situação.
  */
 export async function enterClient(sub: string, email: string): Promise<{ clienteId: string | null; situacao: Situacao }> {

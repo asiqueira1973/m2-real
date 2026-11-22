@@ -75,7 +75,7 @@ O botão "Executar agora" do painel (tela Execuções) dispara esses workflows p
 
 ## MCP e OAuth (épicos 8.9 e 8.10)
 
-Endereço: `https://fechouporquanto.com.br/mcp`. No Claude, basta adicionar um conector personalizado com essa URL: ele descobre o OAuth (401 com `resource_metadata`), registra o cliente, abre "Entrar com Google" e o consentimento. Scripts podem usar uma chave de API criada no painel (`Authorization: Bearer <chave>`). Limites por conta OAuth: regras 11.18 e 11.19 em `packages/ingestao/src/config/regras.ts`.
+Endereço: `https://fechouporquanto.com.br/mcp`. No Claude, basta adicionar um conector personalizado com essa URL: ele descobre o OAuth (401 com `resource_metadata`), registra o cliente, abre "Entrar com Google" e o consentimento. Scripts podem usar uma chave de API criada no painel (`Authorization: Bearer <chave>`). Limites por conta OAuth: regras 11.21 e 11.22 em `packages/ingestao/src/config/regras.ts`.
 
 Variáveis (Vercel e `.env.local`): `NEXT_PUBLIC_SITE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET` (`openssl rand -base64 32`).
 

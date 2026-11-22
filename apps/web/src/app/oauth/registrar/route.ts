@@ -1,7 +1,7 @@
 /**
  * POST /oauth/registrar — RFC 7591; seção 6.5, passo 3 (épico 8.10): registro dinâmico de cliente
  * público (sem segredo). redirect_uris: 1 a 5, só https ou http em localhost/127.0.0.1.
- * Devolve: 201 com o client_id; corpo inválido → 400 no formato do OAuth.
+ * Devolve: 201 com o client_id; corpo inválido → 400; limite de registros por hora → 429.
  */
 import { OAUTH_CLIENTE_NOME_MAX, OAUTH_REDIRECT_URIS_MAX } from "@m2-real/ingestao/regras";
 import { z } from "zod";
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   if (!corpo.data.redirect_uris.every(acceptableRedirectUri)) return oauthError("invalid_redirect_uri", ERROS_OAUTH.registroUri);
   try {
     const c = await registerClient(corpo.data.client_name ?? "Cliente MCP", corpo.data.redirect_uris);
+    if (!c) return oauthError("temporarily_unavailable", ERROS_OAUTH.registroLimite, 429);
     return oauthJson({
       client_id: c.id,
       client_name: c.nome,

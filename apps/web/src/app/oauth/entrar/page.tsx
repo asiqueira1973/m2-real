@@ -1,5 +1,5 @@
 /**
- * [Cliente MCP] Entrar com Google (seção 6.5, passo 2; regra 11.18; 8.10). Mostra o botão, que leva
+ * [Cliente MCP] Entrar com Google (seção 6.5, passo 2; regra 11.21; 8.10). Mostra o botão, que leva
  * a /api/auth/google com a rota de volta (saneada de novo no servidor), e a mensagem de erro da
  * seção 15 quando a URL traz ?erro=falha|pausado|bloqueada.
  */
