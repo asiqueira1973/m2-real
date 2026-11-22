@@ -41,7 +41,9 @@ select is((select count(*)::int from public.m2_fatores_referencia), 1, 'a tabela
 select ok(not has_function_privilege('authenticated', 'public.m2_aplicar_calibracao_plantas(jsonb,jsonb)', 'execute')
        and not has_function_privilege('anon', 'public.m2_aplicar_calibracao_plantas(jsonb,jsonb)', 'execute')
        and not has_function_privilege('authenticated', 'public.m2_atualizar_fator_predio(uuid[],numeric[])', 'execute')
-       and not has_function_privilege('authenticated', 'public.m2_substituir_fatores_referencia(jsonb)', 'execute'),
+       and not has_function_privilege('anon', 'public.m2_atualizar_fator_predio(uuid[],numeric[])', 'execute')
+       and not has_function_privilege('authenticated', 'public.m2_substituir_fatores_referencia(jsonb)', 'execute')
+       and not has_function_privilege('anon', 'public.m2_substituir_fatores_referencia(jsonb)', 'execute'),
   'só o pipeline (service role) executa as funções da calibração');
 
 select * from finish();

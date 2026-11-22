@@ -105,7 +105,7 @@ export async function rematchAds(
   return mudaram;
 }
 
-/** Anúncios casados com planta (evidências da 11.9). */
+/** Anúncios casados com planta (evidências da 11.9). Recebe: cliente. Devolve: os anúncios casado_planta com o prédio. */
 export async function loadMatchedAds(db: M2Client, retry: RetryOptions = {}): Promise<(AnuncioCasado & { predioId: string })[]> {
   const linhas = await fetchAllPages<{ id: string; planta_id: string; predio_id: string; fonte: "anuncio" | "pagina_condominio"; area_privativa: number | null; area_privativa_min: number | null; area_privativa_max: number | null; vagas: number | null; quartos: number | null }>(
     (de, ate) => db.from("m2_anuncios")
@@ -119,7 +119,7 @@ export async function loadMatchedAds(db: M2Client, retry: RetryOptions = {}): Pr
   }));
 }
 
-/** Editais casados à unidade com área privativa, já com a planta da unidade (11.9, 11.20). */
+/** Editais casados à unidade com área privativa (11.9, 11.20). Recebe: cliente. Devolve: as evidências, já com a planta da unidade. */
 export async function loadMatchedEditais(db: M2Client, retry: RetryOptions = {}): Promise<EvidenciaEdital[]> {
   const linhas = await fetchAllPages<{ id: string; area_privativa: number; vagas: number | null; vagas_vinculadas_area: boolean | null; unidade: { planta_id: string | null } | null }>(
     (de, ate) => db.from("m2_editais_leilao")

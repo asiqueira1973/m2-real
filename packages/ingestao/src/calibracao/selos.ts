@@ -5,7 +5,7 @@
  */
 import {
   CALIBRADA_CONCORDANCIA, CALIBRADA_MIN_EVIDENCIAS, COERENCIA_FATOR_PREDIO, COERENCIA_MIN_PLANTAS, EDITAIS_CONCORDANCIA,
-  EDITAL_DIVERGENCIA_ANUNCIOS, ESPECIAL_MAX_UNIDADES, ESPECIAL_RAZAO_AREA, INDICATIVA_CONCORDANCIA,
+  EDITAL_DIVERGENCIA_ANUNCIOS, ESPECIAL_MAX_UNIDADES, ESPECIAL_RAZAO_AREA, INDICATIVA_CONCORDANCIA, INDICATIVA_MIN_EVIDENCIAS,
 } from "../config/regras.js";
 import type { Selo } from "./consolidar.js";
 import { computeReferenceFactors, errorRangePct, groupFor, type FatorReferencia } from "./fatores.js";
@@ -113,7 +113,7 @@ export function adEvidence(a: AnuncioCasado, plantasDoPredio: readonly Pick<Plan
   return area === null ? [] : [{ ...base, plantaId: a.plantaId, area }];
 }
 
-/** Valores a até `tol` da mediana de todos (com seus índices). */
+/** Regra 11.9 (concordância). Recebe: áreas e a tolerância. Devolve: os índices das áreas a até `tol` da mediana de todas. */
 function concordantes(valores: readonly number[], tol: number): number[] {
   const med = median(valores);
   return valores.map((v, i) => (Math.abs(v - med) / med <= tol ? i : -1)).filter((i) => i >= 0);
@@ -137,7 +137,7 @@ export function adSeal(ev: readonly EvidenciaAnuncio[]):
   const c3 = concordantes(areas, CALIBRADA_CONCORDANCIA);
   if (c3.length >= CALIBRADA_MIN_EVIDENCIAS) return { selo: "calibrada", area: median(c3.map((i) => areas[i]!)), usadas: c3.map((i) => ev[i]!) };
   const c8 = concordantes(areas, INDICATIVA_CONCORDANCIA);
-  if (c8.length >= 2) return { selo: "indicativa", area: median(c8.map((i) => areas[i]!)), usadas: c8.map((i) => ev[i]!) };
+  if (c8.length >= INDICATIVA_MIN_EVIDENCIAS) return { selo: "indicativa", area: median(c8.map((i) => areas[i]!)), usadas: c8.map((i) => ev[i]!) };
   return { selo: "divergente", usadas: [] };
 }
 

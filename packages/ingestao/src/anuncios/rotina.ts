@@ -8,7 +8,7 @@
 import type { M2Client } from "@m2-real/db/server";
 import { CASAMENTO_SIMILARIDADE_MINIMA, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
 import { fetchAllPages } from "../calibracao/dados.js";
-import { decadeOf, groupFor } from "../calibracao/fatores.js";
+import { decadeOf, groupFor, type FatorReferencia } from "../calibracao/fatores.js";
 import { loadReferenceFactors } from "../calibracao/plantas.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
@@ -90,6 +90,9 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
 
   return runRoutine(supabaseExecutionStore(db), "coleta-anuncios", "anuncio", null, async (exec) => {
     const alvos = opts.predio ? await buildingByKey(db, opts.predio) : await prioritizedBuildings(db, agora());
+    // 11.10: fatores de referência lidos na primeira vez que um anúncio precisar, uma vez por execução.
+    let lidos: Promise<FatorReferencia[]> | null = null;
+    const fatores = () => (lidos ??= loadReferenceFactors(db));
     let paginas = 0;
     let gravados = 0;
     let descartados = 0;
@@ -107,7 +110,7 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
           paginas++; // só conta depois do scrape: se o teto parar a rodada aqui, a página não foi raspada
           const anuncio = checkTotalArea(toAnuncio(json), markdown); // 13.3: área total nunca vira área privativa
           if (!anuncio) { descartados++; continue; } // "outro" ou sem área (13.3; seção 12)
-          const casamento = await matchAd(db, anuncio);
+          const casamento = await matchAd(db, anuncio, fatores);
           if ((await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()))) === "gravado") gravados++;
           else descartados++; // regra 11.11: anúncio casado à mão fica como o admin deixou
         }
@@ -177,9 +180,9 @@ async function prioritizedBuildings(db: M2Client, agora: Date): Promise<PredioAl
 
 /**
  * Regra 11.8 com dados do banco: acha o prédio (endereço, depois nome do condomínio), as plantas e o fator.
- * Recebe: cliente e anúncio. Devolve: o casamento.
+ * Recebe: cliente, anúncio e o leitor (com memória) dos fatores de referência (11.10). Devolve: o casamento.
  */
-async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
+async function matchAd(db: M2Client, a: AnuncioExtraido, fatores: () => Promise<FatorReferencia[]>): Promise<Casamento> {
   let predio: { id: string; similaridade: number } | null = null;
   if (a.logradouro_extraido && a.numero_extraido !== null) {
     const achados = await withRetry(
@@ -212,7 +215,7 @@ async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
   // 11.8: fator do prédio ou, sem ele, o fator de referência do grupo (11.10, gravado pela calibração do 8.6).
   const fator = p.fator_predio != null
     ? Number(p.fator_predio)
-    : groupFor(await loadReferenceFactors(db), p.bairro_id, decadeOf(p.ano_construcao), p.vagas_cadastro_proprio)?.fatorMediano ?? null;
+    : groupFor(await fatores(), p.bairro_id, decadeOf(p.ano_construcao), p.vagas_cadastro_proprio)?.fatorMediano ?? null;
   const lista: PlantaDoPredio[] = (plantas ?? []).map((x) => ({ id: x.id, areaIptuReferencia: Number(x.area_iptu_referencia) }));
   return casarAnuncio(a, predio, lista, fator);
 }

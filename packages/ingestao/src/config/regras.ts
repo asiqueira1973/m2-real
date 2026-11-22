@@ -257,6 +257,9 @@ export const CALIBRADA_MIN_EVIDENCIAS = 2;
 /** Regra 11.9: ≥ 2 evidências que não concordam a 3% mas concordam a 8% → "indicativa". */
 export const INDICATIVA_CONCORDANCIA = 0.08;
 
+/** Regra 11.9: "indicativa" por concordância a 8% exige ≥ 2 evidências (com 1 só, é indicativa direto). */
+export const INDICATIVA_MIN_EVIDENCIAS = 2;
+
 /** Regra 11.9: 2+ editais na mesma planta valem pela mediana se concordam a 3%. */
 export const EDITAIS_CONCORDANCIA = 0.03;
 

@@ -106,7 +106,7 @@ describe("regras 11.9 e 11.10: estimada pelo fator de referência", () => {
     expect(errorRangePct({ bairroId: null, decada: null, vagasCadastroProprio: true, fatorMediano: 0.7, fatorP25: 0.65, fatorP75: 0.75, qtdPlantas: 8 })).toBe(7.1);
   });
 
-  it("especial e indicativa não entram nos grupos da 11.10", () => {
+  it("planta especial não entra nos grupos da 11.10", () => {
     const g = grupoCalibrado();
     g.plantas[0]!.especial = true;
     const r = calibrate(g.plantas, g.predios, g.anuncios, []);
