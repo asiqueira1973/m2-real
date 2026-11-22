@@ -11,6 +11,10 @@ if (existsSync(envRaiz)) process.loadEnvFile(envRaiz);
 const nextConfig: NextConfig = {
   // Pacotes do monorepo publicados como TypeScript fonte.
   transpilePackages: ["@m2-real/db", "@m2-real/ingestao"],
+  // Épico 8.9 (decisão do usuário): o MCP também responde em /mcp (fechouporquanto.com.br/mcp).
+  async rewrites() {
+    return [{ source: "/mcp", destination: "/api/mcp" }];
+  },
 };
 
 export default nextConfig;

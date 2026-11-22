@@ -28,3 +28,4 @@ supabase/.branches/
 
 # Gerado pelo Next a cada build
 next-env.d.ts
+.vercel

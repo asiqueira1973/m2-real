@@ -592,10 +592,10 @@ CREATE OR REPLACE FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo"
   itens as (
     select 'planta'::text as tipo, pl.id as item_id, pl.motivo_revisao as motivo, pl.predio_id,
            pl.area_iptu_referencia as area_iptu, pl.area_privativa, pl.fator, pl.selo,
-           (select array_agg(coalesce(a.area_privativa, a.area_privativa_min) order by a.coletado_em)
+           (select array_agg(coalesce(a.area_privativa, a.area_privativa_min) order by coalesce(a.area_privativa, a.area_privativa_min), a.id)
               from public.m2_anuncios a
              where a.planta_id = pl.id and a.status_casamento = 'casado_planta') as areas_anuncios,
-           (select array_agg(e.area_privativa order by e.coletado_em)
+           (select array_agg(e.area_privativa order by e.area_privativa, e.id)
               from public.m2_editais_leilao e
               join public.m2_unidades u on u.id = e.unidade_id
              where u.planta_id = pl.id and e.status_casamento = 'casado_unidade' and e.area_privativa is not null) as areas_editais,
@@ -836,6 +836,37 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "especial" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_mediana_bairro"("bairro_slug" "text", "janela_meses" integer, "quartos" integer) RETURNS TABLE("bairro" "text", "mediana_m2_privativo" numeric, "p25" numeric, "p75" numeric, "n_vendas" integer, "distribuicao_selos" "jsonb", "com_vagas_inclusas" integer)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with b as (select id, nome from public.m2_bairros where slug = bairro_slug),
+  validas as (
+    select v.m2_privativo, v.selo_area, v.vagas_inclusas_area
+      from public.m2_vendas_consolidadas v
+      join public.m2_predios p on p.id = v.predio_id
+      join b on b.id = p.bairro_id
+      left join public.m2_plantas pl on pl.id = v.planta_id
+     where v.data_transacao >= (current_date - make_interval(months => janela_meses))
+       and not v.fora_da_curva
+       and v.m2_privativo is not null
+       and v.selo_area in ('estimada', 'indicativa', 'calibrada', 'confirmada')  -- regra 11.17: selo ≥ estimada
+       and (m2_mediana_bairro.quartos is null or pl.quartos = m2_mediana_bairro.quartos)
+  )
+  select b.nome,
+         round((select percentile_cont(0.5) within group (order by m2_privativo) from validas)::numeric),
+         round((select percentile_cont(0.25) within group (order by m2_privativo) from validas)::numeric),
+         round((select percentile_cont(0.75) within group (order by m2_privativo) from validas)::numeric),
+         (select count(*)::integer from validas),
+         coalesce((select jsonb_object_agg(selo_area, n) from (select selo_area::text, count(*) n from validas group by 1) s), '{}'::jsonb),
+         (select count(*)::integer from validas where coalesce(vagas_inclusas_area, 0) > 0)
+    from b;
+$$;
+
+
+ALTER FUNCTION "public"."m2_mediana_bairro"("bairro_slug" "text", "janela_meses" integer, "quartos" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_normalizar_endereco"("texto" "text") RETURNS "text"
@@ -1370,6 +1401,10 @@ CREATE INDEX "m2_unidades_predio_idx" ON "public"."m2_unidades" USING "btree" ("
 
 
 
+CREATE INDEX "m2_vendas_consolidadas_data_idx" ON "public"."m2_vendas_consolidadas" USING "btree" ("data_transacao");
+
+
+
 CREATE INDEX "m2_vendas_consolidadas_planta_idx" ON "public"."m2_vendas_consolidadas" USING "btree" ("planta_id");
 
 
@@ -1769,6 +1804,11 @@ GRANT ALL ON FUNCTION "public"."m2_marcar_outlier"("venda_id" "uuid", "fora_da_c
 REVOKE ALL ON FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "especial" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "especial" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "especial" boolean) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_mediana_bairro"("bairro_slug" "text", "janela_meses" integer, "quartos" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_mediana_bairro"("bairro_slug" "text", "janela_meses" integer, "quartos" integer) TO "service_role";
 
 
 

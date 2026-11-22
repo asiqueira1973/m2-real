@@ -296,3 +296,36 @@ export const VIGIA_EXECUCOES_LIDAS = 200;
 
 /** O3: fotos de cobertura mais recentes lidas (duas por bairro bastam para a queda de cobertura). */
 export const VIGIA_COBERTURAS_LIDAS = 40;
+
+// ---------------------------------------------------------------------------
+// Épico 8.9 — servidor MCP (seção 13.2; regra 11.17; princípio 1).
+// ---------------------------------------------------------------------------
+
+/** 13.2 vendas_predio: janela padrão e máxima, em meses. */
+export const MCP_VENDAS_MESES_PADRAO = 36;
+export const MCP_VENDAS_MESES_MAX = 120;
+
+/** 13.2 m2_bairro: janela padrão e máxima, em meses (11.17: "padrão 24 meses"). */
+export const MCP_BAIRRO_MESES_PADRAO = 24;
+export const MCP_BAIRRO_MESES_MAX = 60;
+
+/** 13.2 comparaveis: janela padrão (meses), limite padrão e máximo de vendas. */
+export const MCP_COMPARAVEIS_MESES_PADRAO = 24;
+export const MCP_COMPARAVEIS_LIMITE_PADRAO = 10;
+export const MCP_COMPARAVEIS_LIMITE_MAX = 30;
+
+/** 13.2 comparaveis: área privativa a ±20% da informada (ou da planta mais comum do prédio). */
+export const MCP_COMPARAVEIS_FAIXA_AREA = 0.2;
+
+/** 13.2 comparaveis: década de construção a ±1. */
+export const MCP_COMPARAVEIS_DECADAS = 1;
+
+/** 13.2 buscar_predio: endereço com 3 a 200 caracteres. */
+export const MCP_ENDERECO_MIN = 3;
+export const MCP_ENDERECO_MAX = 200;
+
+/** Regra 11.17: selos que entram nas medianas (≥ estimada; sem_dado fica de fora). */
+export const MEDIANA_SELOS = ["estimada", "indicativa", "calibrada", "confirmada"] as const;
+
+/** O5: a avaliação de saúde é guardada por 5 minutos em cada instância do servidor MCP. */
+export const MCP_SAUDE_CACHE_MS = 5 * 60 * 1000;

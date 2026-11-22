@@ -38,6 +38,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Tudo, menos estáticos do Next e a rota do MCP (que usa chave de API, seção 6.3).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/mcp).*)"],
+  // Tudo, menos estáticos do Next e o MCP (/api/mcp e /mcp), que usa chave de API (seção 6.3).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/mcp|mcp$).*)"],
 };
