@@ -58,8 +58,9 @@ export const ATUALIZACAO = {
   rotulo: "Sempre recente",
   titulo: "Atualizado todo mês, assim que a Prefeitura publica.",
   texto:
-    "No dia 8 de cada mês entram as vendas novas do ITBI. Anúncios e editais são conferidos toda semana, e o cadastro do IPTU é renovado uma vez por ano.",
-  rotuloData: "Venda mais recente na base",
+    "Todo dia 8 conferimos a planilha do ITBI e trazemos as vendas novas. A Prefeitura publica cada venda com cerca de um mês de defasagem. Anúncios e editais são conferidos toda semana, e o cadastro do IPTU é renovado uma vez por ano.",
+  rotuloConferencia: "Última conferência na Prefeitura",
+  rotuloData: "Vendas registradas até",
 };
 
 export const SELOS = {
@@ -114,10 +115,8 @@ export const PERGUNTAS = {
 export const BAIRROS = {
   rotulo: "Onde funciona",
   titulo: "Dez bairros da zona oeste e do centro expandido.",
-  texto: "Começamos onde há mais vendas e mais dúvida sobre o preço. A cobertura mostra a parte das vendas dos últimos 24 meses que já tem m² calculado, e cresce toda semana.",
+  texto: "Começamos onde há mais vendas e mais dúvida sobre o preço. O número embaixo de cada bairro é quantas vendas de apartamento a Prefeitura registrou nos últimos dois anos.",
   rotuloVendas: "vendas em 24 meses",
-  rotuloCobertura: "com m² calculado",
-  rotuloCalibrando: "m² em calibração",
 };
 
 export const CONECTAR = {

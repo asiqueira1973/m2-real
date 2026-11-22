@@ -26,7 +26,7 @@ export default function ConectarPage() {
         <p className={s.nota}>{PAGINA_CONECTAR.dica}</p>
         <p className={s.nota}>{PAGINA_CONECTAR.teste}</p>
         <div className={s.fotoLarga}>
-          <Image src="/site/apartamento.webp" alt="Sala de um apartamento vazio com luz da tarde" width={1600} height={1200} sizes="(max-width: 1120px) 100vw, 1120px" />
+          <Image src="/site/por-do-sol.webp" alt="Vista da Praça do Pôr do Sol para os prédios de Pinheiros ao entardecer" width={1800} height={1020} sizes="(max-width: 1120px) 100vw, 1120px" />
         </div>
       </div>
     </main>

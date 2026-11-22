@@ -380,8 +380,5 @@ export const CONTAS_CONECTADAS_POR_PAGINA = 50;
 // Épico 8.11 — site público.
 // ---------------------------------------------------------------------------
 
-/** 8.11: abaixo desta cobertura (%), o site mostra "em calibração" no lugar do número do bairro. */
-export const SITE_COBERTURA_MINIMA_PCT = 5;
-
 /** 8.11: o site relê a cobertura e a venda mais recente uma vez por dia (s). */
 export const SITE_REVALIDAR_S = 86400;

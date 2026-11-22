@@ -1,9 +1,8 @@
 /**
  * [Público] Site do Fechou por Quanto (épico 8.11; seção 10): explica o produto em linguagem de
  * negócio, mostra uma conversa de exemplo com vendas reais do ITBI, os selos (11.9), perguntas de
- * exemplo, os bairros cobertos com a cobertura atual e o resumo de como conectar. Relido uma vez por dia.
+ * exemplo, os bairros cobertos com as vendas de 24 meses e o resumo de como conectar. Relido uma vez por dia.
  */
-import { SITE_COBERTURA_MINIMA_PCT } from "@m2-real/ingestao/regras";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,7 +31,7 @@ function dataPorExtenso(iso: string): string {
 }
 
 export default async function SitePage() {
-  const { cobertura, vendaMaisRecente } = await loadSiteData();
+  const { cobertura, vendaMaisRecente, ultimaConferenciaItbi } = await loadSiteData();
   return (
     <main>
       <section className={s.hero}>
@@ -72,7 +71,7 @@ export default async function SitePage() {
           </div>
         </div>
         <div className={`${s.wrap} ${s.foto}`}>
-          <Image src="/site/fachada.webp" alt="Fachada de um prédio residencial modernista em São Paulo" width={1600} height={1200} priority sizes="(max-width: 1120px) 100vw, 1120px" />
+          <Image src="/site/skyline.webp" alt="Skyline de prédios residenciais de São Paulo ao entardecer" width={1800} height={1020} priority sizes="(max-width: 1120px) 100vw, 1120px" />
         </div>
       </section>
 
@@ -104,11 +103,14 @@ export default async function SitePage() {
             <p className={s.rotulo}>{ATUALIZACAO.rotulo}</p>
             <h2 className={`${s.display} ${s.titulo}`}>{ATUALIZACAO.titulo}</h2>
             <p className={s.lead} style={{ marginBottom: 0 }}>{ATUALIZACAO.texto}</p>
-            {vendaMaisRecente && (
+            {ultimaConferenciaItbi && (
               <>
-                <p className={s.dataRotulo}>{ATUALIZACAO.rotuloData}</p>
-                <p className={`${s.dataGrande} ${s.num}`}>{dataPorExtenso(vendaMaisRecente)}</p>
+                <p className={s.dataRotulo}>{ATUALIZACAO.rotuloConferencia}</p>
+                <p className={`${s.dataGrande} ${s.num}`}>{dataPorExtenso(ultimaConferenciaItbi)}</p>
               </>
+            )}
+            {vendaMaisRecente && (
+              <p className={s.dataRotulo}>{ATUALIZACAO.rotuloData} {dataPorExtenso(vendaMaisRecente)}</p>
             )}
           </div>
           <Image src="/site/rua.webp" alt="Rua arborizada de um bairro residencial de São Paulo" width={1800} height={1160} sizes="(max-width: 860px) 100vw, 540px" />
@@ -163,12 +165,11 @@ export default async function SitePage() {
                 <p className={s.bairroNome}>{c.bairro}</p>
                 <p className={`${s.bairroNum} ${s.num}`}>{numero.format(c.vendas24m)}</p>
                 <p className={s.bairroRotulo}>{BAIRROS.rotuloVendas}</p>
-                <p className={s.bairroRotulo}>{c.pct >= SITE_COBERTURA_MINIMA_PCT ? `${numero.format(Math.round(c.pct))}% ${BAIRROS.rotuloCobertura}` : BAIRROS.rotuloCalibrando}</p>
               </div>
             ))}
           </div>
           <div className={s.fotoLarga}>
-            <Image src="/site/vista.webp" alt="Vista do alto de prédios residenciais da zona oeste de São Paulo" width={1800} height={1020} sizes="(max-width: 1120px) 100vw, 1120px" />
+            <Image src="/site/avenida.webp" alt="Avenida residencial de Perdizes com prédios altos dos dois lados" width={1800} height={1020} sizes="(max-width: 1120px) 100vw, 1120px" />
           </div>
         </div>
       </section>
