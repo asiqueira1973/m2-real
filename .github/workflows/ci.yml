@@ -6,6 +6,9 @@ on:
     branches: [main]
   pull_request:
 concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
 jobs:
   verificacao:
     runs-on: ubuntu-latest

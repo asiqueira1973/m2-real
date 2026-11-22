@@ -8,6 +8,9 @@ on:
     - cron: "0 10 * * *"
   workflow_dispatch:
 concurrency: { group: vigia, cancel-in-progress: true }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
 jobs:
   vigia:
     runs-on: ubuntu-latest

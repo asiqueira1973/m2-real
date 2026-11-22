@@ -4,6 +4,9 @@ name: calibracao
 on:
   workflow_dispatch:
 concurrency: { group: calibracao, cancel-in-progress: false }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
 jobs:
   calibracao:
     runs-on: ubuntu-latest

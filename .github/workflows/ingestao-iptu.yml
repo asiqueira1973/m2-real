@@ -6,9 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       ano:
-        description: "Exercício do IPTU (ex.: 2027)"
-        required: true
+        description: "Exercício do IPTU (ex.: 2027). Vazio = ano corrente (o \"Executar agora\" do painel não manda o ano)."
+        required: false
+        default: ""
 concurrency: { group: ingestao-iptu, cancel-in-progress: false }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
 jobs:
   iptu:
     runs-on: ubuntu-latest
@@ -28,5 +32,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run ingestao -- iptu "${{ inputs.ano }}"
+      # O ano chega por env (não direto no run), contra injeção de comando.
+      - run: npm run ingestao -- iptu "${ANO:-$(date +%Y)}"
+        env:
+          ANO: ${{ inputs.ano }}
       - run: npm run ingestao -- calibracao

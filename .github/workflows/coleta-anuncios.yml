@@ -7,6 +7,9 @@ on:
     - cron: "40 8 * * 1"
   workflow_dispatch:
 concurrency: { group: coleta-anuncios, cancel-in-progress: false }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
 jobs:
   anuncios:
     runs-on: ubuntu-latest

@@ -67,6 +67,20 @@ export async function runItbi(db: M2Client, opts: ItbiOptions): Promise<{ ano: n
 }
 
 /**
+ * Seção 9.2: "Planilha não mudou: a execução conclui com 0 gravadas; a calibração não roda."
+ * Recebe: o resumo de runItbi. Devolve: verdadeiro se algum ano foi de fato recarregado (planilha
+ * com hash novo: linhas lidas > 0). "Sem mudança" lê 0 linhas (loadYear).
+ */
+export function itbiChanged(resumo: readonly { resultado: { linhasLidas: number } | null }[]): boolean {
+  return resumo.some((r) => (r.resultado?.linhasLidas ?? 0) > 0);
+}
+
+/** Linha no formato do GITHUB_OUTPUT (passo do workflow lê steps.<id>.outputs.<nome>). */
+export function githubOutputLine(nome: string, valor: string | boolean): string {
+  return `${nome}=${valor}\n`;
+}
+
+/**
  * Carga de um ano (dentro de runRoutine).
  * Recebe: cliente, a planilha e o id da execução aberta por runRoutine.
  * Devolve: contagens para m2_execucoes_ingestao.
