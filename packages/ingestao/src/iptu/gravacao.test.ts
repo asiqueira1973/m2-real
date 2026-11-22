@@ -142,3 +142,28 @@ describe("writeBuildings: leitura das plantas existentes não perde linhas acima
     expect(counts.plantasAtualizadas).toBe(2000);
   });
 });
+
+// Bug da 2ª carga do IPTU (22/11/2026): "Falha ao gravar m2_unidades: canceling statement due to
+// statement timeout" com o Docker sob carga. Os upserts são idempotentes: erro passageiro repete.
+describe("writeBuildings: erro passageiro do banco é repetido", () => {
+  it("upsert de unidades com timeout na 1ª tentativa grava na 2ª", async () => {
+    let falhou = false;
+    let n = 0;
+    const db = {
+      from: (tabela: string) => ({
+        upsert: (linhas: { chave_predio?: string }[]) => {
+          const resposta = () => {
+            if (tabela === "m2_unidades" && !falhou) { falhou = true; return { data: null, error: { message: "canceling statement due to statement timeout", code: "57014" } }; }
+            return { data: linhas.map((l) => ({ id: `id-${++n}`, chave_predio: l.chave_predio })), error: null };
+          };
+          return { select: async () => resposta(), then: (ok: (v: unknown) => void) => ok(resposta()) };
+        },
+        select: () => ({ in: async () => ({ data: [], error: null }) }),
+      }),
+    } as unknown as Parameters<typeof writeBuildings>[0];
+    const b = { ...building(1), units: [{ sql: "00100100011", tipoUnidade: "apartamento" as const, complemento: "AP 1", usoIptu: "Apartamento", areaConstruida: 100, fracaoIdeal: 0.1, andarInferido: 0, plantaIndex: 0 }] };
+    const counts = await writeBuildings(db, [b], { esperasMs: [0, 0, 0] });
+    expect(counts.unidades).toBe(1);
+    expect(falhou).toBe(true);
+  });
+});
