@@ -39,7 +39,8 @@ CREATE TYPE "public"."m2_fonte_dado" AS ENUM (
     'pagina_condominio',
     'edital_leilao',
     'revisao_manual',
-    'fator_referencia'
+    'fator_referencia',
+    'calibracao'
 );
 
 
@@ -662,6 +663,25 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_vendas_remover_obsoletas"("manter" "uuid"[]) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_apagadas integer;
+begin
+  delete from public.m2_vendas_consolidadas v
+   where not v.marcado_manual
+     and not (v.transacao_apartamento_id = any (m2_vendas_remover_obsoletas.manter));
+  get diagnostics v_apagadas = row_count;
+  return v_apagadas;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_vendas_remover_obsoletas"("manter" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."m2_bairros" (
@@ -1468,6 +1488,11 @@ GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "serv
 
 REVOKE ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_vendas_remover_obsoletas"("manter" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_vendas_remover_obsoletas"("manter" "uuid"[]) TO "service_role";
 
 
 

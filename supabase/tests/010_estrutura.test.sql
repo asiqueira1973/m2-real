@@ -13,8 +13,10 @@ from unnest(array[
 ]) as t;
 
 -- 7.1: os 10 enums, com os valores exatos do spec.
+-- 'calibracao' acrescentado no 8.4 por decisão do usuário (fonte das execuções da rotina calibracao;
+-- plans/8.4-consolidacao.md). Os demais valores são os da 7.1.
 select enum_has_labels('public', 'm2_fonte_dado',
-  array['itbi','iptu','anuncio','pagina_condominio','edital_leilao','revisao_manual','fator_referencia'], 'enum m2_fonte_dado (7.1)');
+  array['itbi','iptu','anuncio','pagina_condominio','edital_leilao','revisao_manual','fator_referencia','calibracao'], 'enum m2_fonte_dado (7.1 + calibracao, 8.4)');
 select enum_has_labels('public', 'm2_status_execucao', array['em_andamento','concluida','falhou','substituida'], 'enum m2_status_execucao (7.1)');
 select enum_has_labels('public', 'm2_tipo_unidade', array['apartamento','vaga','outro'], 'enum m2_tipo_unidade (7.1)');
 select enum_has_labels('public', 'm2_selo_area', array['confirmada','calibrada','indicativa','estimada','sem_dado'], 'enum m2_selo_area (7.1)');

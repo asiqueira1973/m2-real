@@ -507,10 +507,13 @@ isOneToOne: false
 { Args: { "sqls": (string)[] }; Returns: {
               "bairro_id": number,"predio_id": string,"sql": string,"unidade_id": string
             }[]
+                           },
+"m2_vendas_remover_obsoletas":
+{ Args: { "manter": (string)[] }; Returns: number
                            }
           }
           Enums: {
-            "m2_finalidade_anuncio": "venda"|"aluguel","m2_fonte_dado": "itbi"|"iptu"|"anuncio"|"pagina_condominio"|"edital_leilao"|"revisao_manual"|"fator_referencia","m2_motivo_revisao": "fator_incoerente"|"anuncios_divergentes"|"anuncio_ambiguo"|"planta_especial"|"venda_fora_da_curva"|"edital_divergente","m2_origem_bairro": "campo"|"cep"|"quadra"|"iptu","m2_papel_usuario": "admin","m2_selo_area": "confirmada"|"calibrada"|"indicativa"|"estimada"|"sem_dado","m2_status_casamento": "casado_planta"|"casado_predio"|"ambiguo"|"sem_predio"|"descartado","m2_status_casamento_edital": "casado_unidade"|"casado_predio"|"sem_predio"|"descartado","m2_status_execucao": "em_andamento"|"concluida"|"falhou"|"substituida","m2_tipo_unidade": "apartamento"|"vaga"|"outro"
+            "m2_finalidade_anuncio": "venda"|"aluguel","m2_fonte_dado": "itbi"|"iptu"|"anuncio"|"pagina_condominio"|"edital_leilao"|"revisao_manual"|"fator_referencia"|"calibracao","m2_motivo_revisao": "fator_incoerente"|"anuncios_divergentes"|"anuncio_ambiguo"|"planta_especial"|"venda_fora_da_curva"|"edital_divergente","m2_origem_bairro": "campo"|"cep"|"quadra"|"iptu","m2_papel_usuario": "admin","m2_selo_area": "confirmada"|"calibrada"|"indicativa"|"estimada"|"sem_dado","m2_status_casamento": "casado_planta"|"casado_predio"|"ambiguo"|"sem_predio"|"descartado","m2_status_casamento_edital": "casado_unidade"|"casado_predio"|"sem_predio"|"descartado","m2_status_execucao": "em_andamento"|"concluida"|"falhou"|"substituida","m2_tipo_unidade": "apartamento"|"vaga"|"outro"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -626,7 +629,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "m2_finalidade_anuncio": ["venda", "aluguel"],"m2_fonte_dado": ["itbi", "iptu", "anuncio", "pagina_condominio", "edital_leilao", "revisao_manual", "fator_referencia"],"m2_motivo_revisao": ["fator_incoerente", "anuncios_divergentes", "anuncio_ambiguo", "planta_especial", "venda_fora_da_curva", "edital_divergente"],"m2_origem_bairro": ["campo", "cep", "quadra", "iptu"],"m2_papel_usuario": ["admin"],"m2_selo_area": ["confirmada", "calibrada", "indicativa", "estimada", "sem_dado"],"m2_status_casamento": ["casado_planta", "casado_predio", "ambiguo", "sem_predio", "descartado"],"m2_status_casamento_edital": ["casado_unidade", "casado_predio", "sem_predio", "descartado"],"m2_status_execucao": ["em_andamento", "concluida", "falhou", "substituida"],"m2_tipo_unidade": ["apartamento", "vaga", "outro"]
+            "m2_finalidade_anuncio": ["venda", "aluguel"],"m2_fonte_dado": ["itbi", "iptu", "anuncio", "pagina_condominio", "edital_leilao", "revisao_manual", "fator_referencia", "calibracao"],"m2_motivo_revisao": ["fator_incoerente", "anuncios_divergentes", "anuncio_ambiguo", "planta_especial", "venda_fora_da_curva", "edital_divergente"],"m2_origem_bairro": ["campo", "cep", "quadra", "iptu"],"m2_papel_usuario": ["admin"],"m2_selo_area": ["confirmada", "calibrada", "indicativa", "estimada", "sem_dado"],"m2_status_casamento": ["casado_planta", "casado_predio", "ambiguo", "sem_predio", "descartado"],"m2_status_casamento_edital": ["casado_unidade", "casado_predio", "sem_predio", "descartado"],"m2_status_execucao": ["em_andamento", "concluida", "falhou", "substituida"],"m2_tipo_unidade": ["apartamento", "vaga", "outro"]
           }
         }
 } as const

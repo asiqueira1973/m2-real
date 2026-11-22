@@ -1,8 +1,8 @@
 /**
  * Ponto de entrada da ingestão: `tsx src/cli.ts <rotina> [argumentos]` (seção 18.3).
  *
- * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu), 8.3 (itbi).
- * Entram nos épicos seguintes: 8.5 (anúncios), 8.5.1 (leilões), 8.6 (calibração).
+ * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu), 8.3 (itbi), 8.4 (calibracao: consolidação).
+ * Entram nos épicos seguintes: 8.5 (anúncios), 8.5.1 (leilões), 8.6 (resto da calibração).
  * Variáveis de ambiente: .env.local na raiz (carregado pelo script "cli"), seção 18.4.
  */
 import { resolve } from "node:path";
@@ -86,6 +86,12 @@ export async function main(argv: readonly string[]): Promise<number> {
           arquivo: arquivo ? userPath(arquivo) : undefined,
           paginaUrl: process.env.ITBI_PAGINA_URL || undefined,
         });
+        return 0;
+      }
+      case "calibracao": {
+        // Uso: calibracao. Por ora: ligação tardia (9.2) e vendas consolidadas (8.4); o resto entra no 8.6.
+        const { runCalibration } = await import("./calibracao/rotina.js");
+        await runCalibration(createServiceClient());
         return 0;
       }
       default:

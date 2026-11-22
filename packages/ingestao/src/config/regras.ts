@@ -123,3 +123,25 @@ export const UNIDADE_SEM_CADASTRO_FRACAO_MINIMA = 1;
 
 /** Regra 11.19: naturezas do ITBI que apontam leilão (usadas no 8.5.1). */
 export const NATUREZAS_LEILAO_PREFIXOS = ["4.", "17."] as const;
+
+// ---------------------------------------------------------------------------
+// Épico 8.4 — consolidação de vendas (regras 11.15 e 11.16).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.15: no máximo 3 guias de vaga agregadas a uma venda de apartamento. */
+export const VAGAS_MAX_POR_VENDA = 3;
+
+/** Regra 11.16: com pelo menos 3 vendas do prédio na janela, usa a mediana do prédio. */
+export const FORA_CURVA_MIN_VENDAS_PREDIO = 3;
+
+/** Regra 11.16: janela de 36 meses (terminando na data da venda, plans/8.4-consolidacao.md). */
+export const FORA_CURVA_JANELA_MESES = 36;
+
+/** Regra 11.16: fora da curva se m2_privativo < 0,6 × a mediana de referência. */
+export const FORA_CURVA_FATOR_MIN = 0.6;
+
+/** Regra 11.16: fora da curva se m2_privativo > 1,6 × a mediana de referência. */
+export const FORA_CURVA_FATOR_MAX = 1.6;
+
+/** Regra 11.16: fora da curva se valor_declarado < 0,5 × o valor venal de referência. */
+export const FORA_CURVA_VENAL_FRACAO = 0.5;

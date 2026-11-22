@@ -9,7 +9,7 @@
 import { EXECUCAO_TEMPO_ESGOTADO_HORAS, type Rotina } from "../config/regras.js";
 import type { M2Client } from "@m2-real/db/server";
 
-export type FonteDado = "itbi" | "iptu" | "anuncio" | "pagina_condominio" | "edital_leilao";
+export type FonteDado = "itbi" | "iptu" | "anuncio" | "pagina_condominio" | "edital_leilao" | "calibracao";
 
 /** Contagens e metadados que a rotina devolve ao terminar. */
 export interface RoutineResult {
