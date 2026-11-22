@@ -13,7 +13,7 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import type { M2Client } from "@m2-real/db/server";
-import { BUCKET_BRUTOS, downloadIfExists, sha256, storeRaw } from "../shared/brutos.js";
+import { rawStoreFromEnv, sha256, storeRaw } from "../shared/brutos.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { writeBuildings } from "./gravacao.js";
 import { openIptuFile, readIptuRows } from "./leitor.js";
@@ -22,7 +22,7 @@ import { assembleBuildings, type Neighborhood } from "./montagem.js";
 /** Mensagem quando o GeoSampa devolve a página de desafio anti-robô no lugar do arquivo (PV2). */
 export const MENSAGEM_DOWNLOAD_BLOQUEADO =
   "Download do IPTU bloqueado pelo desafio anti-robô do GeoSampa. Baixe o arquivo no navegador e rode " +
-  "`npm run ingestao -- iptu <ano> --arquivo IPTU_<ano>.zip` (ou envie para m2_brutos/iptu/<ano>.zip).";
+  "`npm run ingestao -- iptu <ano> --arquivo IPTU_<ano>.zip` (ou envie para iptu/<ano>.zip no armazém de brutos: m2_brutos no Supabase ou m2-brutos no R2).";
 
 export interface IptuOptions {
   ano: number;
@@ -50,7 +50,7 @@ export async function runIptu(db: M2Client, opts: IptuOptions) {
     const arquivoHash = sha256(fonte.buffer);
     const ext = fonte.nome.toLowerCase().endsWith(".csv") ? "csv" : "zip";
     // Bruto guardado com 2 versões (seção 17); mesmo hash não regrava.
-    const caminhoStorage = await storeRaw(db, "iptu", String(opts.ano), ext, fonte.buffer, ext === "zip" ? "application/zip" : "text/csv");
+    const caminhoStorage = await storeRaw(rawStoreFromEnv(db), "iptu", String(opts.ano), ext, fonte.buffer, ext === "zip" ? "application/zip" : "text/csv");
 
     const bairros = await loadNeighborhoods(db);
     const prefixos = [...new Set(bairros.flatMap((b) => b.prefixosCep))];
@@ -93,7 +93,7 @@ async function obtainSource(db: M2Client, opts: IptuOptions): Promise<Source> {
   }
   for (const ext of ["zip", "csv"]) {
     // Só "não encontrado" passa para a próxima extensão; erro passageiro é repetido e outro erro lança.
-    const buffer = await downloadIfExists(db.storage.from(BUCKET_BRUTOS), `iptu/${opts.ano}.${ext}`);
+    const buffer = await rawStoreFromEnv(db).ler(`iptu/${opts.ano}.${ext}`);
     if (buffer) return { buffer, nome: `IPTU_${opts.ano}.${ext}`, url: null };
   }
   throw new Error(`Arquivo do IPTU ${opts.ano} não encontrado. ${MENSAGEM_DOWNLOAD_BLOQUEADO}`);

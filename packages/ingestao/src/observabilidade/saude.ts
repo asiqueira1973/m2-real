@@ -12,7 +12,7 @@ import {
   SAUDE_VOLUME_FRACAO_MINIMA,
   SAUDE_VOLUME_JANELA_EXECUCOES,
   type Rotina,
-} from "../config/regras.js";
+} from "../config/regras";
 
 export type StatusExecucao = "em_andamento" | "concluida" | "falhou" | "substituida";
 export type EstadoSaude = "ok" | "atrasada" | "falhou" | "travada" | "volume_anomalo" | "nunca_executada";
@@ -27,6 +27,8 @@ export interface ExecucaoResumo {
   mensagem_erro: string | null;
   /** "sem mudança" (8.3) não conta como volume anômalo. */
   sem_mudanca?: boolean;
+  /** Ano/exercício da carga (ITBI, IPTU). O volume só se compara dentro da mesma referência. */
+  referencia?: string | null;
 }
 
 /** Campos de m2_cobertura_bairros usados na avaliação. */
@@ -116,9 +118,11 @@ function avaliarRotina(rotina: Rotina, execs: readonly ExecucaoResumo[], agora: 
     return { ...base, estado: "atrasada", motivo: `${rotina}: sem carga concluída há ${Math.floor(dias)} dias (limite ${limite})` };
   }
 
-  // Volume: a última concluída com mudança contra a mediana das N anteriores com mudança.
+  // Volume: a última concluída com mudança contra a mediana das N anteriores com mudança DA MESMA
+  // referência (o ITBI de um ano parcial não se compara com anos inteiros; bug achado pela vigia no 8.8).
   const comMudanca = concluidas.filter((e) => !e.sem_mudanca);
-  const [atual, ...anteriores] = comMudanca;
+  const [atual, ...todasAnteriores] = comMudanca;
+  const anteriores = todasAnteriores.filter((e) => (e.referencia ?? null) === (atual?.referencia ?? null));
   const janela = anteriores.slice(0, SAUDE_VOLUME_JANELA_EXECUCOES).map((e) => e.linhas_gravadas);
   if (atual && janela.length === SAUDE_VOLUME_JANELA_EXECUCOES) {
     const med = mediana(janela);

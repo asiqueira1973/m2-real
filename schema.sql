@@ -578,6 +578,62 @@ $$;
 ALTER FUNCTION "public"."m2_eh_admin"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) RETURNS TABLE("tipo" "text", "item_id" "uuid", "motivo" "public"."m2_motivo_revisao", "predio_id" "uuid", "logradouro" "text", "numero" integer, "bairro_nome" "text", "vendas_janela" integer, "area_iptu" numeric, "area_privativa" numeric, "fator" numeric, "fator_predio" numeric, "selo" "public"."m2_selo_area", "areas_anuncios" numeric[], "areas_editais" numeric[], "data_venda" "date", "unidade" "text", "valor_total" numeric, "m2_privativo" numeric, "total_motivo" bigint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with
+  vendas as (
+    select v.predio_id, count(*)::integer as qtd
+      from public.m2_vendas_consolidadas v
+     where v.data_transacao >= (current_date - make_interval(months => janela_meses))
+     group by v.predio_id
+  ),
+  itens as (
+    select 'planta'::text as tipo, pl.id as item_id, pl.motivo_revisao as motivo, pl.predio_id,
+           pl.area_iptu_referencia as area_iptu, pl.area_privativa, pl.fator, pl.selo,
+           (select array_agg(coalesce(a.area_privativa, a.area_privativa_min) order by a.coletado_em)
+              from public.m2_anuncios a
+             where a.planta_id = pl.id and a.status_casamento = 'casado_planta') as areas_anuncios,
+           (select array_agg(e.area_privativa order by e.coletado_em)
+              from public.m2_editais_leilao e
+              join public.m2_unidades u on u.id = e.unidade_id
+             where u.planta_id = pl.id and e.status_casamento = 'casado_unidade' and e.area_privativa is not null) as areas_editais,
+           null::date as data_venda, null::text as unidade, null::numeric as valor_total, null::numeric as m2_privativo
+      from public.m2_plantas pl
+     where pl.revisao_pendente and pl.motivo_revisao is not null
+    union all
+    select 'venda', v.id, 'venda_fora_da_curva'::public.m2_motivo_revisao, v.predio_id,
+           null, v.area_privativa, null, v.selo_area, null, null,
+           v.data_transacao, u.complemento, v.valor_total, v.m2_privativo
+      from public.m2_vendas_consolidadas v
+      join public.m2_unidades u on u.id = v.unidade_id
+     where v.fora_da_curva and not v.marcado_manual
+  ),
+  filtrados as (
+    select i.*, p.logradouro, p.numero, b.nome as bairro_nome, p.fator_predio, coalesce(vd.qtd, 0) as vendas_janela,
+           row_number() over (partition by i.motivo order by coalesce(vd.qtd, 0) desc, p.logradouro, i.item_id) as posicao,
+           count(*) over (partition by i.motivo) as total_motivo
+      from itens i
+      join public.m2_predios p on p.id = i.predio_id
+      join public.m2_bairros b on b.id = p.bairro_id
+      left join vendas vd on vd.predio_id = i.predio_id
+     where (m2_fila_revisao.bairro is null or p.bairro_id = m2_fila_revisao.bairro)
+       and (m2_fila_revisao.motivo is null or i.motivo = m2_fila_revisao.motivo)
+  )
+  select f.tipo, f.item_id, f.motivo, f.predio_id, f.logradouro, f.numero, f.bairro_nome, f.vendas_janela,
+         f.area_iptu, f.area_privativa, f.fator, f.fator_predio, f.selo, f.areas_anuncios, f.areas_editais,
+         f.data_venda, f.unidade, f.valor_total, f.m2_privativo, f.total_motivo
+    from filtrados f
+   where f.posicao > greatest(coalesce(deslocamento, 0), 0)
+     and f.posicao <= greatest(coalesce(deslocamento, 0), 0) + least(greatest(coalesce(limite, 20), 1), 100)
+   order by f.motivo, f.posicao;
+$$;
+
+
+ALTER FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) RETURNS integer
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -1673,6 +1729,12 @@ GRANT ALL ON FUNCTION "public"."m2_confirmar_area_planta"("planta_id" "uuid", "a
 REVOKE ALL ON FUNCTION "public"."m2_eh_admin"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_eh_admin"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_eh_admin"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "service_role";
 
 
 

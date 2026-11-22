@@ -1,13 +1,13 @@
 /**
  * Proxy do Next 16 (antigo middleware; seção 6.1). Em toda requisição do painel:
  *  - renova a sessão do Supabase e grava os cookies novos na resposta;
- *  - sem usuário, manda para /login (checagem otimista: a autorização de verdade é o layout do
+ *  - sem usuário, manda para /login (rotas /api/* recebem 401 em JSON) (checagem otimista: a autorização de verdade é o layout do
  *    painel, que confere o perfil admin, e o RLS no banco).
  * Recebe: a requisição. Devolve: a resposta (seguir ou redirecionar).
  */
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isPublicPath } from "./lib/acesso";
+import { isPublicPath, unauthenticatedResponse } from "./lib/acesso";
 import { supabaseEnv } from "./lib/supabase/env";
 
 export async function proxy(request: NextRequest) {
@@ -26,6 +26,9 @@ export async function proxy(request: NextRequest) {
   });
   const { data } = await supabase.auth.getUser();
   if (!data.user && !isPublicPath(request.nextUrl.pathname)) {
+    if (unauthenticatedResponse(request.nextUrl.pathname) === "json-401") {
+      return NextResponse.json({ erro: "Sessão expirada. Entre de novo." }, { status: 401 });
+    }
     const destino = request.nextUrl.clone();
     destino.pathname = "/login";
     destino.search = "";

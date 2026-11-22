@@ -1,0 +1,32 @@
+# Rotina "coleta-leiloes" (seção 4.4; épico 8.5.1): toda quarta, 05:40 em São Paulo (08:40 UTC), e
+# manual. Tetos: FIRECRAWL_MAX_CREDITOS_EXECUCAO (50), LEILAO_MAX_ALVOS_EXECUCAO,
+# CLAUDE_MAX_DOCUMENTOS_EXECUCAO; allowlist em LEILAO_DOMINIOS (18.4). Depois, calibração.
+name: coleta-leiloes
+on:
+  schedule:
+    - cron: "40 8 * * 3"
+  workflow_dispatch:
+concurrency: { group: coleta-leiloes, cancel-in-progress: false }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
+jobs:
+  leiloes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FIRECRAWL_MAX_CREDITOS_EXECUCAO: ${{ vars.FIRECRAWL_MAX_CREDITOS_EXECUCAO }}
+      LEILAO_MAX_ALVOS_EXECUCAO: ${{ vars.LEILAO_MAX_ALVOS_EXECUCAO }}
+      CLAUDE_MAX_DOCUMENTOS_EXECUCAO: ${{ vars.CLAUDE_MAX_DOCUMENTOS_EXECUCAO }}
+      LEILAO_DOMINIOS: ${{ vars.LEILAO_DOMINIOS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ingestao -- leiloes
+      - run: npm run ingestao -- calibracao

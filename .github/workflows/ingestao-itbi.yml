@@ -1,0 +1,36 @@
+# Rotina "ingestao-itbi" (seção 4.4): dia 8 de cada mês, 06:10 em São Paulo (09:10 UTC), e manual.
+# Baixa a planilha do ano corrente; se o hash mudou, reprocessa o ano (regra 11.1) e calibra.
+# Sem mudança, a calibração não roda (seção 9.2).
+name: ingestao-itbi
+on:
+  schedule:
+    - cron: "10 9 8 * *"
+  workflow_dispatch:
+concurrency: { group: ingestao-itbi, cancel-in-progress: false }
+# Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
+permissions:
+  contents: read
+jobs:
+  itbi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Brutos no Cloudflare R2 (o Storage do Supabase grátis recusa arquivos acima de 50 MB; épico 8.8).
+      BRUTOS_ARMAZEM: r2
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      ITBI_PAGINA_URL: ${{ vars.ITBI_PAGINA_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - id: itbi
+        run: npm run ingestao -- itbi
+      # Seção 9.2: planilha sem mudança (mesmo hash) → a calibração não roda.
+      - if: steps.itbi.outputs.calibrar == 'true'
+        run: npm run ingestao -- calibracao

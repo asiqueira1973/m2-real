@@ -5,6 +5,7 @@
  * Entra no épico seguinte: 8.6 (resto da calibração).
  * Variáveis de ambiente: .env.local na raiz (carregado pelo script "cli"), seção 18.4.
  */
+import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createServiceClient } from "@m2-real/db/server";
 import { ROTINAS, type Rotina } from "./config/regras.js";
@@ -60,6 +61,13 @@ function userPath(p: string): string {
  */
 export async function main(argv: readonly string[]): Promise<number> {
   try {
+    // O3: a "vigia" não é rotina da 4.4 (não grava execução); fica fora de ROTINAS.
+    if (argv[0] === "vigia") {
+      const { runWatch } = await import("./observabilidade/vigia.js");
+      const { codigo, linhas } = await runWatch(createServiceClient());
+      for (const l of linhas) console.log(l);
+      return codigo;
+    }
     const { rotina, args } = parseArgs(argv);
     switch (rotina) {
       case "ingestao-iptu": {
@@ -80,12 +88,14 @@ export async function main(argv: readonly string[]): Promise<number> {
         const ano = args[0] && !args[0].startsWith("--") ? Number(args[0]) : undefined;
         if (ano !== undefined && !Number.isInteger(ano)) throw new Error("Ano inválido: npm run ingestao -- itbi [2025] [--arquivo planilha.xlsx]");
         const arquivo = option(args, "arquivo");
-        const { runItbi } = await import("./itbi/rotina.js");
-        await runItbi(createServiceClient(), {
+        const { githubOutputLine, itbiChanged, runItbi } = await import("./itbi/rotina.js");
+        const resumo = await runItbi(createServiceClient(), {
           ano,
           arquivo: arquivo ? userPath(arquivo) : undefined,
           paginaUrl: process.env.ITBI_PAGINA_URL || undefined,
         });
+        // Seção 9.2: sem planilha nova, a calibração não roda — o workflow lê "calibrar".
+        if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, githubOutputLine("calibrar", itbiChanged(resumo)));
         return 0;
       }
       case "coleta-anuncios": {

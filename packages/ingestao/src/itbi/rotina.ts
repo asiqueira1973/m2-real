@@ -14,7 +14,7 @@ import { basename } from "node:path";
 import type { M2Client } from "@m2-real/db/server";
 import { ITBI_ANO_INICIAL } from "../config/regras.js";
 import { loadNeighborhoods } from "../iptu/rotina.js";
-import { sha256, storeRaw } from "../shared/brutos.js";
+import { rawStoreFromEnv, sha256, storeRaw } from "../shared/brutos.js";
 import { listSheets } from "../shared/xlsx.js";
 import { runRoutine, supabaseExecutionStore, type RoutineResult } from "../shared/execucao.js";
 import { assignNeighborhoods } from "./bairro.js";
@@ -67,6 +67,20 @@ export async function runItbi(db: M2Client, opts: ItbiOptions): Promise<{ ano: n
 }
 
 /**
+ * Seção 9.2: "Planilha não mudou: a execução conclui com 0 gravadas; a calibração não roda."
+ * Recebe: o resumo de runItbi. Devolve: verdadeiro se algum ano foi de fato recarregado (planilha
+ * com hash novo: linhas lidas > 0). "Sem mudança" lê 0 linhas (loadYear).
+ */
+export function itbiChanged(resumo: readonly { resultado: { linhasLidas: number } | null }[]): boolean {
+  return resumo.some((r) => (r.resultado?.linhasLidas ?? 0) > 0);
+}
+
+/** Linha no formato do GITHUB_OUTPUT (passo do workflow lê steps.<id>.outputs.<nome>). */
+export function githubOutputLine(nome: string, valor: string | boolean): string {
+  return `${nome}=${valor}\n`;
+}
+
+/**
  * Carga de um ano (dentro de runRoutine).
  * Recebe: cliente, a planilha e o id da execução aberta por runRoutine.
  * Devolve: contagens para m2_execucoes_ingestao.
@@ -91,7 +105,7 @@ async function loadYear(db: M2Client, p: Planilha, execucaoId: string): Promise<
     return { linhasLidas: 0, linhasGravadas: 0, linhasDescartadas: 0, caminhoStorage: ultima.caminho_storage, ...base };
   }
 
-  const caminhoStorage = await storeRaw(db, "itbi", String(p.ano), "xlsx", p.buffer, XLSX_MIME);
+  const caminhoStorage = await storeRaw(rawStoreFromEnv(db), "itbi", String(p.ano), "xlsx", p.buffer, XLSX_MIME);
   const lidas = await readItbiWorkbook(p.buffer);
   if (lidas.ano !== p.ano) throw new Error(`Ano das abas (${lidas.ano}) diferente do detectado (${p.ano}).`);
 
