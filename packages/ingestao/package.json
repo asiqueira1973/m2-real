@@ -20,6 +20,7 @@
     "tsx": "^4.23.15"
   },
   "exports": {
-    "./regras": "./src/config/regras.ts"
+    "./regras": "./src/config/regras.ts",
+    "./saude": "./src/observabilidade/index.ts"
   }
 }

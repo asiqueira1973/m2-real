@@ -60,6 +60,13 @@ function userPath(p: string): string {
  */
 export async function main(argv: readonly string[]): Promise<number> {
   try {
+    // O3: a "vigia" não é rotina da 4.4 (não grava execução); fica fora de ROTINAS.
+    if (argv[0] === "vigia") {
+      const { runWatch } = await import("./observabilidade/vigia.js");
+      const { codigo, linhas } = await runWatch(createServiceClient());
+      for (const l of linhas) console.log(l);
+      return codigo;
+    }
     const { rotina, args } = parseArgs(argv);
     switch (rotina) {
       case "ingestao-iptu": {

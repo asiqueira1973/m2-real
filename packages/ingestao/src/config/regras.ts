@@ -283,3 +283,16 @@ export const ESPECIAL_RAZAO_AREA = 1.4;
 
 /** D12 / 7.2 (cobertura_bairros.vendas_24m): vendas consolidadas dos últimos 24 meses. */
 export const COBERTURA_JANELA_MESES = 24;
+
+// ---------------------------------------------------------------------------
+// Épico 8.8 — rotina "vigia" (observabilidade O3, acréscimo pedido pelo usuário).
+// ---------------------------------------------------------------------------
+
+/** O3: sonda sintética — este endereço (prédio de teste do 8.1/8.2) precisa ser achado pela busca da 11.5. */
+export const VIGIA_SONDA_ENDERECO = "Rua Joaquim Antunes, 577";
+
+/** O3: execuções mais recentes lidas para avaliar a saúde (cobre a janela de volume e a última de cada rotina). */
+export const VIGIA_EXECUCOES_LIDAS = 200;
+
+/** O3: fotos de cobertura mais recentes lidas (duas por bairro bastam para a queda de cobertura). */
+export const VIGIA_COBERTURAS_LIDAS = 40;

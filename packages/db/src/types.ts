@@ -454,6 +454,11 @@ isOneToOne: false
 "m2_eh_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"m2_fila_revisao":
+{ Args: { "bairro": number,"deslocamento": number,"janela_meses": number,"limite": number,"motivo": Database["public"]['Enums']["m2_motivo_revisao"] }; Returns: {
+              "area_iptu": number,"area_privativa": number,"areas_anuncios": (number)[],"areas_editais": (number)[],"bairro_nome": string,"data_venda": string,"fator": number,"fator_predio": number,"item_id": string,"logradouro": string,"m2_privativo": number,"motivo": Database["public"]['Enums']["m2_motivo_revisao"],"numero": number,"predio_id": string,"selo": Database["public"]['Enums']["m2_selo_area"],"tipo": string,"total_motivo": number,"unidade": string,"valor_total": number,"vendas_janela": number
+            }[]
+                           },
 "m2_itbi_substituir_ano":
 { Args: { "ano": number,"execucao_id": string,"hashes": (string)[] }; Returns: number
                            },
