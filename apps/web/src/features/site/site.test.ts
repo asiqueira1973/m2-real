@@ -21,3 +21,10 @@ describe("site (8.11)", () => {
     expect(textos).not.toMatch(/\bapto?\.?\s*\d/i);
   });
 });
+
+describe("dados do site (8.11)", () => {
+  it("data da conferência no fuso de São Paulo (22h de 22/11 em SP é 01h de 23/11 em UTC)", async () => {
+    const { dataSaoPaulo } = await import("@/server/site/dados");
+    expect(dataSaoPaulo("2026-11-23T01:00:00Z")).toBe("2026-11-22");
+  });
+});

@@ -4,6 +4,8 @@
  * sem o número do apartamento.
  */
 
+import { MCP_CHAMADAS_POR_DIA, MCP_CHAMADAS_POR_MINUTO } from "@m2-real/ingestao/regras";
+
 /** Endereço do servidor MCP que a pessoa cola no assistente. */
 export const ENDERECO_MCP = "https://fechouporquanto.com.br/mcp";
 
@@ -24,7 +26,7 @@ export const CONVERSA = {
     { nome: "Encontrar o prédio", tempo: "0,4 s" },
     { nome: "Vendas do prédio", tempo: "0,3 s" },
   ],
-  resumo: "Prédio de 1974 em Perdizes, apartamentos de cerca de 150 m². As quatro vendas mais recentes registradas no ITBI:",
+  resumo: "Prédio de 1974 em Perdizes. As quatro vendas mais recentes registradas no ITBI:",
   vendas: [
     { quando: "set/2026", valor: "R$ 1.600.000", nota: "2 vagas vendidas junto" },
     { quando: "set/2026", valor: "R$ 1.820.000", nota: "1 vaga" },
@@ -69,7 +71,7 @@ export const SELOS = {
   texto: "Todo m² vem com um selo que diz de onde veio a área do apartamento. Você decide o peso de cada resposta.",
   itens: [
     { nome: "Confirmada", classe: "confirmada", texto: "A área vem de um documento oficial, como o edital de um leilão, ou foi revisada por nós." },
-    { nome: "Calibrada", classe: "calibrada", texto: "Dois ou mais anúncios de sites diferentes mostram a mesma área para aquela planta." },
+    { nome: "Calibrada", classe: "calibrada", texto: "Dois ou mais anúncios diferentes mostram a mesma área para aquela planta." },
     { nome: "Indicativa", classe: "indicativa", texto: "Um anúncio só, ou anúncios que concordam com uma margem um pouco maior." },
     { nome: "Estimada", classe: "estimada", texto: "Sem anúncio da planta: a área é estimada a partir de prédios parecidos do mesmo bairro e época." },
     { nome: "Sem dado", classe: "sem-dado", texto: "Ainda não há base para a área. O valor da venda aparece, mas o m² fica de fora." },
@@ -133,7 +135,7 @@ export const CONECTAR = {
 export const FAQ = {
   rotulo: "Perguntas frequentes",
   itens: [
-    { p: "É grátis?", r: "Sim. Cada conta pode fazer até 30 consultas por minuto e 1.000 por dia, o bastante para o uso de uma pessoa." },
+    { p: "É grátis?", r: `Sim. Cada conta pode fazer até ${MCP_CHAMADAS_POR_MINUTO} consultas por minuto e ${MCP_CHAMADAS_POR_DIA.toLocaleString("pt-BR")} por dia, o bastante para o uso de uma pessoa.` },
     { p: "Isso é uma avaliação do imóvel?", r: "Não. São os valores declarados nas vendas registradas na Prefeitura. Eles ajudam a entender o mercado, mas não substituem um laudo." },
     { p: "Vocês veem quem comprou ou vendeu?", r: "Não. O Fechou por Quanto não guarda nome, CPF ou qualquer dado de compradores, vendedores ou proprietários. Da sua conta, guardamos só o e-mail do Google." },
     { p: "Com que frequência os dados mudam?", r: "As vendas entram todo mês, no dia 8. Os anúncios e editais que calibram a área são conferidos toda semana." },
@@ -153,7 +155,7 @@ export const RODAPE = {
   dablab: { rotulo: "Um produto DabLab", href: "https://dablab.com.br" },
 };
 
-/** Passo a passo de cada assistente (página /conectar). Confirmar os nomes de menu com o usuário. */
+/** Passo a passo de cada assistente (página /conectar), com os nomes de menu que o usuário testou. */
 export const ASSISTENTES = [
   {
     id: "claude",

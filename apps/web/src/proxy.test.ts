@@ -18,3 +18,11 @@ describe("proxy.matcher (8.11)", () => {
     for (const u of ["/painel", "/painel/predios", "/login", "/api/chaves", "/conectarx"]) expect(passa(u), u).toBe(true);
   });
 });
+
+describe("proxy.matcher ancorado (8.11)", () => {
+  it("caminhos que só começam com icon ou opengraph-image passam pelo proxy", () => {
+    expect(passa("/iconografia")).toBe(true);
+    expect(passa("/opengraph-imagem-falsa/x")).toBe(true);
+    expect(passa("/opengraph-image-abc123")).toBe(false);
+  });
+});

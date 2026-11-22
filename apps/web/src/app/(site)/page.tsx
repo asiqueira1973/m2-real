@@ -163,8 +163,12 @@ export default async function SitePage() {
             {cobertura.map((c) => (
               <div key={c.bairro} className={s.bairro}>
                 <p className={s.bairroNome}>{c.bairro}</p>
-                <p className={`${s.bairroNum} ${s.num}`}>{numero.format(c.vendas24m)}</p>
-                <p className={s.bairroRotulo}>{BAIRROS.rotuloVendas}</p>
+                {c.vendas24m !== null && (
+                  <>
+                    <p className={`${s.bairroNum} ${s.num}`}>{numero.format(c.vendas24m)}</p>
+                    <p className={s.bairroRotulo}>{BAIRROS.rotuloVendas}</p>
+                  </>
+                )}
               </div>
             ))}
           </div>

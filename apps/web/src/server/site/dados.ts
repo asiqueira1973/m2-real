@@ -1,12 +1,18 @@
 /**
- * Dados do site público (épico 8.11): a cobertura atual de cada bairro e a venda mais recente da base.
- * Lidos com a credencial de serviço, SÓ NO SERVIDOR (seção 20), e só agregados (nada por pessoa).
- * Falha de leitura não derruba o site: devolve vazio e a página mostra os bairros sem números.
+ * Dados do site público (épico 8.11): as vendas de 24 meses de cada bairro, a venda mais recente da
+ * base e a última conferência do ITBI. Lidos com a credencial de serviço, SÓ NO SERVIDOR (seção 20), e
+ * só agregados (nada por pessoa). Falha de leitura não derruba o site: os 10 bairros aparecem sem números.
  */
 import { createServiceClient } from "@m2-real/db/server";
 import { currentCoverage, latestSaleDate } from "@/server/mcp/dados";
+import { BAIRROS_COBERTOS } from "@/server/mcp/sobre";
 
-export type CoberturaSite = { bairro: string; vendas24m: number };
+export type CoberturaSite = { bairro: string; vendas24m: number | null };
+
+/** Data (AAAA-MM-DD) de um instante no fuso de São Paulo. */
+export function dataSaoPaulo(instante: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(instante));
+}
 
 export type DadosSite = { cobertura: CoberturaSite[]; vendaMaisRecente: string | null; ultimaConferenciaItbi: string | null };
 
@@ -27,9 +33,9 @@ export async function loadSiteData(): Promise<DadosSite> {
     const cobertura = cob
       .map((c) => ({ bairro: c.bairro_nome, vendas24m: c.vendas_24m }))
       .sort((a, b) => a.bairro.localeCompare(b.bairro, "pt-BR"));
-    return { cobertura, vendaMaisRecente: data, ultimaConferenciaItbi: itbi.data?.concluida_em?.slice(0, 10) ?? null };
+    return { cobertura, vendaMaisRecente: data, ultimaConferenciaItbi: itbi.data?.concluida_em ? dataSaoPaulo(itbi.data.concluida_em) : null };
   } catch (e) {
     console.error("site_dados_falhou", (e as Error).message);
-    return { cobertura: [], vendaMaisRecente: null, ultimaConferenciaItbi: null };
+    return { cobertura: BAIRROS_COBERTOS.map((bairro) => ({ bairro, vendas24m: null })), vendaMaisRecente: null, ultimaConferenciaItbi: null };
   }
 }

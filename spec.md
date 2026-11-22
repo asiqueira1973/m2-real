@@ -723,7 +723,7 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | [Cliente MCP] Entrar | "Entrar com Google" e mensagens de erro (8.10) | — | entrar | — | `clientes` (servidor) |
 | [Cliente MCP] Autorizar conexão | nome do cliente, o que pode e não pode, host de volta, conta | — | permitir; cancelar; usar outra conta | `oauth_clientes` | `oauth_codigos` (servidor) |
 | [Público] Privacidade e Termos | texto legal (8.10) | — | — | — | — |
-| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses e cobertura, resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), pelo servidor | — |
+| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses, resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
 | [Público] Conectar (`/conectar`) | endereço do MCP com botão de copiar e passo a passo do Claude, do ChatGPT e do Grok em abas (8.10/8.11) | assistente | copiar endereço | — | — |
 
 ---
