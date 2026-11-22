@@ -76,3 +76,21 @@ describe("duração das execuções", () => {
     expect(duration("2026-11-22T10:00:00Z", null)).toBe("—");
   });
 });
+
+// Verifier do 8.8: revogar com id malformado devolvia 500 (erro do Postgres) em vez de 404; e, com a
+// sessão expirada, o proxy redirecionava POST /api/* para /login (o cliente via "Erro 200").
+import { isUuid } from "./uuid";
+import { unauthenticatedResponse } from "./acesso";
+
+describe("rotas de API", () => {
+  it("id de chave precisa ser UUID", () => {
+    expect(isUuid("82d8617e-488e-44b3-a94b-c3ac1778c48b")).toBe(true);
+    expect(isUuid("abc")).toBe(false);
+    expect(isUuid("82d8617e-488e-44b3-a94b-c3ac1778c48b; drop")).toBe(false);
+  });
+  it("sem sessão: /api/* recebe 401 em JSON; telas vão para o login", () => {
+    expect(unauthenticatedResponse("/api/chaves")).toBe("json-401");
+    expect(unauthenticatedResponse("/api/execucoes/disparar")).toBe("json-401");
+    expect(unauthenticatedResponse("/predios")).toBe("login");
+  });
+});
