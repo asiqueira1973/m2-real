@@ -373,3 +373,29 @@ describe("área total menor que a privativa (lotes misturados na página)", () =
     expect(fromDocument({ ...CANARIO, area_privativa_m2: 184.32, area_total_m2: 31.52 }, "u")).toMatchObject({ area_privativa: 184.32, area_total: null });
   });
 });
+
+// Riscos apontados pelo verifier do 8.5.1 (22/11/2026).
+import { BadRequestError } from "@anthropic-ai/sdk";
+import { PDF_TAMANHO_MAXIMO_BYTES } from "../config/regras.js";
+import { mergeEdital } from "./rotina.js";
+
+describe("verifier do 8.5.1: erros permanentes, tamanho e áreas", () => {
+  it("400 da Claude API num PDF (ex.: páginas demais) ignora o PDF e conclui o alvo (senão ele volta em toda rodada)", async () => {
+    const { db, registro } = bancoFalso({ m2_predios: [PREDIO] });
+    const { fc } = firecrawlFalso(["https://www.portalzuk.com.br/lote/1"], { ...PAGINA_SEM_AREA, area_total_m2: 120 });
+    const cliente = { messages: { parse: async () => { throw new BadRequestError(400, { type: "error", error: { type: "invalid_request_error", message: "too many pages" } }, "too many pages", new Headers()); } } } as unknown as LeitorClaude;
+    await runAuctionCollection(db, { firecrawlApiKey: "k", firecrawl: fc, claude: cliente, predio: "041-115-01-1", agora: () => AGORA, baixarPdf: async () => textToPdf("x") });
+    expect(registro.updates).toContainEqual(["m2_predios", { ultima_coleta_leilao_em: AGORA.toISOString() }]);
+    expect(registro.upserts).toHaveLength(1); // a página do lote, com área total, ainda grava
+  });
+
+  it("o limite do PDF cabe na requisição de 32 MB depois do base64 (+33%)", () => {
+    expect(Math.ceil(PDF_TAMANHO_MAXIMO_BYTES / 3) * 4).toBeLessThan(32 * 1024 * 1024);
+  });
+
+  it("junção PDF + página não deixa área total menor que a privativa", () => {
+    const pagina = fromLotPage({ tipo_pagina: "edital_leilao", area_total_m2: 31.52 })!.edital;
+    const doc = fromDocument({ ...CANARIO, area_total_m2: null }, "u")!;
+    expect(mergeEdital(doc, pagina)).toMatchObject({ area_privativa: 184.32, area_total: null });
+  });
+});
