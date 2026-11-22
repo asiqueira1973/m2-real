@@ -49,7 +49,7 @@ describe("acesso ao painel (seção 6.1)", () => {
   it("rotas públicas: só login, recuperação e os retornos de auth", () => {
     expect(isPublicPath("/login")).toBe(true);
     expect(isPublicPath("/auth/confirmar")).toBe(true);
-    expect(isPublicPath("/predios")).toBe(false);
+    expect(isPublicPath("/painel/predios")).toBe(false);
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/loginx")).toBe(false);
   });
@@ -68,8 +68,8 @@ describe("filtros da tela Prédios (URL → RPC)", () => {
   });
   it("link de página mantém os filtros", () => {
     const f = parsePrediosFilters({ bairro: "3", revisao: "1" });
-    expect(pageHref(f, 2)).toBe("/predios?bairro=3&revisao=1&pagina=2");
-    expect(pageHref(parsePrediosFilters({}), 1)).toBe("/predios");
+    expect(pageHref(f, 2)).toBe("/painel/predios?bairro=3&revisao=1&pagina=2");
+    expect(pageHref(parsePrediosFilters({}), 1)).toBe("/painel/predios");
   });
 });
 

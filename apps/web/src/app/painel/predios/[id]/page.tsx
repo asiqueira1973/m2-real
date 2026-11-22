@@ -52,7 +52,7 @@ export default async function FichaPage({ params, searchParams }: {
 
   return (
     <div className="space-y-6">
-      <Link href="/predios" className="text-sm text-primary hover:underline">← Prédios</Link>
+      <Link href="/painel/predios" className="text-sm text-primary hover:underline">← Prédios</Link>
       <header>
         <h1 className="text-2xl font-semibold">{p.logradouro}{p.numero ? `, ${p.numero}` : ""}</h1>
         <p className="text-sm text-muted-foreground">

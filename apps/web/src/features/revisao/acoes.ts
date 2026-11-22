@@ -22,10 +22,10 @@ function mensagem(e: { code?: string; message: string }): string {
 
 /** Revalida a ficha e as listas que mostram o que mudou. */
 function revalidar(predioId?: string) {
-  if (predioId) revalidatePath(`/predios/${predioId}`);
-  revalidatePath("/revisao");
-  revalidatePath("/evidencias");
-  revalidatePath("/predios");
+  if (predioId) revalidatePath(`/painel/predios/${predioId}`);
+  revalidatePath("/painel/revisao");
+  revalidatePath("/painel/evidencias");
+  revalidatePath("/painel/predios");
 }
 
 /**
@@ -79,7 +79,7 @@ export async function matchAd(anuncioId: string, predioId: string | null, planta
   const { error } = await s.supabase.rpc("m2_casar_anuncio", { anuncio_id: anuncioId, predio_id: predioId as never, planta_id: plantaId as never });
   if (error) return { erro: mensagem(error) };
   revalidar(predioId ?? predioAnterior);
-  if (predioAnterior && predioAnterior !== predioId) revalidatePath(`/predios/${predioAnterior}`);
+  if (predioAnterior && predioAnterior !== predioId) revalidatePath(`/painel/predios/${predioAnterior}`);
   return { ok: true };
 }
 
@@ -93,7 +93,7 @@ export async function matchEdital(editalId: string, predioId: string | null, uni
   const { error } = await s.supabase.rpc("m2_casar_edital", { edital_id: editalId, predio_id: predioId as never, unidade_id: unidadeId as never });
   if (error) return { erro: mensagem(error) };
   revalidar(predioId ?? predioAnterior);
-  if (predioAnterior && predioAnterior !== predioId) revalidatePath(`/predios/${predioAnterior}`);
+  if (predioAnterior && predioAnterior !== predioId) revalidatePath(`/painel/predios/${predioAnterior}`);
   return { ok: true };
 }
 

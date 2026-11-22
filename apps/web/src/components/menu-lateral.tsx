@@ -7,14 +7,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const GRUPOS = [
-  { titulo: "Base", itens: [{ rotulo: "Visão geral", href: "/" }, { rotulo: "Prédios", href: "/predios" }] },
-  { titulo: "Qualidade", itens: [{ rotulo: "Fila de revisão", href: "/revisao" }, { rotulo: "Evidências sem vínculo", href: "/evidencias" }] },
-  { titulo: "Operação", itens: [{ rotulo: "Execuções", href: "/execucoes" }, { rotulo: "Chaves de API", href: "/chaves" }] },
+  { titulo: "Base", itens: [{ rotulo: "Visão geral", href: "/painel" }, { rotulo: "Prédios", href: "/painel/predios" }] },
+  { titulo: "Qualidade", itens: [{ rotulo: "Fila de revisão", href: "/painel/revisao" }, { rotulo: "Evidências sem vínculo", href: "/painel/evidencias" }] },
+  { titulo: "Operação", itens: [{ rotulo: "Execuções", href: "/painel/execucoes" }, { rotulo: "Chaves de API", href: "/painel/chaves" }] },
 ] as const;
 
-/** Item ativo: "/" só na raiz; os demais também nas subpáginas (/predios/[id]). */
+/** Item ativo: "/painel" só nele mesmo; os demais também nas subpáginas (/painel/predios/[id]). */
 function ativo(caminho: string, href: string): boolean {
-  return href === "/" ? caminho === "/" : caminho === href || caminho.startsWith(`${href}/`);
+  return href === "/painel" ? caminho === "/painel" : caminho === href || caminho.startsWith(`${href}/`);
 }
 
 export function MenuLateral({ email, ambiente, sair }: { email: string; ambiente: "dev" | "prod"; sair: () => Promise<void> }) {

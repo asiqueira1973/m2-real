@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.3 (MCP com OAuth e cadastro aberto, épico 8.10) |
+| Versão | 1.4 (site público e painel em /painel, épico 8.11) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -672,6 +672,12 @@ Critérios de aceite:
 - [ ] Toda resposta com m² traz o selo e a área usada (princípio 1).
 - [ ] Teste de cliente com `node scripts/test-client.mjs` contra o deploy de preview passa.
 
+### 8.11 Site público
+- [ ] `/` e `/conectar` abertos, sem login; o painel em `/painel`, com login; o login leva a `/painel`.
+- [ ] O site explica o produto em linguagem de negócio, com exemplo de conversa de dados reais, selos, perguntas de exemplo, bairros com vendas em 24 meses e o passo a passo do Claude, do ChatGPT e do Grok.
+- [ ] Sem rolagem horizontal em 375 px; imagens otimizadas; `robots.txt` bloqueia `/painel`, `/oauth` e `/api`.
+- [ ] Textos fixos do site em `apps/web/src/features/site/conteudo.ts` (seção 15).
+
 ### 8.10 MCP com OAuth e cadastro aberto
 - [ ] `/mcp` sem credencial responde 401 com `resource_metadata`, e os metadados da 6.5 respondem.
 - [ ] Registro de cliente, consentimento e troca de código funcionam com PKCE; pedido inválido não redireciona; código reusado revoga o token.
@@ -702,7 +708,7 @@ Critérios de aceite:
 
 ## 10. Inventário de telas
 
-Todas são do perfil **[Admin]**.
+As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A raiz é o site público.
 
 | Tela | Mostra | Filtros | Ações (leitura / escrita) | Lê | Escreve |
 |---|---|---|---|---|---|
@@ -717,6 +723,8 @@ Todas são do perfil **[Admin]**.
 | [Cliente MCP] Entrar | "Entrar com Google" e mensagens de erro (8.10) | — | entrar | — | `clientes` (servidor) |
 | [Cliente MCP] Autorizar conexão | nome do cliente, o que pode e não pode, host de volta, conta | — | permitir; cancelar; usar outra conta | `oauth_clientes` | `oauth_codigos` (servidor) |
 | [Público] Privacidade e Termos | texto legal (8.10) | — | — | — | — |
+| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses, resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
+| [Público] Conectar (`/conectar`) | endereço do MCP com botão de copiar e passo a passo do Claude, do ChatGPT e do Grok em abas (8.10/8.11) | assistente | copiar endereço | — | — |
 
 ---
 

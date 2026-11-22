@@ -63,9 +63,9 @@ export default async function ChavesPage({ searchParams }: { searchParams: Promi
       )}
       {paginas > 1 && (
         <nav className="flex items-center gap-3 text-sm" aria-label="Páginas das contas conectadas">
-          {pagina > 1 && <Link href={`/chaves?pagina=${pagina - 1}`} className="text-primary hover:underline">Anterior</Link>}
+          {pagina > 1 && <Link href={`/painel/chaves?pagina=${pagina - 1}`} className="text-primary hover:underline">Anterior</Link>}
           <span className="text-muted-foreground tabular-nums">Página {pagina} de {paginas} · {total} contas</span>
-          {pagina < paginas && <Link href={`/chaves?pagina=${pagina + 1}`} className="text-primary hover:underline">Próxima</Link>}
+          {pagina < paginas && <Link href={`/painel/chaves?pagina=${pagina + 1}`} className="text-primary hover:underline">Próxima</Link>}
         </nav>
       )}
     </div>

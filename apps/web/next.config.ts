@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   // Pacotes do monorepo publicados como TypeScript fonte.
   transpilePackages: ["@m2-real/db", "@m2-real/ingestao"],
   // Épico 8.9 (decisão do usuário): o MCP também responde em /mcp (fechouporquanto.com.br/mcp).
+  // Épico 8.11: o painel mudou para /painel; endereços antigos salvos levam para o novo.
+  async redirects() {
+    return ["predios", "revisao", "evidencias", "execucoes", "chaves"].flatMap((p) => [
+      { source: `/${p}`, destination: `/painel/${p}`, permanent: true },
+      { source: `/${p}/:resto*`, destination: `/painel/${p}/:resto*`, permanent: true },
+    ]);
+  },
   async rewrites() {
     return [{ source: "/mcp", destination: "/api/mcp" }];
   },

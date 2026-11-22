@@ -42,7 +42,7 @@ export function toRpcArgs(f: FiltrosPredios, janelaMeses: number) {
   };
 }
 
-/** URL da tela com os filtros e outra página. Recebe: filtros e página. Devolve: "/predios?…". */
+/** URL da tela com os filtros e outra página. Recebe: filtros e página. Devolve: "/painel/predios?…". */
 export function pageHref(f: FiltrosPredios, pagina: number): string {
   const q = new URLSearchParams();
   if (f.bairro) q.set("bairro", String(f.bairro));
@@ -51,5 +51,5 @@ export function pageHref(f: FiltrosPredios, pagina: number): string {
   if (f.busca) q.set("busca", f.busca);
   if (pagina > 1) q.set("pagina", String(pagina));
   const s = q.toString();
-  return s ? `/predios?${s}` : "/predios";
+  return s ? `/painel/predios?${s}` : "/painel/predios";
 }

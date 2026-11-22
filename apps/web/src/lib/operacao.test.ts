@@ -91,6 +91,6 @@ describe("rotas de API", () => {
   it("sem sessão: /api/* recebe 401 em JSON; telas vão para o login", () => {
     expect(unauthenticatedResponse("/api/chaves")).toBe("json-401");
     expect(unauthenticatedResponse("/api/execucoes/disparar")).toBe("json-401");
-    expect(unauthenticatedResponse("/predios")).toBe("login");
+    expect(unauthenticatedResponse("/painel/predios")).toBe("login");
   });
 });

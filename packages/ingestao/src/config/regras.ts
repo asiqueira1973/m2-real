@@ -375,3 +375,10 @@ export const LIMITE_MENSAGEM_MINUTOS_S = 120;
 
 /** Seção 16: contas conectadas por página na tela Chaves de API (abaixo do corte de 1.000 do PostgREST). */
 export const CONTAS_CONECTADAS_POR_PAGINA = 50;
+
+// ---------------------------------------------------------------------------
+// Épico 8.11 — site público.
+// ---------------------------------------------------------------------------
+
+/** 8.11: o site relê a cobertura e a venda mais recente uma vez por dia (s). */
+export const SITE_REVALIDAR_S = 86400;
