@@ -73,6 +73,22 @@ O botão "Executar agora" do painel (tela Execuções) dispara esses workflows p
 
 **IPTU anual na nuvem:** baixe o `IPTU_<ano>.zip` do GeoSampa e envie para `iptu/<ano>.zip` no bucket `m2-brutos` (painel da Cloudflare → R2 → m2-brutos → Upload). Depois rode o workflow `ingestao-iptu` informando o ano.
 
+## MCP e OAuth (épicos 8.9 e 8.10)
+
+Endereço: `https://fechouporquanto.com.br/mcp`. No Claude, basta adicionar um conector personalizado com essa URL: ele descobre o OAuth (401 com `resource_metadata`), registra o cliente, abre "Entrar com Google" e o consentimento. Scripts podem usar uma chave de API criada no painel (`Authorization: Bearer <chave>`). Limites por conta OAuth: regras 11.18 e 11.19 em `packages/ingestao/src/config/regras.ts`.
+
+Variáveis (Vercel e `.env.local`): `NEXT_PUBLIC_SITE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET` (`openssl rand -base64 32`).
+
+### Google Cloud (login do cliente)
+Escopos só `openid email` (não sensíveis, sem verificação do Google). Projeto "Fechou por quanto" na conta da DabLab.
+1. **Google Auth Platform → Branding:** nome `Fechou por quanto`; página inicial `https://fechouporquanto.com.br`; privacidade `https://fechouporquanto.com.br/privacidade`; termos `https://fechouporquanto.com.br/termos`; domínio autorizado `fechouporquanto.com.br`; sem logo.
+2. **Data Access:** só `openid` e `.../auth/userinfo.email`.
+3. **Audience:** External → **Publish app** (em produção).
+4. **Clients → Create client:** Web application, `Fechou por Quanto web`. Origens: `http://localhost:3010`, `https://fechouporquanto.com.br`, `https://m2-real.vercel.app`. Redirect URIs: as mesmas origens com `/api/auth/google/callback`.
+5. ID e segredo em `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
+
+Testes contra um deploy: `MCP_URL=… MCP_CHAVE=… node scripts/test-client.mjs` (chave do painel) e `SITE_URL=… node scripts/test-oauth.mjs` (descoberta, registro, consentimento sem sessão e token inválido).
+
 ## Licença
 [MIT](LICENSE) — DabLab — Alexandre da Silva de Siqueira LTDA - ME.
 
