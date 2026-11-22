@@ -4,6 +4,7 @@
  * período, anúncios e editais com predio_id do prédio. Alvo: abrir em ≤ 2 s (seção 17).
  * Recebe: id do prédio e meses do período (nulo = todas). Devolve: os dados, ou nulo se o prédio não existe.
  */
+import { monthsBefore } from "@/lib/estatistica";
 import { createSessionClient } from "@/lib/supabase/servidor";
 
 /** Limite técnico do PostgREST (max_rows = 1.000 corta em silêncio): as vendas vêm em páginas. */
@@ -15,7 +16,7 @@ export async function loadBuildingFile(id: string, meses: number | null) {
   const supabase = await createSessionClient();
   const falha = (o: string, e: { message: string }) => new Error(`Falha ao ler ${o}: ${e.message}`);
 
-  const desde = meses === null ? null : new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - meses, new Date().getUTCDate())).toISOString().slice(0, 10);
+  const desde = meses === null ? null : monthsBefore(new Date(), meses);
   const vendas = async () => {
     const todas = [];
     for (let de = 0; ; de += PAGINA) {

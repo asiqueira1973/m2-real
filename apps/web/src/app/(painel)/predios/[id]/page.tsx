@@ -16,7 +16,7 @@ import { loadBuildingFile } from "@/features/ficha/dados";
 import { PERIODOS_VENDAS, parsePeriod, salesSummary } from "@/lib/estatistica";
 import { area, data, dataHora, fator, numero, reais, reaisPorM2 } from "@/lib/formato";
 import { label, ROTULO_FONTE, ROTULO_MOTIVO, ROTULO_STATUS_CASAMENTO } from "@/lib/rotulos";
-import { parseSelo } from "@/lib/selos";
+import { parseSelo, SELOS } from "@/lib/selos";
 
 const ABAS = ["plantas", "vendas", "anuncios", "editais", "historico"] as const;
 const externo = { target: "_blank", rel: "noopener noreferrer", className: "text-primary hover:underline" } as const;
@@ -32,7 +32,7 @@ export default async function FichaPage({ params, searchParams }: {
   if (!ficha) notFound();
   const { predio: p, plantas, vendas, anuncios, editais, historico } = ficha;
   const aba = (ABAS as readonly string[]).includes(sp.aba ?? "") ? sp.aba! : "plantas";
-  const resumo = salesSummary(vendas.map((v) => ({ m2_privativo: v.m2_privativo === null ? null : Number(v.m2_privativo), fora_da_curva: v.fora_da_curva })));
+  const resumo = salesSummary(vendas.map((v) => ({ m2_privativo: v.m2_privativo === null ? null : Number(v.m2_privativo), fora_da_curva: v.fora_da_curva, selo_area: v.selo_area })));
   const bairro = (p.bairro as unknown as { nome: string } | null)?.nome;
   const outrosNumeros = p.numeros_imovel.filter((n) => n !== p.numero);
 
@@ -110,6 +110,15 @@ export default async function FichaPage({ params, searchParams }: {
                 Mediana do m² privativo: <strong className="tabular-nums">{reaisPorM2(resumo.mediana)}</strong>
                 <span className="text-muted-foreground"> · {resumo.naMediana} de {resumo.total} vendas (sem as fora da curva e as sem área)</span>
               </p>
+              {/* Princípio 1 e 11.17: a mediana nunca sai sem o selo das vendas que a formam. */}
+              {resumo.naMediana > 0 && (
+                <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  Selo das vendas na mediana:
+                  {SELOS.filter((s) => resumo.distribuicao?.[s]).map((s) => (
+                    <span key={s} className="flex items-center gap-1"><SeloArea selo={s} /> {resumo.distribuicao?.[s]}</span>
+                  ))}
+                </p>
+              )}
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Data</TableHead><TableHead>Unidade</TableHead><TableHead className="text-right">Total</TableHead>

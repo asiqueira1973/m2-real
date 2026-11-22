@@ -50,7 +50,7 @@ export function MenuLateral({ email, ambiente, sair }: { email: string; ambiente
           <form action={sair}>
             <button type="submit" className="text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary">Sair</button>
           </form>
-          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{ambiente}</span>
+          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">{ambiente}</span>
         </div>
       </div>
     </nav>

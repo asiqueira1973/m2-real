@@ -7,6 +7,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSessionClient } from "@/lib/supabase/servidor";
 
+/** Tamanho mínimo da senha nova. Escolha técnica (o spec não fixa), acima do mínimo do Supabase (6). */
+const SENHA_MIN_CARACTERES = 8;
+
 export interface EstadoForm {
   erro?: string;
   ok?: string;
@@ -42,7 +45,7 @@ export async function pedirRecuperacao(_: EstadoForm, form: FormData): Promise<E
 export async function redefinirSenha(_: EstadoForm, form: FormData): Promise<EstadoForm> {
   const senha = String(form.get("senha") ?? "");
   const confirmacao = String(form.get("confirmacao") ?? "");
-  if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+  if (senha.length < SENHA_MIN_CARACTERES) return { erro: `A senha precisa ter pelo menos ${SENHA_MIN_CARACTERES} caracteres.` };
   if (senha !== confirmacao) return { erro: "As senhas não conferem." };
   const supabase = await createSessionClient();
   const { error } = await supabase.auth.updateUser({ password: senha });
