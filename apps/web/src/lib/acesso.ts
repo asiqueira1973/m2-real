@@ -10,6 +10,14 @@ export function isPublicPath(caminho: string): boolean {
   return PUBLICAS.some((p) => caminho === p || caminho.startsWith(`${p}/`));
 }
 
+/**
+ * O que o proxy faz com quem chega sem sessão (seção 6.1): rotas de API recebem 401 em JSON (o
+ * cliente mostra a mensagem); telas vão para /login. Recebe: caminho. Devolve: "json-401" ou "login".
+ */
+export function unauthenticatedResponse(caminho: string): "json-401" | "login" {
+  return caminho === "/api" || caminho.startsWith("/api/") ? "json-401" : "login";
+}
+
 export type Decisao = "entrar" | "login" | "sem-perfil" | "erro";
 
 /**

@@ -5,11 +5,13 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/sessao";
+import { isUuid } from "@/lib/uuid";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const sessao = await requireAdmin();
   if (!sessao.ok) return NextResponse.json({ erro: sessao.erro }, { status: sessao.status });
   const { id } = await params;
+  if (!isUuid(id)) return NextResponse.json({ erro: "Chave não encontrada." }, { status: 404 });
   const { data, error } = await sessao.supabase.from("m2_chaves_api").update({ ativa: false }).eq("id", id).select("id");
   if (error) {
     console.error(error);
