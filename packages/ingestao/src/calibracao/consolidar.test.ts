@@ -146,6 +146,16 @@ describe("regra 11.16: fora da curva", () => {
     expect(r["outro-selo"]).toBe(false); // selo diferente: só ela mesma na referência
   });
 
+  // Decisão do usuário (22/11/2026): a mediana de referência NÃO inclui a própria venda.
+  // Prédio com 2 vendas anteriores (+ a própria = 3): contando a própria, usaria a mediana do
+  // prédio (10.000) e marcaria 16.500 como fora; sem ela, o prédio tem só 2 e vale a mediana do
+  // bairro no mesmo selo (12.000), e 16.500 < 1,6 × 12.000 não é fora.
+  it("a mediana de referência não inclui a própria venda", () => {
+    const outros = ["o1", "o2", "o3"].map((id, i) => v(id, `2025-0${i + 1}-15`, 12_000, { predioId: `outro-${id}` }));
+    const r = fora([...outros, v("a", "2025-01-01", 10_000), v("b", "2025-02-01", 10_000), v("x", "2025-06-01", 16_500)]);
+    expect(r.x).toBe(false);
+  });
+
   it("regra 11.11: venda marcada pelo admin mantém o valor dele", () => {
     const vs = [v("a", "2025-01-01", 10_000), v("b", "2025-02-01", 10_000), v("c", "2025-03-01", 10_000), v("d", "2025-04-01", 50_000)];
     const r = marcarForaDaCurva(vs, new Map([["d", false], ["a", true]]));
