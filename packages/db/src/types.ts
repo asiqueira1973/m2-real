@@ -440,6 +440,12 @@ isOneToOne: false
 "m2_eh_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"m2_itbi_substituir_ano":
+{ Args: { "ano": number,"execucao_id": string,"hashes": (string)[] }; Returns: number
+                           },
+"m2_ligar_transacoes_unidades":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "m2_marcar_outlier":
 { Args: { "fora_da_curva": boolean,"venda_id": string }; Returns: {
               "area_privativa": number | null,
@@ -496,6 +502,11 @@ isOneToOne: false
       } },
 "m2_normalizar_endereco":
 { Args: { "texto": string }; Returns: string
+                           },
+"m2_unidades_por_sql":
+{ Args: { "sqls": (string)[] }; Returns: {
+              "bairro_id": number,"predio_id": string,"sql": string,"unidade_id": string
+            }[]
                            }
           }
           Enums: {

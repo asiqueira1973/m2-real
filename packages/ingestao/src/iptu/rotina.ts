@@ -10,16 +10,14 @@
  *     (11.2, 11.3, 11.4, 11.6, 11.7) e grava de forma idempotente.
  *  4. Tudo dentro de runRoutine: execução registrada; erro → "falhou" + exit ≠ 0 (seção 12).
  */
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import type { M2Client } from "@m2-real/db/server";
+import { BUCKET_BRUTOS, sha256, storeRaw } from "../shared/brutos.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { writeBuildings } from "./gravacao.js";
 import { openIptuFile, readIptuRows } from "./leitor.js";
 import { assembleBuildings, type Neighborhood } from "./montagem.js";
-
-export const BUCKET_BRUTOS = "m2_brutos";
 
 /** Mensagem quando o GeoSampa devolve a página de desafio anti-robô no lugar do arquivo (PV2). */
 export const MENSAGEM_DOWNLOAD_BLOQUEADO =
@@ -49,8 +47,10 @@ interface Source {
 export async function runIptu(db: M2Client, opts: IptuOptions) {
   return runRoutine(supabaseExecutionStore(db), "ingestao-iptu", "iptu", String(opts.ano), async () => {
     const fonte = await obtainSource(db, opts);
-    const arquivoHash = createHash("sha256").update(fonte.buffer).digest("hex");
-    const caminhoStorage = await storeRaw(db, opts.ano, fonte);
+    const arquivoHash = sha256(fonte.buffer);
+    const ext = fonte.nome.toLowerCase().endsWith(".csv") ? "csv" : "zip";
+    // Bruto guardado com 2 versões (seção 17); mesmo hash não regrava.
+    const caminhoStorage = await storeRaw(db, "iptu", String(opts.ano), ext, fonte.buffer, ext === "zip" ? "application/zip" : "text/csv");
 
     const bairros = await loadNeighborhoods(db);
     const prefixos = [...new Set(bairros.flatMap((b) => b.prefixosCep))];
@@ -96,32 +96,6 @@ async function obtainSource(db: M2Client, opts: IptuOptions): Promise<Source> {
     if (data) return { buffer: Buffer.from(await data.arrayBuffer()), nome: `IPTU_${opts.ano}.${ext}`, url: null };
   }
   throw new Error(`Arquivo do IPTU ${opts.ano} não encontrado. ${MENSAGEM_DOWNLOAD_BLOQUEADO}`);
-}
-
-/**
- * Guarda o bruto em m2_brutos/iptu/<ano>.<ext>, movendo a versão anterior para
- * iptu/<ano>.anterior.<ext> (retenção de 2 versões, seção 17). Se o arquivo já veio do
- * Storage (sem arquivo local nem URL), não regrava. Devolve o caminho no Storage.
- */
-async function storeRaw(db: M2Client, ano: number, fonte: Source): Promise<string> {
-  const ext = fonte.nome.toLowerCase().endsWith(".csv") ? "csv" : "zip";
-  const caminho = `iptu/${ano}.${ext}`;
-  const bucket = db.storage.from(BUCKET_BRUTOS);
-  const { data: atual } = await bucket.download(caminho);
-  if (atual) {
-    const atualHash = createHash("sha256").update(Buffer.from(await atual.arrayBuffer())).digest("hex");
-    const novoHash = createHash("sha256").update(fonte.buffer).digest("hex");
-    if (atualHash === novoHash) return caminho; // mesmo arquivo: nada a guardar
-    await bucket.remove([`iptu/${ano}.anterior.${ext}`]);
-    const { error } = await bucket.move(caminho, `iptu/${ano}.anterior.${ext}`);
-    if (error) throw new Error(`Falha ao preservar a versão anterior do bruto: ${error.message}`);
-  }
-  const { error } = await bucket.upload(caminho, fonte.buffer, {
-    contentType: ext === "zip" ? "application/zip" : "text/csv",
-    upsert: true,
-  });
-  if (error) throw new Error(`Falha ao guardar o bruto em ${BUCKET_BRUTOS}/${caminho}: ${error.message}`);
-  return caminho;
 }
 
 /** Lê os bairros ativos (seed da 7.6) no formato usado pela montagem. */

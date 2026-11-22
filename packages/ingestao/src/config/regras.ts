@@ -101,3 +101,25 @@ export const BAIRRO_VOTO_FRACAO_MINIMA = 0.6;
 
 /** Regra 11.2: e de pelo menos 2 votos. */
 export const BAIRRO_VOTO_MINIMO = 2;
+
+// ---------------------------------------------------------------------------
+// Épico 8.3 — ITBI (regras 11.1, 11.14 e assunção A2).
+// ---------------------------------------------------------------------------
+
+/** Assunção A2: histórico do ITBI a partir de 2021. */
+export const ITBI_ANO_INICIAL = 2021;
+
+/** Seção 7.2 (eh_compra_venda): natureza que começa com "1." é compra e venda. */
+export const NATUREZA_COMPRA_VENDA_PREFIXO = "1.";
+
+/**
+ * Regra 11.14: complemento que indica unidade dentro de um SQL sem cadastro próprio.
+ * Aplicado ao complemento normalizado (maiúsculas, sem acento).
+ */
+export const UNIDADE_SEM_CADASTRO_REGEX = /\b(AP|APTO|APART|UNID|TORRE|T\s?\d|BL|CJ|SALA)\b/;
+
+/** Regra 11.14: fração ideal a partir da qual a guia é do lote inteiro (ou nula). */
+export const UNIDADE_SEM_CADASTRO_FRACAO_MINIMA = 1;
+
+/** Regra 11.19: naturezas do ITBI que apontam leilão (usadas no 8.5.1). */
+export const NATUREZAS_LEILAO_PREFIXOS = ["4.", "17."] as const;

@@ -1,8 +1,8 @@
 /**
  * Ponto de entrada da ingestão: `tsx src/cli.ts <rotina> [argumentos]` (seção 18.3).
  *
- * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu).
- * Entram nos épicos seguintes: 8.3 (itbi), 8.5 (anúncios), 8.5.1 (leilões), 8.6 (calibração).
+ * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu), 8.3 (itbi).
+ * Entram nos épicos seguintes: 8.5 (anúncios), 8.5.1 (leilões), 8.6 (calibração).
  * Variáveis de ambiente: .env.local na raiz (carregado pelo script "cli"), seção 18.4.
  */
 import { resolve } from "node:path";
@@ -72,6 +72,19 @@ export async function main(argv: readonly string[]): Promise<number> {
           ano,
           arquivo: arquivo ? userPath(arquivo) : undefined,
           url: process.env.IPTU_ARQUIVO_URL || undefined,
+        });
+        return 0;
+      }
+      case "ingestao-itbi": {
+        // Uso: itbi [ano] [--arquivo planilha.xlsx]; sem arquivo, baixa da página ITBI_PAGINA_URL.
+        const ano = args[0] && !args[0].startsWith("--") ? Number(args[0]) : undefined;
+        if (ano !== undefined && !Number.isInteger(ano)) throw new Error("Ano inválido: npm run ingestao -- itbi [2025] [--arquivo planilha.xlsx]");
+        const arquivo = option(args, "arquivo");
+        const { runItbi } = await import("./itbi/rotina.js");
+        await runItbi(createServiceClient(), {
+          ano,
+          arquivo: arquivo ? userPath(arquivo) : undefined,
+          paginaUrl: process.env.ITBI_PAGINA_URL || undefined,
         });
         return 0;
       }

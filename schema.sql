@@ -462,6 +462,65 @@ $$;
 ALTER FUNCTION "public"."m2_eh_admin"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+#variable_conflict use_column
+declare
+  v_apagadas integer;
+begin
+  create temporary table m2_tmp_guias_removidas on commit drop as
+    select t.id
+    from public.m2_transacoes t
+    where t.mes_referencia >= make_date(m2_itbi_substituir_ano.ano, 1, 1)
+      and t.mes_referencia <  make_date(m2_itbi_substituir_ano.ano + 1, 1, 1)
+      and t.execucao_id <> m2_itbi_substituir_ano.execucao_id
+      and not (t.hash_linha = any (m2_itbi_substituir_ano.hashes));
+
+  delete from public.m2_vendas_consolidadas v
+   where v.transacao_apartamento_id in (select id from m2_tmp_guias_removidas);
+
+  delete from public.m2_transacoes t where t.id in (select id from m2_tmp_guias_removidas);
+  get diagnostics v_apagadas = row_count;
+
+  update public.m2_execucoes_ingestao e
+     set status = 'substituida'
+   where e.rotina = 'ingestao-itbi'
+     and e.referencia = m2_itbi_substituir_ano.ano::text
+     and e.status = 'concluida'
+     and e.id <> m2_itbi_substituir_ano.execucao_id;
+
+  return v_apagadas;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_ligar_transacoes_unidades"() RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_ligadas integer;
+begin
+  update public.m2_transacoes t
+     set unidade_id = u.id,
+         predio_id  = u.predio_id
+    from public.m2_unidades u
+   where t.unidade_id is null
+     and u.sql = t.sql;
+  get diagnostics v_ligadas = row_count;
+  return v_ligadas;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_ligar_transacoes_unidades"() OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_vendas_consolidadas" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "transacao_apartamento_id" "uuid" NOT NULL,
@@ -589,6 +648,20 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_normalizar_endereco"("texto" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) RETURNS TABLE("sql" "text", "unidade_id" "uuid", "predio_id" "uuid", "bairro_id" smallint)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select u.sql::text, u.id, u.predio_id, p.bairro_id
+  from public.m2_unidades u
+  join public.m2_predios p on p.id = u.predio_id
+  where u.sql = any (sqls::char(11)[]);
+$$;
+
+
+ALTER FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."m2_bairros" (
@@ -1359,6 +1432,16 @@ GRANT ALL ON FUNCTION "public"."m2_eh_admin"() TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_ligar_transacoes_unidades"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_ligar_transacoes_unidades"() TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."m2_vendas_consolidadas" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_vendas_consolidadas" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_vendas_consolidadas" TO "authenticated";
@@ -1380,6 +1463,11 @@ GRANT ALL ON FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "
 REVOKE ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) TO "service_role";
 
 
 
