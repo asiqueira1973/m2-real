@@ -9,7 +9,7 @@ import type { M2Client } from "@m2-real/db/server";
 import { CASAMENTO_SIMILARIDADE_MINIMA, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
 import { fetchAllPages } from "../calibracao/dados.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
-import { withRetry } from "../shared/retry.js";
+import { withRetry, type RetryOptions } from "../shared/retry.js";
 import { casarAnuncio, type Casamento, type PlantaDoPredio } from "./casamento.js";
 import { allowedDomain, siteFilter } from "./dominios.js";
 import { CAMPOS_EXTRAIDOS, PROMPT_ANUNCIO, SCHEMA_ANUNCIO, toAnuncio, type AnuncioExtraido } from "./extracao.js";
@@ -106,8 +106,8 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
           const anuncio = toAnuncio(extraido);
           if (!anuncio) { descartados++; continue; } // "outro" ou sem área (13.3; seção 12)
           const casamento = await matchAd(db, anuncio);
-          await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()));
-          gravados++;
+          if ((await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()))) === "gravado") gravados++;
+          else descartados++; // regra 11.11: anúncio casado à mão fica como o admin deixou
         }
         await withRetry(
           () => db.from("m2_predios").update({ ultima_coleta_em: agora().toISOString() }).eq("id", alvo.id),
@@ -203,13 +203,23 @@ async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
 }
 
 /**
- * Grava a página (upsert por url). Anúncio com casado_manual = true (regra 11.11) mantém o
- * vínculo do admin: só os campos extraídos são atualizados.
+ * Grava a página (upsert por url). Regra 11.11: anúncio com casado_manual = true NÃO é alterado
+ * pelo pipeline (nem vínculo nem campos extraídos). Se a leitura de casado_manual falhar, lança
+ * erro em vez de gravar às cegas (o que sobrescreveria o vínculo do admin).
+ * Recebe: cliente, linha montada por buildAnuncioRow e opções de repetição.
+ * Devolve: "gravado" ou "mantido_manual".
  */
-export async function saveAd(db: M2Client, linha: ReturnType<typeof buildAnuncioRow>): Promise<void> {
-  const { data: atual } = await db.from("m2_anuncios").select("casado_manual").eq("url", linha.url as string).maybeSingle();
-  const final = atual?.casado_manual
-    ? Object.fromEntries(Object.entries(linha).filter(([k]) => !["predio_id", "planta_id", "status_casamento", "confianca_casamento"].includes(k)))
-    : linha;
-  await withRetry(() => db.from("m2_anuncios").upsert(final as never, { onConflict: "url" }), "Falha ao gravar m2_anuncios");
+export async function saveAd(
+  db: M2Client,
+  linha: ReturnType<typeof buildAnuncioRow>,
+  retry: RetryOptions = {},
+): Promise<"gravado" | "mantido_manual"> {
+  const atual = await withRetry<{ casado_manual: boolean } | null>(
+    () => db.from("m2_anuncios").select("casado_manual").eq("url", linha.url as string).maybeSingle(),
+    "Falha ao ler casado_manual do anúncio",
+    retry,
+  );
+  if (atual?.casado_manual) return "mantido_manual";
+  await withRetry(() => db.from("m2_anuncios").upsert(linha as never, { onConflict: "url" }), "Falha ao gravar m2_anuncios", retry);
+  return "gravado";
 }
