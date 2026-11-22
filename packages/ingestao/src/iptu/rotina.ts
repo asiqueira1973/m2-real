@@ -13,7 +13,7 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import type { M2Client } from "@m2-real/db/server";
-import { BUCKET_BRUTOS, sha256, storeRaw } from "../shared/brutos.js";
+import { BUCKET_BRUTOS, downloadIfExists, sha256, storeRaw } from "../shared/brutos.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { writeBuildings } from "./gravacao.js";
 import { openIptuFile, readIptuRows } from "./leitor.js";
@@ -92,8 +92,9 @@ async function obtainSource(db: M2Client, opts: IptuOptions): Promise<Source> {
     return { buffer: Buffer.from(await resp.arrayBuffer()), nome, url: opts.url };
   }
   for (const ext of ["zip", "csv"]) {
-    const { data } = await db.storage.from(BUCKET_BRUTOS).download(`iptu/${opts.ano}.${ext}`);
-    if (data) return { buffer: Buffer.from(await data.arrayBuffer()), nome: `IPTU_${opts.ano}.${ext}`, url: null };
+    // Só "não encontrado" passa para a próxima extensão; erro passageiro é repetido e outro erro lança.
+    const buffer = await downloadIfExists(db.storage.from(BUCKET_BRUTOS), `iptu/${opts.ano}.${ext}`);
+    if (buffer) return { buffer, nome: `IPTU_${opts.ano}.${ext}`, url: null };
   }
   throw new Error(`Arquivo do IPTU ${opts.ano} não encontrado. ${MENSAGEM_DOWNLOAD_BLOQUEADO}`);
 }

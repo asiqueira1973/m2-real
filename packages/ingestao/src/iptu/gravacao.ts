@@ -12,6 +12,7 @@
 import { randomUUID } from "node:crypto";
 import type { M2Client } from "@m2-real/db/server";
 import { PLANTA_TOLERANCIA_AREA } from "../config/regras.js";
+import { withRetry, type RetryOptions } from "../shared/retry.js";
 import type { Building, PlantGroup } from "./montagem.js";
 
 const LOTE = 500;
@@ -35,16 +36,16 @@ interface ExistingPlantRow {
  * se a resposta vier cheia (1.000 linhas), divide o lote ao meio e lê cada metade.
  * Recebe: cliente e ids de prédios. Devolve: todas as plantas desses prédios.
  */
-async function fetchPlants(db: M2Client, ids: readonly string[]): Promise<ExistingPlantRow[]> {
-  const { data, error } = await db
-    .from("m2_plantas")
-    .select("id, predio_id, area_iptu_referencia, selo, fonte_area")
-    .in("predio_id", [...ids]);
-  if (error) throw new Error(`Falha ao ler m2_plantas: ${error.message}`);
+async function fetchPlants(db: M2Client, ids: readonly string[], retry: RetryOptions = {}): Promise<ExistingPlantRow[]> {
+  const data = await withRetry(
+    () => db.from("m2_plantas").select("id, predio_id, area_iptu_referencia, selo, fonte_area").in("predio_id", [...ids]),
+    "Falha ao ler m2_plantas",
+    retry,
+  );
   if (data.length < MAX_LINHAS_RESPOSTA) return data as ExistingPlantRow[];
   if (ids.length === 1) throw new Error(`Prédio ${ids[0]} com ${MAX_LINHAS_RESPOSTA}+ plantas: inesperado.`);
   const meio = Math.ceil(ids.length / 2);
-  return [...(await fetchPlants(db, ids.slice(0, meio))), ...(await fetchPlants(db, ids.slice(meio)))];
+  return [...(await fetchPlants(db, ids.slice(0, meio), retry)), ...(await fetchPlants(db, ids.slice(meio), retry))];
 }
 
 export interface ExistingPlant {
@@ -92,13 +93,15 @@ export interface WriteCounts {
  * Recebe: cliente service role e os prédios de assembleBuildings. Devolve: contagens.
  * Lança erro com o motivo do banco em qualquer falha (a execução fica "falhou", seção 12).
  */
-export async function writeBuildings(db: M2Client, buildings: readonly Building[]): Promise<WriteCounts> {
+export async function writeBuildings(db: M2Client, buildings: readonly Building[], retry: RetryOptions = {}): Promise<WriteCounts> {
   const counts: WriteCounts = { predios: 0, plantasNovas: 0, plantasAtualizadas: 0, unidades: 0 };
   for (let i = 0; i < buildings.length; i += LOTE) {
     const lote = buildings.slice(i, i + LOTE);
 
     // 1. Prédios (regra 11.4), upsert por chave_predio.
-    const { data: predios, error: e1 } = await db
+    // Upserts idempotentes: erro passageiro do banco é repetido (shared/retry.ts).
+    const predios = await withRetry(
+      () => db
       .from("m2_predios")
       .upsert(
         lote.map((b) => ({
@@ -120,8 +123,10 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
         })),
         { onConflict: "chave_predio" },
       )
-      .select("id, chave_predio");
-    if (e1) throw new Error(`Falha ao gravar m2_predios: ${e1.message}`);
+      .select("id, chave_predio"),
+      "Falha ao gravar m2_predios",
+      retry,
+    );
     const idPorChave = new Map(predios.map((p) => [p.chave_predio, p.id]));
     counts.predios += predios.length;
 
@@ -130,7 +135,7 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     // cortada em max_rows = 1.000 linhas pelo PostgREST (fetchPlants divide o lote se encher).
     const ids = [...idPorChave.values()];
     const existentes: ExistingPlantRow[] = [];
-    for (let k = 0; k < ids.length; k += IDS_POR_URL) existentes.push(...(await fetchPlants(db, ids.slice(k, k + IDS_POR_URL))));
+    for (let k = 0; k < ids.length; k += IDS_POR_URL) existentes.push(...(await fetchPlants(db, ids.slice(k, k + IDS_POR_URL), retry)));
     const existentesPorPredio = new Map<string, ExistingPlant[]>();
     for (const p of existentes) {
       const lista = existentesPorPredio.get(p.predio_id) ?? [];
@@ -176,14 +181,11 @@ export async function writeBuildings(db: M2Client, buildings: readonly Building[
     }
 
     // Só área de referência e quantidade mudam; selo, área privativa etc. ficam como estão.
-    const { error: e3 } = await db.from("m2_plantas").upsert(plantas, { onConflict: "id" });
-    if (e3) throw new Error(`Falha ao gravar m2_plantas: ${e3.message}`);
+    await withRetry(() => db.from("m2_plantas").upsert(plantas, { onConflict: "id" }), "Falha ao gravar m2_plantas", retry);
 
     for (let j = 0; j < unidades.length; j += LOTE * 4) {
-      const { error: e4 } = await db
-        .from("m2_unidades")
-        .upsert(unidades.slice(j, j + LOTE * 4) as never, { onConflict: "sql" });
-      if (e4) throw new Error(`Falha ao gravar m2_unidades: ${e4.message}`);
+      const lote = unidades.slice(j, j + LOTE * 4);
+      await withRetry(() => db.from("m2_unidades").upsert(lote as never, { onConflict: "sql" }), "Falha ao gravar m2_unidades", retry);
     }
     counts.unidades += unidades.length;
   }
