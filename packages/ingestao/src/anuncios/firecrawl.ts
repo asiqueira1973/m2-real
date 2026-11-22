@@ -86,6 +86,16 @@ export function createFirecrawl(deps: FirecrawlDeps) {
       const json = await chamar("/scrape", { url, formats: [{ type: "json", schema, prompt }], onlyMainContent: true }, FIRECRAWL_CUSTO_SCRAPE);
       return (json.data as { json?: unknown } | undefined)?.json ?? null;
     },
+
+    /**
+     * Igual a extrair, pedindo também o markdown da página (para a checagem "área total × útil"
+     * da 13.3, em extracao.ts). Recebe: URL, schema e prompt. Devolve: { json, markdown }.
+     */
+    async extrairComTexto(url: string, schema: unknown, prompt: string): Promise<{ json: unknown; markdown: string }> {
+      const json = await chamar("/scrape", { url, formats: [{ type: "json", schema, prompt }, "markdown"], onlyMainContent: true }, FIRECRAWL_CUSTO_SCRAPE);
+      const data = json.data as { json?: unknown; markdown?: string } | undefined;
+      return { json: data?.json ?? null, markdown: data?.markdown ?? "" };
+    },
   };
 }
 

@@ -12,7 +12,7 @@ import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
 import { casarAnuncio, type Casamento, type PlantaDoPredio } from "./casamento.js";
 import { allowedDomain, siteFilter } from "./dominios.js";
-import { CAMPOS_EXTRAIDOS, PROMPT_ANUNCIO, SCHEMA_ANUNCIO, toAnuncio, type AnuncioExtraido } from "./extracao.js";
+import { CAMPOS_EXTRAIDOS, checkTotalArea, PROMPT_ANUNCIO, SCHEMA_ANUNCIO, toAnuncio, type AnuncioExtraido } from "./extracao.js";
 import { createFirecrawl, ErroFirecrawl, TetoDeCreditos, type Firecrawl } from "./firecrawl.js";
 import { collectionPriority, pickBuildings, type SeloPlanta } from "./prioridade.js";
 
@@ -101,9 +101,9 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
         for (const r of resultados) {
           const dominio = allowedDomain(r.url);
           if (!dominio) { descartados++; continue; } // fora da allowlist: nunca é raspado
-          const extraido = await fc.extrair(r.url, SCHEMA_ANUNCIO, PROMPT_ANUNCIO);
+          const { json, markdown } = await fc.extrairComTexto(r.url, SCHEMA_ANUNCIO, PROMPT_ANUNCIO);
           paginas++; // só conta depois do scrape: se o teto parar a rodada aqui, a página não foi raspada
-          const anuncio = toAnuncio(extraido);
+          const anuncio = checkTotalArea(toAnuncio(json), markdown); // 13.3: área total nunca vira área privativa
           if (!anuncio) { descartados++; continue; } // "outro" ou sem área (13.3; seção 12)
           const casamento = await matchAd(db, anuncio);
           if ((await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()))) === "gravado") gravados++;
@@ -188,14 +188,25 @@ async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
   }
   if (!predio && a.nome_condominio && a.numero_extraido !== null) {
     // 11.8: nome do condomínio igual ao de outra página já casada no mesmo número.
-    const { data } = await db.from("m2_anuncios").select("predio_id").ilike("nome_condominio", a.nome_condominio)
-      .eq("numero_extraido", a.numero_extraido).not("predio_id", "is", null).limit(1);
-    if (data?.[0]?.predio_id) predio = { id: data[0].predio_id, similaridade: 1 };
+    const nome = a.nome_condominio.replace(/[\\%_]/g, (c) => `\\${c}`); // ilike: % e _ do nome são literais
+    const numero = a.numero_extraido;
+    const data = await withRetry<{ predio_id: string | null }[]>(
+      () => db.from("m2_anuncios").select("predio_id").ilike("nome_condominio", nome).eq("numero_extraido", numero).not("predio_id", "is", null).limit(1),
+      "Falha ao buscar condomínio já casado",
+    );
+    if (data[0]?.predio_id) predio = { id: data[0].predio_id, similaridade: 1 };
   }
   if (!predio) return casarAnuncio(a, null, [], null);
 
-  const { data: plantas } = await db.from("m2_plantas").select("id, area_iptu_referencia").eq("predio_id", predio.id);
-  const { data: p } = await db.from("m2_predios").select("fator_predio").eq("id", predio.id).single();
+  const predioId = predio.id;
+  const plantas = await withRetry<{ id: string; area_iptu_referencia: number }[]>(
+    () => db.from("m2_plantas").select("id, area_iptu_referencia").eq("predio_id", predioId),
+    "Falha ao ler plantas do prédio do anúncio",
+  );
+  const p = await withRetry<{ fator_predio: number | null }>(
+    () => db.from("m2_predios").select("fator_predio").eq("id", predioId).single(),
+    "Falha ao ler fator do prédio",
+  );
   // Fator de referência do grupo (11.10) entra no 8.6; até lá, só o do prédio.
   const fator = p?.fator_predio == null ? null : Number(p.fator_predio);
   const lista: PlantaDoPredio[] = (plantas ?? []).map((x) => ({ id: x.id, areaIptuReferencia: Number(x.area_iptu_referencia) }));

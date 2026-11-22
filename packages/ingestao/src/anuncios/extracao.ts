@@ -116,3 +116,29 @@ function inteiro(v: unknown): number | null {
   const n = typeof v === "number" ? v : Number(texto(v));
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 }
+
+/** "Área total: 132 m²" e variações; o número pode ter casa decimal. */
+const RE_AREA_TOTAL = /[áa]rea\s+total[^0-9\n]{0,20}(\d{1,4}(?:[.,]\d{1,2})?)\s*m(?:²|2)/gi;
+/** "Área útil: 87 m²" / "Área privativa 87 m²". */
+const RE_AREA_UTIL = /[áa]rea\s+(?:[úu]til|privativa)[^0-9\n]{0,20}(\d{1,4}(?:[.,]\d{1,2})?)\s*m(?:²|2)/gi;
+
+/**
+ * Seção 13.3: "se o texto traz 'área total' e 'área privativa/útil', só a privativa/útil é
+ * aceita". A instrução vai no prompt, e esta checagem determinística garante a regra sobre o
+ * texto da página: se a área extraída é igual a uma área total da página e diferente de toda área
+ * útil/privativa, troca pela útil/privativa; se a página só tem área total, a área é descartada.
+ * Recebe: anúncio extraído (ou nulo) e o markdown da página. Devolve: o anúncio corrigido, ou nulo
+ * se ficar sem nenhum campo de área (seção 12: não grava).
+ */
+export function checkTotalArea(anuncio: AnuncioExtraido | null, markdown: string): AnuncioExtraido | null {
+  if (!anuncio || anuncio.area_privativa === null) return anuncio;
+  const valores = (re: RegExp) => [...markdown.matchAll(re)].map((m) => Number(m[1]!.replace(",", ".")));
+  const totais = valores(RE_AREA_TOTAL);
+  const uteis = valores(RE_AREA_UTIL);
+  const igual = (a: number, b: number) => Math.abs(a - b) < 0.5;
+  const area = anuncio.area_privativa;
+  if (!totais.some((t) => igual(t, area)) || uteis.some((u) => igual(u, area))) return anuncio;
+  const corrigido: AnuncioExtraido = { ...anuncio, area_privativa: uteis[0] ?? null };
+  const temArea = corrigido.area_privativa !== null || corrigido.area_privativa_min !== null || corrigido.area_privativa_max !== null;
+  return temArea ? corrigido : null;
+}

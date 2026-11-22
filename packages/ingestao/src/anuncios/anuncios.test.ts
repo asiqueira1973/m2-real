@@ -230,3 +230,31 @@ describe("saveAd: regra 11.11", () => {
     expect(gravacoes).toHaveLength(0);
   });
 });
+
+// Seção 13.3: "área total × útil" verificado com uma página de exemplo salva (fixtures/).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { checkTotalArea } from "./extracao.js";
+
+describe("13.3: área total nunca vira área privativa (página de exemplo salva)", () => {
+  const pagina = readFileSync(join(import.meta.dirname, "..", "..", "fixtures", "anuncio-area-total-e-util.md"), "utf8");
+  const base = toAnuncio({ tipo_pagina: "anuncio", logradouro: "Rua Joaquim Antunes", numero: 577, finalidade: "venda", area_privativa_m2: 87, preco: 1350000 })!;
+
+  it("extração certa (área útil 87) passa intacta", () => {
+    expect(checkTotalArea(base, pagina)?.area_privativa).toBe(87);
+  });
+  it("extração que pegou a área total (132) é corrigida para a útil (87)", () => {
+    expect(checkTotalArea({ ...base, area_privativa: 132 }, pagina)?.area_privativa).toBe(87);
+  });
+  it("página só com área total: a área extraída é descartada e, sem outra área, o anúncio não grava", () => {
+    const soTotal = "- Área total: 132 m²\n- 3 quartos";
+    expect(checkTotalArea({ ...base, area_privativa: 132 }, soTotal)).toBeNull();
+  });
+  it("página com faixa e área total: perde a área única mas mantém a faixa", () => {
+    const r = checkTotalArea({ ...base, area_privativa: 132, area_privativa_min: 80, area_privativa_max: 95 }, "Área total 132 m²");
+    expect(r).toMatchObject({ area_privativa: null, area_privativa_min: 80, area_privativa_max: 95 });
+  });
+  it("página sem 'área total' não é tocada (ex.: página real da Lopes do Mondrian)", () => {
+    expect(checkTotalArea(toAnuncio(LOPES_MONDRIAN), "Área privativa 94 a 100 m²")?.area_privativa).toBe(94);
+  });
+});
