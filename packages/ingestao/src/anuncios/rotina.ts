@@ -101,8 +101,9 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
         for (const r of resultados) {
           const dominio = allowedDomain(r.url);
           if (!dominio) { descartados++; continue; } // fora da allowlist: nunca é raspado
-          paginas++;
-          const anuncio = toAnuncio(await fc.extrair(r.url, SCHEMA_ANUNCIO, PROMPT_ANUNCIO));
+          const extraido = await fc.extrair(r.url, SCHEMA_ANUNCIO, PROMPT_ANUNCIO);
+          paginas++; // só conta depois do scrape: se o teto parar a rodada aqui, a página não foi raspada
+          const anuncio = toAnuncio(extraido);
           if (!anuncio) { descartados++; continue; } // "outro" ou sem área (13.3; seção 12)
           const casamento = await matchAd(db, anuncio);
           await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()));
