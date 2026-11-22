@@ -14,7 +14,7 @@ function banco() {
   const q: Record<string, unknown> = {};
   for (const m of ["select", "eq", "gte", "lte", "not", "order", "limit", "in"]) q[m] = () => q;
   q.range = async () => ({ data: execucoes, error: null });
-  q.maybeSingle = async () => ({ data: null, error: null });
+  q.maybeSingle = async () => ({ data: { data_transacao: "2026-10-06" }, error: null });
   q.then = (ok: (v: unknown) => void) => ok({ data: execucoes, error: null });
   return { from: () => q, rpc: async () => ({ data: cobertura, error: null }) } as never;
 }
@@ -28,6 +28,7 @@ describe("ferramenta sobre", () => {
     resetHealthCache();
     const r = await runTool(banco(), "sobre", {});
     expect(r.bairros).toHaveLength(10);
+    expect(r.atualizacao).toMatchObject({ venda_mais_recente: "2026-10-06", itbi: "mensal (dia 8)" });
     expect((r.fontes as unknown[]).length).toBe(4);
     expect((r.selos as { selo: string }[]).map((s) => s.selo)).toEqual(["Confirmada", "Calibrada", "Indicativa", "Estimada", "Sem dado"]);
     expect(r.cobertura_atual).toEqual([{ bairro: "Pinheiros", vendas_24m: 2100, pct_cobertura: 0.4, calculado_em: "2026-11-22T10:00:00Z" }]);
@@ -39,5 +40,7 @@ describe("ferramenta sobre", () => {
     for (const b of BAIRROS_COBERTOS) expect(INSTRUCOES_MCP).toContain(b);
     expect(INSTRUCOES_MCP).toMatch(/`sobre`/);
     expect(INSTRUCOES_MCP).toMatch(/`buscar_predio`/);
+    expect(INSTRUCOES_MCP).toMatch(/todo mês/);
+    for (const s of ["Confirmada", "Calibrada", "Indicativa", "Estimada", "Sem dado"]) expect(INSTRUCOES_MCP).toContain(s);
   });
 });

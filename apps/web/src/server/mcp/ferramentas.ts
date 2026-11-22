@@ -11,7 +11,7 @@ import {
 import { loadHealth } from "@m2-real/ingestao/saude";
 import { z } from "zod";
 import { decade, medianSummary, pickComparables } from "./calculos";
-import { buildingFile, buildingSales, comparableCandidates, currentCoverage, lastCalibration, neighborhoodStats, searchBuilding } from "./dados";
+import { buildingFile, buildingSales, comparableCandidates, currentCoverage, lastCalibration, latestSaleDate, neighborhoodStats, searchBuilding } from "./dados";
 import { aboutPayload } from "./sobre";
 
 /** 13.2: fonte de toda resposta. */
@@ -53,7 +53,7 @@ export const ESQUEMAS = {
 
 /** Descrições (em português) que o agente lê. */
 export const DESCRICOES: Record<keyof typeof ESQUEMAS, string> = {
-  sobre: "O que é o Fechou por Quanto: bairros cobertos, fontes de dados, como o m² é calculado, o que significam os selos e a cobertura atual de cada bairro. Use para perguntas sobre o próprio serviço.",
+  sobre: "O que é o Fechou por Quanto: frequência de atualização (ITBI mensal) e a venda mais recente da base, bairros cobertos, fontes de dados, como o m² é calculado, o que significam os selos e a cobertura atual de cada bairro. Use para perguntas sobre o próprio serviço.",
   buscar_predio: "Acha até 5 prédios dos 10 bairros cobertos pelo endereço (similaridade de texto + número).",
   ficha_predio: "Ficha do prédio: plantas com área IPTU, área privativa, fator e selo de confiança, e se as vagas têm cadastro próprio.",
   vendas_predio: "Vendas reais (ITBI) do prédio na janela, com m² privativo e selo de cada uma, e a mediana do m² (regra 11.17).",
@@ -88,7 +88,8 @@ export async function runTool<K extends keyof typeof ESQUEMAS>(db: M2Client, nom
   const base = await envelope(db);
   switch (nome) {
     case "sobre":
-      return { ...aboutPayload(await currentCoverage(db)), ...base };
+      const [cobertura, vendaMaisRecente] = await Promise.all([currentCoverage(db), latestSaleDate(db)]);
+      return { ...aboutPayload(cobertura, vendaMaisRecente), ...base };
     case "buscar_predio": {
       const predios = await searchBuilding(db, (e as Entrada<"buscar_predio">).endereco);
       return predios.length ? { predios, ...base } : { predios, mensagem: MENSAGENS_MCP.foraDaCobertura, ...base };
