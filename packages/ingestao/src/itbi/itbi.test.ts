@@ -123,6 +123,26 @@ describe("leitor do ITBI com planilha gerada (abas mensais 28 colunas e variante
     expect(await workbookYear(buf)).toBe(2025);
   });
 
+  // Bug da planilha real de 2024: JAN-2024 e OUT-2024 vêm SEM a linha de cabeçalho (dados desde a
+  // linha 1). A aba sem cabeçalho usa o cabeçalho de outra aba mensal do mesmo arquivo, com o mesmo
+  // número de colunas, e a 1ª linha conta como dado.
+  it("aba sem cabeçalho usa o cabeçalho de outra aba mensal do arquivo (planilha real de 2024)", async () => {
+    const buf = await planilha([
+      { nome: "JAN-2024", cab: linha({ "N° do Cadastro (SQL)": 1008002970 }) as string[], linhas: [linha({ "N° do Cadastro (SQL)": 1008002971 })] },
+      { nome: "FEV-2024", cab: CAB_2025, linhas: [linha({ "N° do Cadastro (SQL)": 1008002972 })] },
+    ].map((a) => ({ ...a, linhas: a.linhas.map((l) => l.map((v) => (v instanceof Date ? v : v))) })));
+    const r = await readItbiWorkbook(buf);
+    expect(r.guias.map((g) => [g.sql, g.mesReferencia])).toEqual([
+      ["01008002970", "2024-01-01"], ["01008002971", "2024-01-01"], ["01008002972", "2024-02-01"],
+    ]);
+    expect(r.porAba).toEqual({ "JAN-2024": 2, "FEV-2024": 1 });
+  });
+
+  it("nenhuma aba com cabeçalho → erro claro", async () => {
+    const buf = await planilha([{ nome: "JAN-2024", cab: linha() as string[], linhas: [linha()] }]);
+    await expect(readItbiWorkbook(buf)).rejects.toThrow(/sem cabeçalho/);
+  });
+
   it("abas de anos diferentes → erro", async () => {
     const buf = await planilha([{ nome: "DEZ-2024", cab: CAB_2025, linhas: [linha()] }, { nome: "JAN-2025", cab: CAB_2025, linhas: [linha()] }]);
     await expect(readItbiWorkbook(buf)).rejects.toThrow(/anos diferentes/);
