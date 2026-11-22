@@ -72,7 +72,7 @@ export default async function EvidenciasPage({ searchParams }: { searchParams: P
                 <TableCell className="text-right tabular-nums">{a.vagas ?? "—"}</TableCell>
                 <TableCell>{label(ROTULO_STATUS_CASAMENTO, a.status_casamento)}</TableCell>
                 <TableCell><a href={a.url} {...externo}>Abrir</a></TableCell>
-                <TableCell className="space-y-1">
+                <TableCell className="flex flex-col items-start gap-1">
                   <Vincular tipo="anuncio" id={a.id} sugestao={endereco(a.logradouro_extraido, a.numero_extraido).replace("—", "")} />
                   <BotaoAcao rotulo="Descartar" confirmar="Descartar este anúncio?" acao={matchAd.bind(null, a.id, null, null, a.predio_id ?? undefined)} />
                 </TableCell>
@@ -97,7 +97,7 @@ export default async function EvidenciasPage({ searchParams }: { searchParams: P
                 <TableCell className="text-right tabular-nums">{e.vagas ?? "—"}</TableCell>
                 <TableCell>{label(ROTULO_STATUS_CASAMENTO, e.status_casamento)}</TableCell>
                 <TableCell className="space-x-2"><a href={e.url} {...externo}>Lote</a>{e.url_documento && <a href={e.url_documento} {...externo}>PDF</a>}</TableCell>
-                <TableCell className="space-y-1">
+                <TableCell className="flex flex-col items-start gap-1">
                   <Vincular tipo="edital" id={e.id} sugestao={endereco(e.logradouro_extraido, e.numero_extraido).replace("—", "")} />
                   <BotaoAcao rotulo="Descartar" confirmar="Descartar este edital?" acao={matchEdital.bind(null, e.id, null, null, e.predio_id ?? undefined)} />
                 </TableCell>

@@ -23,12 +23,17 @@ export function Vincular({ tipo, id, sugestao }: { tipo: "anuncio" | "edital"; i
   const [pendente, iniciar] = useTransition();
 
   if (!aberto) return <button type="button" className="text-xs text-primary hover:underline" onClick={() => setAberto(true)}>Vincular</button>;
+  // Painel lateral (como o "Confirmar área"): dentro da tabela ele ficaria cortado na borda.
   return (
-    <div className="mt-2 w-80 space-y-2 rounded-lg border border-border p-3 text-xs">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/20 whitespace-normal" onClick={() => setAberto(false)}>
+    <aside role="dialog" aria-modal="true" aria-label={tipo === "anuncio" ? "Vincular anúncio" : "Vincular edital"}
+      className="h-full w-96 max-w-full space-y-3 overflow-y-auto bg-white p-6 text-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <h2 className="text-base font-semibold">{tipo === "anuncio" ? "Vincular anúncio" : "Vincular edital"}</h2>
+      <p className="text-xs text-muted-foreground">Busque o prédio pelo endereço e escolha {tipo === "anuncio" ? "a planta" : "a unidade"}. O vínculo manual não é mais alterado pelo pipeline (regra 11.11).</p>
       <form className="flex gap-1" onSubmit={(e) => { e.preventDefault(); iniciar(async () => {
         const r = await searchBuildings(busca); setErro(r.erro ?? null); setPredios(r.predios as Predio[]); setPredio(null);
       }); }}>
-        <Input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Endereço do prédio" className="h-7 text-xs" />
+        <Input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Endereço do prédio" className="h-8" />
         <Button size="sm" type="submit" disabled={pendente}>Buscar</Button>
       </form>
       {predios && !predio && (predios.length === 0 ? <p className="text-muted-foreground">Nenhum prédio achado.</p> : (
@@ -45,7 +50,7 @@ export function Vincular({ tipo, id, sugestao }: { tipo: "anuncio" | "edital"; i
       {predio && (
         <div className="space-y-2">
           <p>Prédio: <strong>{predio.endereco}</strong></p>
-          <select aria-label={tipo === "anuncio" ? "Planta" : "Unidade"} value={escolha} onChange={(e) => setEscolha(e.target.value)} className="h-7 w-full rounded-md border border-input bg-white px-1">
+          <select aria-label={tipo === "anuncio" ? "Planta" : "Unidade"} value={escolha} onChange={(e) => setEscolha(e.target.value)} className="h-8 w-full rounded-md border border-input bg-white px-1">
             <option value="">{tipo === "anuncio" ? "Só o prédio (sem planta)" : "Só o prédio (sem unidade)"}</option>
             {opcoes.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
           </select>
@@ -57,6 +62,7 @@ export function Vincular({ tipo, id, sugestao }: { tipo: "anuncio" | "edital"; i
       )}
       {erro && <p role="alert" className="text-destructive">{erro}</p>}
       <button type="button" className="text-muted-foreground hover:underline" onClick={() => setAberto(false)}>Fechar</button>
+    </aside>
     </div>
   );
 }

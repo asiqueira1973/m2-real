@@ -33,7 +33,7 @@ export function ConfirmarArea({ plantaId, predioId, areaIptu, areaAtual, vagasAt
     <>
       <Button size="sm" variant="outline" onClick={() => setAberto(true)}>Confirmar área</Button>
       {aberto && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/20" onClick={() => setAberto(false)}>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/20 whitespace-normal" onClick={() => setAberto(false)}>
           <aside role="dialog" aria-modal="true" aria-label="Confirmar área da planta"
             className="flex h-full w-[640px] max-w-full gap-6 overflow-y-auto bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <form action={enviar} className="flex w-64 shrink-0 flex-col gap-4">
@@ -60,9 +60,9 @@ export function ConfirmarArea({ plantaId, predioId, areaIptu, areaAtual, vagasAt
                 <Button type="button" variant="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
               </div>
             </form>
-            <section className="flex-1 border-l border-border pl-6">
+            <section className="min-w-0 flex-1 border-l border-border pl-6">
               <h3 className="text-sm font-semibold">Evidências</h3>
-              {evidencias.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Nenhum anúncio ou edital casado com esta planta.</p> : (
+              {evidencias.length === 0 ? <p className="mt-2 text-sm break-words text-muted-foreground">Nenhum anúncio ou edital casado com esta planta.</p> : (
                 <ul className="mt-2 space-y-2 text-sm">
                   {evidencias.map((e) => (
                     <li key={e.url} className="flex justify-between gap-2">

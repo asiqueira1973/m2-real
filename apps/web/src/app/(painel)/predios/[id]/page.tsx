@@ -102,7 +102,7 @@ export default async function FichaPage({ params, searchParams }: {
                     <TableCell className="text-xs">
                       {[pl.especial && "Especial", pl.revisao_pendente && `Revisão: ${label(ROTULO_MOTIVO, pl.motivo_revisao)}`].filter(Boolean).join(" · ") || "—"}
                     </TableCell>
-                    <TableCell className="space-y-1">
+                    <TableCell className="flex flex-col items-start gap-1">
                       <ConfirmarArea plantaId={pl.id} predioId={p.id} areaIptu={Number(pl.area_iptu_referencia)}
                         areaAtual={pl.area_privativa === null ? null : Number(pl.area_privativa)} vagasAtuais={pl.vagas_inclusas} evidencias={evidenciasDe(pl.id)} />
                       <BotaoAcao rotulo={pl.especial ? "Desmarcar especial" : "Marcar como especial"} acao={setSpecial.bind(null, pl.id, p.id, !pl.especial)} />
@@ -197,7 +197,7 @@ export default async function FichaPage({ params, searchParams }: {
                         {label(ROTULO_STATUS_CASAMENTO, a.status_casamento)}
                         <TrocarVinculo opcoes={opcoesPlanta} atual={a.planta_id} rotuloVazio="Só o prédio" acao={async (planta) => { "use server"; return matchAd(a.id, p.id, planta); }} />
                       </TableCell>
-                      <TableCell className="space-y-1">
+                      <TableCell className="flex flex-col items-start gap-1">
                         <a href={a.url} {...externo}>Abrir</a>
                         <BotaoAcao rotulo="Descartar" confirmar="Descartar este anúncio? Ele deixa de ser evidência do prédio." acao={matchAd.bind(null, a.id, null, null, p.id)} />
                       </TableCell>
