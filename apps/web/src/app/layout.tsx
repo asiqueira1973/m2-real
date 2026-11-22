@@ -1,10 +1,13 @@
 /**
- * Layout raiz do app (painel + MCP). Recebe as páginas filhas e devolve o HTML base
- * em pt-BR (seção 17: idioma pt-BR). O menu lateral do painel entra no épico 8.7.
+ * Layout raiz do app (painel + MCP). Recebe as páginas filhas e devolve o HTML base em pt-BR
+ * (seção 17), com a fonte Inter (seção 16). O menu lateral fica no layout do grupo (painel).
  */
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Fechou por Quanto",
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={inter.variable}>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

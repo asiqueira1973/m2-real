@@ -18,5 +18,8 @@
     "@types/yauzl": "^3.4.0",
     "exceljs": "^4.4.0",
     "tsx": "^4.23.15"
+  },
+  "exports": {
+    "./regras": "./src/config/regras.ts"
   }
 }
