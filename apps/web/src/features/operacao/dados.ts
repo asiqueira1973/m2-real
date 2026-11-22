@@ -1,6 +1,7 @@
 /**
  * Dados das telas de operação (seção 10; critérios 4 e 5 do 8.8; O4), com a sessão do admin.
  */
+import { CONTAS_CONECTADAS_POR_PAGINA } from "@m2-real/ingestao/regras";
 import { loadHealth } from "@m2-real/ingestao/saude";
 import { createSessionClient } from "@/lib/supabase/servidor";
 
@@ -28,4 +29,16 @@ export async function loadKeys() {
   const { data, error } = await supabase.from("m2_chaves_api").select("id, nome, prefixo, ativa, criado_em, ultimo_uso_em").order("criado_em", { ascending: false }).limit(200);
   if (error) throw new Error(`Falha ao ler chaves: ${error.message}`);
   return data;
+}
+
+/**
+ * Contas de cliente MCP (8.10): uma página de m2_clientes_mcp com a sessão do admin (a função confere
+ * o perfil). Paginada para ficar abaixo do corte de 1.000 linhas do PostgREST.
+ * Recebe: a página (1 em diante). Devolve: as contas da página e o total.
+ */
+export async function loadClientAccounts(pagina: number) {
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.rpc("m2_clientes_mcp", { limite: CONTAS_CONECTADAS_POR_PAGINA, deslocamento: (pagina - 1) * CONTAS_CONECTADAS_POR_PAGINA });
+  if (error) throw new Error(`Falha ao ler contas conectadas: ${error.message}`);
+  return { contas: data ?? [], total: data?.[0]?.total ?? 0 };
 }

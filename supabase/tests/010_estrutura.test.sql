@@ -51,10 +51,13 @@ select is(
       and not exists (select 1 from pg_trigger tg join pg_class cl on cl.oid = tg.tgrelid
                       where cl.relname = c.table_name and tg.tgname = c.table_name || '_atualizado_em')),
   0, 'toda tabela com atualizado_em tem o trigger m2_<tabela>_atualizado_em (7.4)');
+-- Spec v1.3 (8.10) acrescentou 5 tabelas (6.4); a convenção vale para todas as tabelas m2_, não só as 14 da 7.2.
 select is(
-  (select count(*)::int from information_schema.columns c
-    where c.table_schema = 'public' and c.table_name like 'm2\_%' and c.column_name = 'criado_em'),
-  14, 'as 14 tabelas têm criado_em (convenção da seção 7)');
+  (select count(*)::int from information_schema.tables t
+    where t.table_schema = 'public' and t.table_type = 'BASE TABLE' and t.table_name like 'm2\_%'
+      and not exists (select 1 from information_schema.columns c
+                       where c.table_schema = 'public' and c.table_name = t.table_name and c.column_name = 'criado_em')),
+  0, 'toda tabela m2_ tem criado_em (convenção da seção 7)');
 
 -- Convenção de prefixo m2_ (decisão do usuário): nada do app em public sem prefixo.
 select is(

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.2 (renomeado para Fechou por Quanto) |
+| Versão | 1.3 (MCP com OAuth e cadastro aberto, épico 8.10) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -85,7 +85,7 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 | Dados do cartório (ONR, matrícula online) | Adiado (28.2) | Tem custo por consulta; decisão de orçamento pendente (pergunta P1) |
 | Modelo estatístico (regressão) do fator | Adiado para v2 (28.3) | O MVP usa mediana por grupo (regra 11.10); o modelo precisa de massa de prédios calibrados primeiro |
 | Outras cidades e bairros | Adiado (28.4) | Primeiro validar cobertura ≥ 70% nos 10 bairros |
-| Venda/cobrança e acesso externo ao MCP | Adiado (28.5) | Depende da validação da tese |
+| Venda/cobrança do MCP | Adiado (28.5) | Depende da validação da tese. O acesso externo gratuito, com cadastro e limites, entrou no 8.10 |
 | Casas, lojas, salas comerciais, terrenos | Descartado no MVP | Foco em apartamento residencial; as guias ficam armazenadas, mas não são analisadas |
 | Confirmação por moradores/síndicos | Descartado | Não é automatizável (princípio 2) |
 | Raspagem ampla de portais (ZAP, VivaReal, OLX) | Descartado | Risco jurídico e de bloqueio; o MVP usa coleta mínima por endereço (seção 20) |
@@ -161,7 +161,7 @@ Vercel ┌───────────────────────�
 
 ## 5. Perfis de usuário e matriz de permissões
 
-Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (agente, com chave de API). O pipeline usa a credencial de serviço do Supabase e não é perfil de usuário.
+Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (pessoa que conecta um assistente ao MCP: entra com Google pelo OAuth, seção 6.5, ou usa uma chave de API criada pelo admin). O pipeline usa a credencial de serviço do Supabase e não é perfil de usuário.
 
 | Ação | Admin (painel) | Cliente MCP | Pipeline (service role) |
 |---|---|---|---|
@@ -173,6 +173,8 @@ Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (agente, com chave 
 | Marcar venda como outlier ou desfazer | ✅ | ❌ | ✅ automático |
 | Disparar execução manual de ingestão | ✅ via botão que aciona o workflow do GitHub | ❌ | — |
 | Criar/revogar chave de API do MCP | ✅ | ❌ | ❌ |
+| Criar a própria conta de cliente e conectar um assistente (OAuth, 6.5) | — | ✅ com Google, sujeito à regra 11.21 | ❌ |
+| Bloquear/desbloquear conta de cliente | ✅ | ❌ | ❌ |
 | Criar outro admin | ❌ no painel (só por seed/SQL, seção 6) | ❌ | ❌ |
 | Excluir dados | ❌ (sem exclusão pela interface; seção 7.5) | ❌ | ✅ só substituição de execução (regra 11.1) |
 
@@ -195,7 +197,8 @@ Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (agente, com chave 
 Não existe tela para criar admin no MVP.
 
 ### 6.3 Cliente MCP
-- Chamadas a `/api/mcp` exigem o cabeçalho `Authorization: Bearer <chave>`.
+- Chamadas a `/api/mcp` (e `/mcp`) exigem o cabeçalho `Authorization: Bearer <credencial>`. Credencial é o token OAuth `fpq_mcp_…` (6.5), com os limites da regra 11.22, ou a chave de API do painel, sem limite.
+- Sem credencial válida: 401 com `WWW-Authenticate: Bearer resource_metadata="<site>/.well-known/oauth-protected-resource"`, que faz o cliente MCP abrir o OAuth sozinho. No limite: 429 com `Retry-After`.
 - A chave é gerada no painel (tela "Chaves de API"), mostrada **uma única vez**, e guardada no banco só como hash SHA-256 (`chaves_api.hash_chave`).
 - Chave revogada ou inexistente recebe 401 com a mensagem da seção 15.
 - A validação roda no servidor (rota do Next.js), que depois consulta o banco com a credencial de serviço. **A credencial de serviço nunca vai para o cliente** (guardrail, seção 18.1).
@@ -210,6 +213,16 @@ RLS ligado em todas as tabelas. Função auxiliar `eh_admin()` (SECURITY DEFINER
 | `plantas`, `anuncios`, `editais_leilao`, `vendas_consolidadas` | admin | admin: update **só** pelas funções `confirmar_area_planta`, `casar_anuncio`, `casar_edital`, `marcar_outlier` | `<tabela>_leitura_admin`; sem política de update direta |
 | `perfis` | o próprio usuário lê a própria linha | ninguém pela API | `perfis_leitura_propria` |
 | `chaves_api` | admin | admin (insert/update de `ativa`) | `chaves_api_leitura_admin`, `chaves_api_escrita_admin` |
+| `clientes`, `oauth_clientes`, `oauth_codigos`, `tokens_mcp`, `uso_mcp` (8.10) | ninguém pela API; admin lê as contas por `clientes_mcp()` | só o servidor (service role) pelas funções `entra_cliente`, `cria_codigo_oauth`, `troca_codigo_oauth`, `usa_token_mcp`; admin bloqueia por `bloqueia_cliente` | RLS ligado, sem política |
+
+### 6.5 OAuth do MCP e contas de cliente (épico 8.10)
+Mesmo desenho do Assina, seguindo a especificação de autorização do MCP. Todos os endereços vêm de `NEXT_PUBLIC_SITE_URL`.
+1. **Descoberta.** `GET /.well-known/oauth-protected-resource[/mcp]` (RFC 9728) e `GET /.well-known/oauth-authorization-server` (RFC 8414): só `authorization_code`, só PKCE `S256`, cliente público.
+2. **Login com Google.** Escopos `openid email`, PKCE e `state`. O `id_token` é validado (assinatura, aud, iss, exp, `email_verified`). A conta de cliente (`clientes`) guarda só o `sub` do Google e o e-mail. Ela fica fora do Supabase Auth: o painel continua só para admin (6.1). Sessão do cliente: cookie HttpOnly assinado (`SESSION_SECRET`), usado só nas telas do OAuth.
+3. **Registro de cliente** (RFC 7591), `POST /oauth/registrar`: 1 a 5 `redirect_uris`, https ou http em localhost.
+4. **Consentimento**, `/oauth/autorizar`: mostra o nome do cliente, o host de volta, a conta e o que ele pode e não pode fazer. Pedido inválido mostra erro e nunca redireciona. "Permitir" grava um código de 10 min (só o hash).
+5. **Token**, `POST /oauth/token`: troca atômica conferindo cliente, `redirect_uri` e PKCE, e devolve `{access_token, token_type: "Bearer"}`. Não há `expires_in` nem refresh token: o token vale até ser revogado ou a conta ser bloqueada. Código reapresentado revoga o token que gerou (RFC 9700).
+6. Páginas públicas `/privacidade` e `/termos`, exigidas pela tela de consentimento do Google.
 
 ---
 
@@ -659,6 +672,14 @@ Critérios de aceite:
 - [ ] Toda resposta com m² traz o selo e a área usada (princípio 1).
 - [ ] Teste de cliente com `node scripts/test-client.mjs` contra o deploy de preview passa.
 
+### 8.10 MCP com OAuth e cadastro aberto
+- [ ] `/mcp` sem credencial responde 401 com `resource_metadata`, e os metadados da 6.5 respondem.
+- [ ] Registro de cliente, consentimento e troca de código funcionam com PKCE; pedido inválido não redireciona; código reusado revoga o token.
+- [ ] Login com Google cria a conta de cliente com só `sub` e e-mail; limite diário de contas novas (11.21).
+- [ ] Token OAuth acessa as 5 ferramentas; acima do limite (11.22), 429 com `Retry-After`; conta bloqueada no painel perde o acesso na hora.
+- [ ] A chave de API do painel continua valendo (`scripts/test-client.mjs` passa).
+- [ ] Conectar no Claude.ai só com a URL `https://fechouporquanto.com.br/mcp` e chamar `buscar_predio`.
+
 ---
 
 ## 9. Fluxos principais ponta a ponta
@@ -692,7 +713,10 @@ Todas são do perfil **[Admin]**.
 | [Admin] Fila de revisão | itens pendentes agrupados por motivo, com as evidências resumidas | bairro, motivo | abrir ficha na aba certa | `plantas`, `vendas_consolidadas`, `anuncios` | — |
 | [Admin] Evidências sem vínculo | duas abas: Anúncios (`ambiguo` e `sem_predio`) e Editais (`sem_predio` e `casado_predio`), com endereço extraído, área e link | domínio, status | casar com prédio/planta ou prédio/unidade; descartar | `anuncios`, `editais_leilao`, `predios`, `plantas`, `unidades` | via `casar_anuncio`, `casar_edital` |
 | [Admin] Execuções | últimas 50 execuções: rotina, referência, status, contagens, duração, erro | rotina, status | "Executar agora" por rotina | `execucoes_ingestao` | GitHub API (servidor) |
-| [Admin] Chaves de API | lista: nome, prefixo, criada em, último uso, ativa | — | criar; revogar | `chaves_api` | `chaves_api` |
+| [Admin] Chaves de API | lista: nome, prefixo, criada em, último uso, ativa; seção "Contas conectadas" (8.10): e-mail, criada em, último uso, chamadas 24 h, conexões, situação | — | criar; revogar; bloquear/desbloquear conta | `chaves_api`, `clientes_mcp()` | `chaves_api`, `bloqueia_cliente` |
+| [Cliente MCP] Entrar | "Entrar com Google" e mensagens de erro (8.10) | — | entrar | — | `clientes` (servidor) |
+| [Cliente MCP] Autorizar conexão | nome do cliente, o que pode e não pode, host de volta, conta | — | permitir; cancelar; usar outra conta | `oauth_clientes` | `oauth_codigos` (servidor) |
+| [Público] Privacidade e Termos | texto legal (8.10) | — | — | — | — |
 
 ---
 
@@ -719,6 +743,8 @@ Todas são do perfil **[Admin]**.
 | 11.17 | Medianas do MCP | m² mediano de prédio ou bairro = mediana de `m2_privativo` das vendas de compra e venda não fora da curva, com selo ≥ `estimada`, na janela pedida (padrão 24 meses). Sempre devolver junto: n de vendas, distribuição por selo e se há vagas inclusas na área | MCP |
 | 11.19 | Alvos da coleta de leilões | (a) Prédios com guia do ITBI de natureza "4.Arrematação" ou "17.Resolução da alienação fiduciária" nos últimos 36 meses; (b) os 100 prédios de maior `prioridade_coleta` (regra 11.13) sem nenhuma planta `confirmada`. Cada prédio é buscado no máximo uma vez a cada 180 dias (`ultima_coleta_leilao_em`) | ingestão |
 | 11.20 | Casamento edital → prédio → unidade | Prédio: mesmo critério de endereço da regra 11.8. Unidade, por ordem de força: (1) `matricula` igual à de uma guia do ITBI de uma unidade do prédio → `casado_unidade`; (2) complemento normalizado igual ao de uma unidade do prédio ("APTO 52" = "AP 52" = "APARTAMENTO 52") → `casado_unidade`; (3) senão → `casado_predio`, sem efeito na área (vai para a lista de evidências sem vínculo). Edital de prédio fora dos 10 bairros é descartado | ingestão |
+| 11.21 | Limite de contas novas | No máximo 50 contas de cliente criadas nas últimas 24 h. Acima disso, o login mostra a mensagem da seção 15. Quem já tem conta entra sempre; conta bloqueada não entra | OAuth (8.10) |
+| 11.22 | Limite de uso do MCP | Por token OAuth: até 30 chamadas no minuto corrente e 1.000 nas últimas 24 h. A chamada recusada não conta e recebe 429 com o tempo de espera. Chaves do painel não têm limite | MCP (8.10) |
 | 11.18 | O que não é automático | A **descontar o valor das vagas inclusas** no preço não é feito no MVP: o m² é devolvido com a informação `vagas_inclusas_area` e o agente decide. Também não há correção monetária dos preços antigos | — |
 
 **Tabela 11.2: bairros, CEPs e grafias aceitas**
@@ -769,6 +795,8 @@ Execução `em_andamento` há mais de 6 horas é marcada `falhou` ("tempo esgota
 | `/api/chaves/[id]/revogar` | POST | sessão de admin | `ativa = false` |
 
 ### 13.2 Ferramentas do MCP (`/api/mcp`, somente leitura)
+
+Autenticação: token OAuth (6.5), com os limites da regra 11.22, ou chave de API do painel (6.3). Também responde em `/mcp`.
 
 | Ferramenta | Entrada (zod) | Saída |
 |---|---|---|
@@ -851,6 +879,12 @@ Português claro, sem jargão. Mensagens fixas:
 | Painel sem perfil | "Acesso não autorizado. Fale com o administrador do Fechou por Quanto." |
 | Lista vazia de revisão | "Nada para revisar agora." |
 | Chave criada | "Copie a chave agora. Ela não será mostrada de novo." |
+| MCP no limite de uso (11.22) | "Limite de uso atingido. Tente de novo em N segundos." (ou "N minutos" a partir de 2 min) |
+| Login: falha no Google | "Não foi possível entrar com o Google. Tente de novo." |
+| Login: cadastros pausados (11.21) | "Os cadastros novos estão pausados por hoje. Tente de novo amanhã." |
+| Login: conta bloqueada | "Esta conta está bloqueada. Fale com o administrador do Fechou por Quanto." |
+| Consentimento | "<cliente> quer acessar o Fechou por Quanto"; "Poderá: buscar prédios e consultar vendas, fichas, comparáveis e o m² dos bairros cobertos."; "Não poderá: alterar dados nem ver qualquer informação pessoal." |
+| Pedido OAuth inválido | "Pedido de conexão inválido. Volte ao seu assistente e comece a conexão de novo." |
 
 Rótulos dos selos no painel e no MCP: Confirmada, Calibrada, Indicativa, Estimada, Sem dado.
 
@@ -1058,7 +1092,7 @@ Sem telemetria de terceiros no MVP; o próprio `execucoes_ingestao`, o `cobertur
 | A5 | Firecrawl para busca e extração | Já usado pelo usuário | Trocar exige reescrever `anuncios/` |
 | A6 | Limiares: 3% (planta e concordância), 8% (indicativa), 12% (casamento), 10% (coerência), 8 plantas (grupo de fator), 0,6–1,6 (fora da curva) | Tirados da análise dos dois prédios e de bom senso; ajustáveis em `config/regras.ts` | Ajustar depois de ver a fila de revisão real |
 | A7 | Prédio = mesmo setor + quadra + número de condomínio, com ≥ 4 apartamentos | É como o IPTU agrupa condomínios; ≥ 4 tira casas geminadas | Ver P3 |
-| A8 | Um único perfil (admin) e acesso ao MCP por chave de API | MVP interno | Perfis extras entram no roadmap 28.5 |
+| A8 | Admin no painel; clientes MCP entram com Google pelo OAuth (revista em 23/11/2026, épico 8.10) | A chave manual impedia qualquer pessoa de instalar o MCP sozinha | Planos pagos continuam no 28.5 |
 | A10 | Allowlist inicial de leilões: `venda-imoveis.caixa.gov.br`, `portalzuk.com.br`, `megaleiloes.com.br`, `sodresantoro.com.br`, `frazaoleiloes.com.br`, `biasileiloes.com.br`, `lancejudicial.com.br` | Leiloeiros conhecidos com atuação em São Paulo; não conferi se todos publicam PDFs sem login | Ajuste em `LEILAO_DOMINIOS` depois do primeiro teste |
 | A11 | Edital casado à unidade vale como `confirmada` | É documento oficial (matrícula ou laudo); fica abaixo só da revisão manual | Se preferir um selo próprio ("oficial"), é um valor novo no enum `selo_area` |
 | A9 | Supabase Pro | O plano gratuito (500 MB) fica apertado com unidades + guias + brutos | Dá para começar no gratuito sem os brutos no Storage |
@@ -1115,7 +1149,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 **28.4 Expansão geográfica.** Novos bairros de São Paulo (basta incluir na tabela `bairros`) e, depois, Rio de Janeiro (ITBI do Rio via transparência), BH e Porto Alegre.
 
-**28.5 Produto externo.** Planos por chave de API com preço fixo, perfis de cliente, limites de uso e página pública.
+**28.5 Produto externo.** Planos por chave de API com preço fixo e página pública. (Perfis de cliente e limites de uso gratuitos foram antecipados no 8.10.)
 
 **28.6 Preço pedido x preço fechado.** Usar os anúncios de venda coletados para medir, por prédio, a diferença entre o preço pedido e o fechado.
 

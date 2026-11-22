@@ -1,12 +1,13 @@
 /**
  * Servidor MCP do Fechou por Quanto (seções 6.3 e 13.2; épico 8.9). SÓ SERVIDOR: usa a credencial de
  * serviço (fica em src/server/, como manda o CLAUDE.md; a rota só reexporta). Stateless (mcp-handler 2.x).
- * Exige Authorization: Bearer <chave> (401 com a mensagem da seção 15).
+ * Exige Authorization: Bearer <chave ou token OAuth> (401 com a mensagem da seção 15; 429 no limite
+ * da regra 11.22).
  */
 import { createServiceClient } from "@m2-real/db/server";
 import { createMcpHandler } from "mcp-handler";
 import { after } from "next/server";
-import { bearerFrom, touchKey, unauthorized, verifyKey } from "./auth";
+import { bearerFrom, tooManyRequests, touchKey, unauthorized, verifyCredential } from "./auth";
 import { DESCRICOES, ESQUEMAS, runTool } from "./ferramentas";
 import { withSealLabels } from "./rotulos";
 
@@ -25,14 +26,16 @@ const mcp = createMcpHandler(
 );
 
 /**
- * Confere a chave e entrega ao MCP. Recebe: a requisição. Devolve: a resposta do MCP ou 401.
- * ultimo_uso_em é gravado com after() do Next: roda depois da resposta, sem ser cortado na Vercel.
+ * Confere a credencial e entrega ao MCP. Recebe: a requisição. Devolve: a resposta do MCP, 401 ou 429.
+ * Chave do painel: ultimo_uso_em é gravado com after() do Next (depois da resposta, sem ser cortado na
+ * Vercel). Token OAuth: o uso já foi contado na conferência.
  */
 export async function mcpHandler(request: Request): Promise<Response> {
-  const chave = bearerFrom(request.headers.get("authorization"));
+  const valor = bearerFrom(request.headers.get("authorization"));
   const db = createServiceClient();
-  const id = chave ? await verifyKey(db, chave) : null;
-  if (!id) return unauthorized();
-  after(() => touchKey(db, id));
+  const credencial = valor ? await verifyCredential(db, valor) : null;
+  if (!credencial) return unauthorized();
+  if (credencial.tipo === "token" && !credencial.permitido) return tooManyRequests(credencial.esperaS);
+  if (credencial.tipo === "chave") after(() => touchKey(db, credencial.id));
   return mcp(request);
 }
