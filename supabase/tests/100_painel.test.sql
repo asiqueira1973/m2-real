@@ -51,13 +51,14 @@ set local role authenticated;
 set local request.jwt.claims to '{"sub": "00000000-0000-0000-0000-0000000001b1", "role": "authenticated"}';
 select is((select count(*)::int from public.m2_listar_predios(null, null, false, null, 24, 50, 0)), 0, 'sem perfil: 0 prédios');
 select is((select count(*)::int from public.m2_cobertura_atual()), 0, 'sem perfil: 0 linhas de cobertura');
+select is((select count(*)::int from public.m2_ultimas_execucoes()), 0, 'sem perfil: 0 execuções');
 reset role;
 
 -- anon: não executa.
 select ok(not has_function_privilege('anon', 'public.m2_listar_predios(integer,public.m2_selo_area,boolean,text,integer,integer,integer)', 'execute')
        and not has_function_privilege('anon', 'public.m2_cobertura_atual()', 'execute')
        and not has_function_privilege('anon', 'public.m2_ultimas_execucoes()', 'execute'), 'anon não executa as leituras do painel');
-select ok(not has_function_privilege('anon', 'public.m2_listar_predios(integer,public.m2_selo_area,boolean,text,integer,integer,integer)', 'execute'), 'anon sem execute (confirmação)');
+
 
 select * from finish();
 rollback;
