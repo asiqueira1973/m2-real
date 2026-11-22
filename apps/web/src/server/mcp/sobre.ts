@@ -15,9 +15,12 @@ export const BAIRROS_COBERTOS = [
 export const INSTRUCOES_MCP = [
   "Fechou por Quanto: por quanto os apartamentos foram realmente vendidos em 10 bairros de São Paulo",
   `(${BAIRROS_COBERTOS.join(", ")}), a partir do ITBI da Prefeitura, com a área privativa calibrada por anúncios e editais.`,
+  "Diferencial: as vendas vêm do ITBI, carregado todo mês (dia 8), assim que a Prefeitura publica; não são preços de anúncio.",
+  "Todo m² vem com um selo de confiança da área privativa: Confirmada (edital ou revisão), Calibrada (2+ anúncios que concordam),",
+  "Indicativa (1 anúncio), Estimada (área do IPTU × fator de prédios parecidos) ou Sem dado.",
   "Para perguntas sobre o próprio serviço (o que é, bairros, fontes, método, selos, cobertura), chame a ferramenta `sobre`.",
   "Para um endereço, chame primeiro `buscar_predio` e use o predio_id nas outras ferramentas.",
-  "Sempre informe o selo de confiança junto de cada m² (Confirmada, Calibrada, Indicativa, Estimada, Sem dado) e não trate os valores como avaliação.",
+  "Sempre informe o selo junto de cada m² e não trate os valores como avaliação.",
 ].join(" ");
 
 /** Selos da regra 11.9, do mais forte ao mais fraco, em linguagem simples. */
@@ -32,15 +35,23 @@ export const SELOS_EXPLICADOS = [
 export type CoberturaBairro = { bairro_nome: string; vendas_24m: number; pct_cobertura: number; calculado_em: string };
 
 /**
- * Conteúdo da ferramenta `sobre`. Recebe: a última foto de cobertura de cada bairro.
+ * Conteúdo da ferramenta `sobre`. Recebe: a última foto de cobertura de cada bairro e a data da venda mais recente.
  * Devolve: o texto estruturado (o envelope da 13.2 é acrescentado por runTool).
  */
-export function aboutPayload(cobertura: readonly CoberturaBairro[]) {
+export function aboutPayload(cobertura: readonly CoberturaBairro[], vendaMaisRecente: string | null) {
   return {
     o_que_e: "O Fechou por Quanto mostra por quanto os apartamentos foram realmente vendidos, prédio a prédio, com o m² calculado sobre a área privativa (a do anúncio), e não sobre a área do IPTU.",
+    atualizacao: {
+      destaque: "Vendas reais e recentes: o ITBI é carregado todo mês, no dia 8, assim que a Prefeitura publica a planilha. Não são preços pedidos em anúncios.",
+      venda_mais_recente: vendaMaisRecente,
+      itbi: "mensal (dia 8)",
+      anuncios: "semanal (segundas-feiras)",
+      editais_de_leilao: "semanal (quartas-feiras)",
+      iptu: "anual",
+    },
     bairros: BAIRROS_COBERTOS,
     fontes: [
-      { fonte: "ITBI da Prefeitura de São Paulo", uso: "Vendas reais: data, valor declarado, unidade (SQL). Atualizado todo mês (dia 8)." },
+      { fonte: "ITBI da Prefeitura de São Paulo", uso: "Vendas reais: data, valor declarado e unidade. Carregado todo mês, no dia 8." },
       { fonte: "IPTU (GeoSampa)", uso: "Prédios, unidades, área construída e ano de construção. Carga anual." },
       { fonte: "Anúncios de imóveis", uso: "Área privativa de cada planta. Coleta semanal, priorizando prédios com mais vendas e selo mais fraco." },
       { fonte: "Editais de leilão", uso: "Área privativa oficial da unidade (matrícula ou laudo). Coleta semanal." },

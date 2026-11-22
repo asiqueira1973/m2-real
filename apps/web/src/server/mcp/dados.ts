@@ -150,3 +150,13 @@ export async function currentCoverage(db: M2Client) {
   if (error) throw falha("cobertura", error);
   return data ?? [];
 }
+
+/**
+ * Data da venda mais recente da base (ferramenta sobre: mostra quão atual é o ITBI carregado).
+ * Usa o índice de data_transacao. Recebe: cliente service role. Devolve: a data (AAAA-MM-DD) ou nulo.
+ */
+export async function latestSaleDate(db: M2Client): Promise<string | null> {
+  const { data, error } = await db.from("m2_vendas_consolidadas").select("data_transacao").order("data_transacao", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw falha("última venda", error);
+  return data?.data_transacao ?? null;
+}
