@@ -11,11 +11,11 @@
  */
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-import yauzl from "yauzl";
 import type { M2Client } from "@m2-real/db/server";
 import { ITBI_ANO_INICIAL } from "../config/regras.js";
 import { loadNeighborhoods } from "../iptu/rotina.js";
 import { sha256, storeRaw } from "../shared/brutos.js";
+import { listSheets } from "../shared/xlsx.js";
 import { runRoutine, supabaseExecutionStore, type RoutineResult } from "../shared/execucao.js";
 import { assignNeighborhoods } from "./bairro.js";
 import { insertGuias, lookupUnits, replaceYear } from "./gravacao.js";
@@ -158,30 +158,11 @@ export function extractXlsxLinks(html: string, base: string): string[] {
 }
 
 /**
- * Ano dos dados pelas abas mensais, lendo só o xl/workbook.xml do .xlsx (sem ler as planilhas).
+ * Ano dos dados pelas abas mensais, lendo só a lista de abas do .xlsx (sem ler as planilhas).
  * Recebe: conteúdo do .xlsx. Devolve: o ano. Lança erro se não houver aba mensal ou houver anos diferentes.
  */
-export function workbookYear(buffer: Buffer): Promise<number> {
-  return new Promise((resolve, reject) => {
-    yauzl.fromBuffer(buffer, { lazyEntries: true }, (err, zip) => {
-      if (err || !zip) return reject(err ?? new Error("Planilha do ITBI ilegível (não é .xlsx)."));
-      zip.on("entry", (e: yauzl.Entry) => {
-        if (e.fileName !== "xl/workbook.xml") return zip.readEntry();
-        zip.openReadStream(e, (e2, s) => {
-          if (e2 || !s) return reject(e2);
-          let xml = "";
-          s.on("data", (d: Buffer) => (xml += d.toString("utf8")));
-          s.on("end", () => {
-            const anos = new Set(
-              [...xml.matchAll(/<sheet [^>]*name="([^"]+)"/g)].map((m) => sheetMonth(m[1]!)).filter(Boolean).map((m) => Number(m!.slice(0, 4))),
-            );
-            if (anos.size !== 1) return reject(new Error(`Não deu para saber o ano da planilha do ITBI pelas abas (${[...anos].join(", ") || "nenhuma aba mensal"}).`));
-            resolve([...anos][0]!);
-          });
-        });
-      });
-      zip.on("end", () => reject(new Error("Planilha do ITBI sem xl/workbook.xml.")));
-      zip.readEntry();
-    });
-  });
+export async function workbookYear(buffer: Buffer): Promise<number> {
+  const anos = new Set((await listSheets(buffer)).map((a) => sheetMonth(a.nome)).filter(Boolean).map((m) => Number(m!.slice(0, 4))));
+  if (anos.size !== 1) throw new Error(`Não deu para saber o ano da planilha do ITBI pelas abas (${[...anos].join(", ") || "nenhuma aba mensal"}).`);
+  return [...anos][0]!;
 }
