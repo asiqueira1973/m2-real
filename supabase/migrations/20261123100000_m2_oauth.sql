@@ -68,6 +68,7 @@ create table public.m2_uso_mcp (
   token_id uuid not null references public.m2_tokens_mcp (id) on delete cascade,
   janela timestamptz not null,
   chamadas integer not null default 0,
+  criado_em timestamptz not null default now(),  -- convenção da seção 7: toda tabela tem criado_em
   primary key (token_id, janela)
 );
 create index m2_uso_mcp_janela_idx on public.m2_uso_mcp (janela);

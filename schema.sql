@@ -1429,7 +1429,8 @@ ALTER TABLE "public"."m2_unidades" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."m2_uso_mcp" (
     "token_id" "uuid" NOT NULL,
     "janela" timestamp with time zone NOT NULL,
-    "chamadas" integer DEFAULT 0 NOT NULL
+    "chamadas" integer DEFAULT 0 NOT NULL,
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 

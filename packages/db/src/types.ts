@@ -383,14 +383,14 @@ isOneToOne: false
                   ]
                 },"m2_uso_mcp": {
                   Row: {
-                    "chamadas": number,"janela": string,"token_id": string
+                    "chamadas": number,"criado_em": string,"janela": string,"token_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "chamadas"?: number,"janela": string,"token_id": string
+                    "chamadas"?: number,"criado_em"?: string,"janela": string,"token_id": string
                   }
                   Update: {
-                    "chamadas"?: number,"janela"?: string,"token_id"?: string
+                    "chamadas"?: number,"criado_em"?: string,"janela"?: string,"token_id"?: string
                   }
                   Relationships: [
                     {
