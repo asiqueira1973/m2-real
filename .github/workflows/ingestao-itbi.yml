@@ -1,5 +1,6 @@
 # Rotina "ingestao-itbi" (seção 4.4): dia 8 de cada mês, 06:10 em São Paulo (09:10 UTC), e manual.
-# Baixa a planilha do ano corrente; se o hash mudou, reprocessa o ano (regra 11.1) e calibra.
+# Baixa as planilhas de todos os anos (a partir de 2021) publicadas na página; reprocessa só os anos
+# cujo hash mudou (regra 11.1) e, se algum mudou, calibra.
 # Sem mudança, a calibração não roda (seção 9.2).
 name: ingestao-itbi
 on:
