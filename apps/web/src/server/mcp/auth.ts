@@ -1,9 +1,15 @@
 /**
- * Autenticação do MCP (seção 6.3): Authorization: Bearer <chave>, conferida pelo hash SHA-256 contra
- * m2_chaves_api ativa. A chave nunca é guardada; só o hash. SÓ SERVIDOR.
+ * Autenticação do MCP (seção 6.3): Authorization: Bearer <credencial>. Duas credenciais (8.10):
+ *  - token OAuth `fpq_mcp_…` (m2_tokens_mcp), com o limite de chamadas da regra 11.19;
+ *  - chave do painel (m2_chaves_api ativa), sem limite (é do admin).
+ * Só o hash SHA-256 é guardado. O 401 aponta os metadados do recurso (RFC 9728), que é o que faz
+ * o cliente MCP abrir o fluxo OAuth sozinho. SÓ SERVIDOR.
  */
 import type { M2Client } from "@m2-real/db";
+import { MCP_CHAMADAS_POR_DIA, MCP_CHAMADAS_POR_MINUTO } from "@m2-real/ingestao/regras";
 import { hashKey } from "@/lib/chaves";
+import { limiteAtingido } from "@/server/oauth/mensagens";
+import { MCP_TOKEN_PREFIX, resourceMetadataUrl } from "@/server/oauth/server";
 
 /** Seção 15: mensagem para chave ausente, inválida ou revogada. */
 export const MENSAGEM_CHAVE_INVALIDA = "Chave de API inválida ou revogada.";
@@ -30,7 +36,36 @@ export async function touchKey(db: M2Client, id: string): Promise<void> {
   if (error) console.error(`Falha ao gravar ultimo_uso_em da chave ${id}: ${error.message}`);
 }
 
-/** Resposta 401 da seção 6.3 / 15. */
+/** Resultado da conferência: chave do painel, token OAuth (permitido ou no limite) ou nada. */
+export type Credencial =
+  | { tipo: "chave"; id: string }
+  | { tipo: "token"; id: string; permitido: boolean; esperaS: number };
+
+/**
+ * Confere a credencial. Token OAuth: confere, aplica o limite (11.19), conta a chamada e grava
+ * ultimo_uso_em numa ida ao banco (m2_usa_token_mcp). Chave: verifyKey.
+ * Recebe: cliente service role e a credencial. Devolve: a credencial válida ou nulo.
+ */
+export async function verifyCredential(db: M2Client, valor: string): Promise<Credencial | null> {
+  if (!valor.startsWith(MCP_TOKEN_PREFIX)) {
+    const id = await verifyKey(db, valor);
+    return id ? { tipo: "chave", id } : null;
+  }
+  const { data, error } = await db.rpc("m2_usa_token_mcp", { p_hash: hashKey(valor), p_por_minuto: MCP_CHAMADAS_POR_MINUTO, p_por_dia: MCP_CHAMADAS_POR_DIA });
+  if (error) throw new Error(`Falha ao conferir o token: ${error.message}`);
+  const linha = data?.[0];
+  return linha ? { tipo: "token", id: linha.token_id, permitido: linha.permitido, esperaS: linha.espera_s } : null;
+}
+
+/** Resposta 401 da seção 6.3 / 15, com o resource_metadata (RFC 9728) para o cliente achar o OAuth. */
 export function unauthorized(): Response {
-  return Response.json({ erro: MENSAGEM_CHAVE_INVALIDA }, { status: 401, headers: { "WWW-Authenticate": 'Bearer realm="fechouporquanto"' } });
+  return Response.json({ erro: MENSAGEM_CHAVE_INVALIDA }, {
+    status: 401,
+    headers: { "WWW-Authenticate": `Bearer realm="fechouporquanto", resource_metadata="${resourceMetadataUrl()}"` },
+  });
+}
+
+/** Regra 11.19: resposta 429 com Retry-After e a mensagem da seção 15. Recebe: segundos até liberar. */
+export function tooManyRequests(esperaS: number): Response {
+  return Response.json({ erro: limiteAtingido(esperaS) }, { status: 429, headers: { "Retry-After": String(esperaS) } });
 }

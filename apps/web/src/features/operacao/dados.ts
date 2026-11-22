@@ -29,3 +29,11 @@ export async function loadKeys() {
   if (error) throw new Error(`Falha ao ler chaves: ${error.message}`);
   return data;
 }
+
+/** Contas de cliente MCP (8.10): m2_clientes_mcp() com a sessão do admin (a função confere o perfil). */
+export async function loadClientAccounts() {
+  const supabase = await createSessionClient();
+  const { data, error } = await supabase.rpc("m2_clientes_mcp");
+  if (error) throw new Error(`Falha ao ler contas conectadas: ${error.message}`);
+  return data ?? [];
+}

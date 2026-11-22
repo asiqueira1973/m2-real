@@ -38,6 +38,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Tudo, menos estáticos do Next e o MCP (/api/mcp e /mcp), que usa chave de API (seção 6.3).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/mcp|mcp$).*)"],
+  // Tudo, menos estáticos do Next, o MCP (/api/mcp e /mcp), que usa chave ou token (seção 6.3), e o
+  // fluxo OAuth do cliente MCP e as páginas públicas (8.10), que não usam a sessão do painel.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/mcp|mcp$|\\.well-known/|oauth/|api/auth/google|privacidade$|termos$).*)"],
 };

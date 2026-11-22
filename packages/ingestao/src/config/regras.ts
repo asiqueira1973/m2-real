@@ -329,3 +329,34 @@ export const MEDIANA_SELOS = ["estimada", "indicativa", "calibrada", "confirmada
 
 /** O5: a avaliação de saúde é guardada por 5 minutos em cada instância do servidor MCP. */
 export const MCP_SAUDE_CACHE_MS = 5 * 60 * 1000;
+
+// ---------------------------------------------------------------------------
+// Épico 8.10 — OAuth do MCP e contas de cliente (seções 6.3 e 6.5; regras 11.18 e 11.19).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.18: contas de cliente novas aceitas nas últimas 24 h (quem já tem conta entra sempre). */
+export const CLIENTES_NOVOS_POR_DIA = 50;
+
+/** Regra 11.19: chamadas ao MCP por token OAuth no minuto corrente. */
+export const MCP_CHAMADAS_POR_MINUTO = 30;
+
+/** Regra 11.19: chamadas ao MCP por token OAuth nas últimas 24 h. */
+export const MCP_CHAMADAS_POR_DIA = 1000;
+
+/** 6.5, passo 4: validade do código de autorização, em segundos (10 min). */
+export const OAUTH_CODIGO_SEGUNDOS = 600;
+
+/** 6.5, passo 3: máximo de redirect_uris por cliente registrado e tamanhos máximos. */
+export const OAUTH_REDIRECT_URIS_MAX = 5;
+export const OAUTH_REDIRECT_URI_MAX = 500;
+export const OAUTH_CLIENTE_NOME_MAX = 100;
+
+/** RFC 7636: tamanho do code_verifier do PKCE. */
+export const PKCE_VERIFIER_MIN = 43;
+export const PKCE_VERIFIER_MAX = 128;
+
+/** 6.5, passo 2: validade do cookie do login com Google (state e PKCE), em segundos. */
+export const LOGIN_GOOGLE_COOKIE_SEGUNDOS = 600;
+
+/** 6.5: validade da sessão do cliente nas telas do OAuth, em dias. */
+export const SESSAO_CLIENTE_DIAS = 30;

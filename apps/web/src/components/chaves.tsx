@@ -62,3 +62,23 @@ export function RevogarChave({ id }: { id: string }) {
     </span>
   );
 }
+
+/** Bloquear ou desbloquear uma conta de cliente MCP (seção 5; 8.10). Recebe: id e se está bloqueada. */
+export function BloquearConta({ id, bloqueada }: { id: string; bloqueada: boolean }) {
+  const router = useRouter();
+  const [pendente, iniciar] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+  return (
+    <span className="inline-flex flex-col">
+      <button type="button" disabled={pendente} className="text-xs text-primary hover:underline disabled:opacity-50"
+        onClick={() => {
+          if (!bloqueada && !window.confirm("Bloquear esta conta? Os assistentes conectados por ela deixam de acessar o MCP.")) return;
+          iniciar(async () => {
+            const r = await fetch(`/api/clientes/${id}/bloquear`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bloquear: !bloqueada }) });
+            if (r.status === 204) { setErro(null); router.refresh(); } else setErro((await r.json().catch(() => null))?.erro ?? `Erro ${r.status}`);
+          });
+        }}>{pendente ? "…" : bloqueada ? "Desbloquear" : "Bloquear"}</button>
+      {erro && <span role="alert" className="text-xs text-destructive">{erro}</span>}
+    </span>
+  );
+}
