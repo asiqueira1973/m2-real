@@ -123,3 +123,14 @@ describe("ferramentas (13.2): schemas, mensagens e campos comuns", () => {
     expect(m2WithoutSeal(r)).toEqual([]);
   });
 });
+
+// Verifier do 8.9: a seção 15 fixa os rótulos dos selos "no painel e no MCP" (Confirmada, Calibrada…);
+// as respostas saíam com o valor do enum ("calibrada").
+import { withSealLabels } from "./rotulos";
+
+describe("seção 15: rótulos dos selos nas respostas do MCP", () => {
+  it("selo, selo_area e as chaves de distribuicao_selos viram os rótulos; o resto não muda", () => {
+    expect(withSealLabels({ vendas: [{ selo_area: "calibrada", m2_privativo: 1 }], plantas: [{ selo: "sem_dado" }], distribuicao_selos: { estimada: 2, confirmada: 1 }, fonte: "x" }))
+      .toEqual({ vendas: [{ selo_area: "Calibrada", m2_privativo: 1 }], plantas: [{ selo: "Sem dado" }], distribuicao_selos: { Estimada: 2, Confirmada: 1 }, fonte: "x" });
+  });
+});
