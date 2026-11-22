@@ -140,3 +140,13 @@ export async function lastCalibration(db: M2Client): Promise<string | null> {
   if (error) throw falha("a última calibração", error);
   return data?.concluida_em ?? null;
 }
+
+/**
+ * Cobertura atual dos bairros (ferramenta sobre): última foto de cada bairro, pela m2_cobertura_atual.
+ * Recebe: cliente service role. Devolve: uma linha por bairro (10 no máximo).
+ */
+export async function currentCoverage(db: M2Client) {
+  const { data, error } = await db.rpc("m2_cobertura_atual");
+  if (error) throw falha("cobertura", error);
+  return data ?? [];
+}
