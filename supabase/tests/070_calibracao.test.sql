@@ -19,7 +19,9 @@ from generate_series(1, 3) n;
 
 select ok((select enum_range(null::public.m2_fonte_dado)::text[] @> array['calibracao']), 'm2_fonte_dado tem o valor calibracao (decisão do usuário, 8.4)');
 -- Só a venda 1 continua sendo consolidada; a 2 sumiu; a 3 foi marcada pelo admin.
-select is(public.m2_vendas_remover_obsoletas(array['00000000-0000-0000-0000-000000000071'::uuid]), 1, 'apaga 1 venda obsoleta (a 2)');
+-- O banco local pode ter as vendas reais (que também seriam apagadas aqui, dentro do rollback):
+-- a contagem considera todas as linhas, e a asserção confere só as fixtures.
+select ok(public.m2_vendas_remover_obsoletas(array['00000000-0000-0000-0000-000000000071'::uuid]) >= 1, 'apaga as vendas obsoletas (inclui a 2)');
 select is((select array_agg(transacao_apartamento_id::text order by transacao_apartamento_id) from public.m2_vendas_consolidadas where predio_id = '00000000-0000-0000-0000-0000000000d1'),
   array['00000000-0000-0000-0000-000000000071', '00000000-0000-0000-0000-000000000073'], 'mantém a consolidada e a marcada pelo admin');
 select ok((select fora_da_curva and marcado_manual from public.m2_vendas_consolidadas where transacao_apartamento_id = '00000000-0000-0000-0000-000000000073'),
