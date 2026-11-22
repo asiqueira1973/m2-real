@@ -1,0 +1,26 @@
+# Rotina "ingestao-iptu" (seção 4.4): SÓ MANUAL (decisão do usuário, plans/8.2-iptu.md). O GeoSampa
+# tem desafio anti-robô: o arquivo do ano é baixado à mão uma vez por ano e enviado ao Storage
+# (README). Sem cron, para não falhar todo 15/02 sem arquivo. Depois, calibração.
+name: ingestao-iptu
+on:
+  workflow_dispatch:
+    inputs:
+      ano:
+        description: "Exercício do IPTU (ex.: 2027)"
+        required: true
+concurrency: { group: ingestao-iptu, cancel-in-progress: false }
+jobs:
+  iptu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      IPTU_ARQUIVO_URL: ${{ vars.IPTU_ARQUIVO_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ingestao -- iptu "${{ inputs.ano }}"
+      - run: npm run ingestao -- calibracao

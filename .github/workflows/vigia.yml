@@ -1,0 +1,23 @@
+# Rotina "vigia" (observabilidade O3; acréscimo pedido pelo usuário): todo dia, 07:00 em São Paulo
+# (10:00 UTC), e manual. Falha (e o GitHub manda e-mail) se alguma carga estiver atrasada, falhando,
+# travada ou com volume anômalo, se a cobertura cair, ou se a sonda de busca não achar o prédio de
+# teste. Não grava em m2_execucoes_ingestao. Também mantém ativo o projeto Supabase do plano grátis.
+name: vigia
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+concurrency: { group: vigia, cancel-in-progress: true }
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ingestao -- vigia

@@ -1,0 +1,29 @@
+# Integração contínua (seções 18.1 e 22.1): typecheck, testes e build em todo push e PR; e os
+# testes do banco (pgTAP) num Supabase local criado no próprio runner.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+jobs:
+  verificacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+  banco:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: supabase start -x vector,logflare,realtime,edge-runtime,studio,imgproxy
+      - run: supabase test db

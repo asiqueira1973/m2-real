@@ -1,0 +1,23 @@
+# Rotina "ingestao-itbi" (seção 4.4): dia 8 de cada mês, 06:10 em São Paulo (09:10 UTC), e manual.
+# Baixa a planilha do ano corrente; se o hash mudou, reprocessa o ano (regra 11.1). Depois, calibração.
+name: ingestao-itbi
+on:
+  schedule:
+    - cron: "10 9 8 * *"
+  workflow_dispatch:
+concurrency: { group: ingestao-itbi, cancel-in-progress: false }
+jobs:
+  itbi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ITBI_PAGINA_URL: ${{ vars.ITBI_PAGINA_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ingestao -- itbi
+      - run: npm run ingestao -- calibracao

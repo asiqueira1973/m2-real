@@ -48,5 +48,31 @@ O Storage precisa aceitar arquivos de até 500 MiB (local: `supabase/config.toml
 - Toda tabela `m2_*` nova repete o padrão de grants da migration `20261121120200` (só `select` para anon/authenticated); o teste `supabase/tests/010_estrutura` confere.
 - Todo objeto do banco leva o prefixo `m2_`.
 
+## Automação (GitHub Actions; épico 8.8)
+Os workflows ficam em `.github/workflows/` e rodam contra o banco na nuvem (projeto Supabase **BANCO DE TESTE**, com todos os objetos `m2_`).
+
+| Workflow | Quando (São Paulo) | O que faz |
+|---|---|---|
+| `ingestao-itbi` | dia 8, 06:10, e manual | ITBI do ano corrente + calibração |
+| `ingestao-iptu` | só manual (com o ano) | IPTU do Storage + calibração |
+| `coleta-anuncios` | segunda, 05:40, e manual | anúncios (teto de 50 créditos do Firecrawl) + calibração |
+| `coleta-leiloes` | quarta, 05:40, e manual | editais de leilão (teto de 50 créditos) + calibração |
+| `calibracao` | manual | calibração |
+| `vigia` | todo dia, 07:00, e manual | saúde das cargas e sonda de busca; falha (e manda e-mail) se houver problema |
+| `ci` | push no `main` e PR | typecheck, testes, build e pgTAP |
+
+O botão "Executar agora" do painel (tela Execuções) dispara esses workflows pela API do GitHub (`GITHUB_TOKEN_DISPATCH`, só no servidor).
+
+**Configuração do repositório** (Settings → Secrets and variables → Actions):
+- Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `FIRECRAWL_API_KEY`, `ANTHROPIC_API_KEY`.
+- Variáveis: `NEXT_PUBLIC_SUPABASE_URL`, `FIRECRAWL_MAX_CREDITOS_EXECUCAO`, `CLAUDE_MAX_DOCUMENTOS_EXECUCAO`, `LEILAO_MAX_ALVOS_EXECUCAO`, `LEILAO_DOMINIOS` e, se quiser, `ITBI_PAGINA_URL` e `IPTU_ARQUIVO_URL`.
+
+**Token do "Executar agora":** fine-grained token do GitHub só para este repositório, com a permissão *Actions: Read and write*. Vai em `GITHUB_TOKEN_DISPATCH`, junto com `GITHUB_REPO=asiqueira1973/m2-real`, no ambiente do painel.
+
+**Limite do plano grátis do Supabase:** o Storage aceita arquivos de até 50 MB, e o IPTU anual tem bem mais que isso. Por isso, a carga anual do IPTU no banco na nuvem fica como pendência registrada no plano do 8.8.
+
+## Licença
+[MIT](LICENSE) — DabLab — Alexandre da Silva de Siqueira LTDA - ME.
+
 ## Estrutura
 Ver seção 18.3 do spec e o `CLAUDE.md`.

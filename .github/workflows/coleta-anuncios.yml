@@ -1,0 +1,25 @@
+# Rotina "coleta-anuncios" (seção 4.4): toda segunda, 05:40 em São Paulo (08:40 UTC), e manual.
+# Teto do Firecrawl por execução na variável FIRECRAWL_MAX_CREDITOS_EXECUCAO (50, decisão do
+# usuário em 22/11/2026: plano grátis dividido com outros apps). Depois, calibração.
+name: coleta-anuncios
+on:
+  schedule:
+    - cron: "40 8 * * 1"
+  workflow_dispatch:
+concurrency: { group: coleta-anuncios, cancel-in-progress: false }
+jobs:
+  anuncios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      FIRECRAWL_MAX_CREDITOS_EXECUCAO: ${{ vars.FIRECRAWL_MAX_CREDITOS_EXECUCAO }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run ingestao -- anuncios
+      - run: npm run ingestao -- calibracao
