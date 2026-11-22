@@ -1,5 +1,5 @@
 /**
- * As 5 ferramentas do MCP (seção 13.2), somente leitura. Toda resposta leva fonte, atualizado_em e,
+ * As 5 ferramentas do MCP (seção 13.2) e a `sobre` (acréscimo de 23/11/2026), somente leitura. Toda resposta leva fonte, atualizado_em e,
  * pela observabilidade O5 (divergência aprovada: só acrescenta campos), dados_desatualizados e
  * motivo_desatualizacao. Princípio 1: todo m² sai com selo e área.
  */
@@ -11,7 +11,8 @@ import {
 import { loadHealth } from "@m2-real/ingestao/saude";
 import { z } from "zod";
 import { decade, medianSummary, pickComparables } from "./calculos";
-import { buildingFile, buildingSales, comparableCandidates, lastCalibration, neighborhoodStats, searchBuilding } from "./dados";
+import { buildingFile, buildingSales, comparableCandidates, currentCoverage, lastCalibration, neighborhoodStats, searchBuilding } from "./dados";
+import { aboutPayload } from "./sobre";
 
 /** 13.2: fonte de toda resposta. */
 export const FONTE = "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto";
@@ -30,6 +31,7 @@ export const SLUGS_BAIRROS = [
 
 /** Schemas de entrada (zod) da 13.2. */
 export const ESQUEMAS = {
+  sobre: z.object({}),
   buscar_predio: z.object({ endereco: z.string().min(MCP_ENDERECO_MIN).max(MCP_ENDERECO_MAX).describe("Endereço livre, ex.: 'Rua Caiubi, 324'") }),
   ficha_predio: z.object({ predio_id: z.uuid().describe("id devolvido por buscar_predio") }),
   vendas_predio: z.object({
@@ -51,6 +53,7 @@ export const ESQUEMAS = {
 
 /** Descrições (em português) que o agente lê. */
 export const DESCRICOES: Record<keyof typeof ESQUEMAS, string> = {
+  sobre: "O que é o Fechou por Quanto: bairros cobertos, fontes de dados, como o m² é calculado, o que significam os selos e a cobertura atual de cada bairro. Use para perguntas sobre o próprio serviço.",
   buscar_predio: "Acha até 5 prédios dos 10 bairros cobertos pelo endereço (similaridade de texto + número).",
   ficha_predio: "Ficha do prédio: plantas com área IPTU, área privativa, fator e selo de confiança, e se as vagas têm cadastro próprio.",
   vendas_predio: "Vendas reais (ITBI) do prédio na janela, com m² privativo e selo de cada uma, e a mediana do m² (regra 11.17).",
@@ -84,6 +87,8 @@ type Entrada<K extends keyof typeof ESQUEMAS> = z.output<(typeof ESQUEMAS)[K]>;
 export async function runTool<K extends keyof typeof ESQUEMAS>(db: M2Client, nome: K, e: Entrada<K>): Promise<Record<string, unknown>> {
   const base = await envelope(db);
   switch (nome) {
+    case "sobre":
+      return { ...aboutPayload(await currentCoverage(db)), ...base };
     case "buscar_predio": {
       const predios = await searchBuilding(db, (e as Entrada<"buscar_predio">).endereco);
       return predios.length ? { predios, ...base } : { predios, mensagem: MENSAGENS_MCP.foraDaCobertura, ...base };

@@ -10,6 +10,7 @@ import { after } from "next/server";
 import { bearerFrom, tooManyRequests, touchKey, unauthorized, verifyCredential } from "./auth";
 import { DESCRICOES, ESQUEMAS, runTool } from "./ferramentas";
 import { withSealLabels } from "./rotulos";
+import { INSTRUCOES_MCP } from "./sobre";
 
 const mcp = createMcpHandler(
   (server) => {
@@ -22,7 +23,7 @@ const mcp = createMcpHandler(
       });
     }
   },
-  { serverInfo: { name: "Fechou por Quanto", version: "1.0.0" } },
+  { serverInfo: { name: "Fechou por Quanto", version: "1.0.0" }, instructions: INSTRUCOES_MCP },
 );
 
 /**

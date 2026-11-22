@@ -800,6 +800,7 @@ Autenticação: token OAuth (6.5), com os limites da regra 11.22, ou chave de AP
 
 | Ferramenta | Entrada (zod) | Saída |
 |---|---|---|
+| `sobre` (acréscimo de 23/11/2026) | `{}` | o que é o serviço, os 10 bairros, as fontes, o método, os 5 selos explicados, a cobertura atual por bairro, as ferramentas, os limites e os avisos; o servidor também manda um resumo no campo `instructions` do initialize |
 | `buscar_predio` | `{ endereco: string (3–200) }` | até 5 `{ predio_id, endereco, bairro, ano_construcao, total_unidades, similaridade }`; vazio + mensagem "fora da cobertura" se nada casar |
 | `ficha_predio` | `{ predio_id: uuid }` | prédio + plantas `{ area_iptu, area_privativa, fator, selo, fonte_area, faixa_erro_pct, vagas_inclusas, quartos, qtd_unidades, especial }` + `vagas_cadastro_proprio` |
 | `vendas_predio` | `{ predio_id: uuid, meses?: int 1–120 = 36 }` | lista `{ data, unidade, valor_total, valor_apartamento, valor_vagas, area_privativa, selo_area, m2_privativo, m2_iptu, vagas_inclusas_area, fora_da_curva }` + mediana (regra 11.17) |

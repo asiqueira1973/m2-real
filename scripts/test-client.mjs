@@ -28,7 +28,8 @@ const json = (r) => JSON.parse(r.content.find((c) => c.type === "text").text);
 
 const { tools } = await cliente.listTools();
 const nomes = tools.map((t) => t.name).sort();
-conferir(JSON.stringify(nomes) === JSON.stringify(["buscar_predio", "comparaveis", "ficha_predio", "m2_bairro", "vendas_predio"]), `5 ferramentas: ${nomes.join(", ")}`);
+// As 5 da 13.2 mais a `sobre` (acréscimo de 23/11/2026, spec 13.2).
+conferir(JSON.stringify(nomes) === JSON.stringify(["buscar_predio", "comparaveis", "ficha_predio", "m2_bairro", "sobre", "vendas_predio"]), `6 ferramentas: ${nomes.join(", ")}`);
 conferir(tools.every((t) => t.inputSchema?.type === "object"), "todas com inputSchema");
 
 // 3) buscar_predio("rua caiubi 324") → Caiubi, 324 em 1º.
@@ -43,6 +44,10 @@ const de2025 = vendas.vendas.filter((v) => v.data.startsWith("2025"));
 conferir(de2025.length === 3, `vendas_predio(Joaquim Antunes, 577): ${de2025.length} vendas de 2025 (esperado 3)`);
 conferir(de2025.every((v) => "valor_total" in v && "m2_privativo" in v && "selo_area" in v && "area_privativa" in v), "cada venda com valor_total, m2_privativo, selo_area e area_privativa");
 console.log("    ", de2025.map((v) => `${v.data} ${v.unidade} R$ ${v.valor_total} → ${v.m2_privativo}/m² (${v.selo_area}, ${v.area_privativa} m²)`).join("\n      "));
+
+// 4b) sobre: bairros, selos e cobertura (acréscimo de 23/11/2026).
+const sobre = json(await cliente.callTool({ name: "sobre", arguments: {} }));
+conferir(sobre.bairros?.length === 10 && sobre.selos?.length === 5 && Array.isArray(sobre.cobertura_atual), `sobre: ${sobre.bairros?.length} bairros, ${sobre.selos?.length} selos, cobertura de ${sobre.cobertura_atual?.length} bairros`);
 
 // 5) Fora da cobertura e as outras ferramentas.
 const fora = json(await cliente.callTool({ name: "buscar_predio", arguments: { endereco: "Avenida Paulista, 1" } }));
