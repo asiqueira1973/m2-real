@@ -39,3 +39,21 @@ describe("gravação do ITBI: erro transitório do banco é repetido", () => {
     await expect(lookupUnits(db, ["01501401564"], semEspera)).rejects.toThrow(/statement timeout/);
   });
 });
+
+// Bug achado ao medir o RPC (22/11/2026): o PostgREST corta toda resposta em 1.000 linhas
+// (max_rows). Com lotes de 5.000 SQLs, um lote com mais de 1.000 SQLs cadastrados perderia
+// unidades EM SILÊNCIO (sem erro). Cada SQL casa no máximo uma unidade: lote ≤ 1.000 nunca corta.
+describe("lookupUnits: nenhum lote passa do limite de 1.000 linhas do PostgREST", () => {
+  it("2.500 SQLs cadastrados voltam todos", async () => {
+    const MAX_ROWS = 1000;
+    const db = {
+      rpc: async (_fn: string, { sqls }: { sqls: string[] }) => ({
+        data: sqls.slice(0, MAX_ROWS).map((sql) => ({ sql, unidade_id: `u${sql}`, predio_id: "p", bairro_id: 1 })),
+        error: null,
+      }),
+    } as unknown as Parameters<typeof lookupUnits>[0];
+    const sqls = Array.from({ length: 2500 }, (_, i) => String(i).padStart(11, "0"));
+    const r = await lookupUnits(db, sqls, { esperasMs: [] });
+    expect(r.size).toBe(2500);
+  });
+});
