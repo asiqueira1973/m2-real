@@ -6,7 +6,7 @@ Base de preço real de apartamentos por **prédio e planta**, em 10 bairros de S
 
 ## O produto
 
-Site: **[fechouporquanto.com.br](https://fechouporquanto.com.br)**. Enquanto o domínio não publica, o endereço é [m2-real.vercel.app](https://m2-real.vercel.app).
+Site: **[fechouporquanto.com.br](https://fechouporquanto.com.br)** (o `www` redireciona; `m2-real.vercel.app` também responde).
 
 A pessoa pergunta ao seu assistente de IA (Claude, ChatGPT ou Grok). Ele consulta o MCP do Fechou por Quanto e responde com as vendas reais registradas no ITBI, prédio a prédio. Cada m² vem com um selo que diz de onde veio a área privativa.
 
