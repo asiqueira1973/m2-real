@@ -90,8 +90,10 @@ export async function neighborhoodStats(db: M2Client, slug: string, meses: numbe
   if (error) throw falha("mediana do bairro", error);
   const r = data?.[0];
   if (!r) return null;
-  const { data: b } = await db.from("m2_bairros").select("id").eq("slug", slug).single();
-  const { data: cobertura } = await db.from("m2_cobertura_bairros").select("pct_cobertura").eq("bairro_id", b!.id).order("calculado_em", { ascending: false }).limit(1).maybeSingle();
+  const b = await db.from("m2_bairros").select("id").eq("slug", slug).single();
+  if (b.error) throw falha("bairro", b.error);
+  const { data: cobertura, error: erroCobertura } = await db.from("m2_cobertura_bairros").select("pct_cobertura").eq("bairro_id", b.data.id).order("calculado_em", { ascending: false }).limit(1).maybeSingle();
+  if (erroCobertura) throw falha("cobertura", erroCobertura);
   return {
     bairro: r.bairro, mediana_m2_privativo: num(r.mediana_m2_privativo), p25: num(r.p25), p75: num(r.p75), n_vendas: r.n_vendas,
     distribuicao_selos: (r.distribuicao_selos ?? {}) as Record<string, number>, com_vagas_inclusas: r.com_vagas_inclusas,
@@ -111,8 +113,9 @@ export async function comparableCandidates(db: M2Client, predioId: string, area:
   let areaRef = area;
   let origemArea: "informada" | "planta_mais_comum" = "informada";
   if (areaRef === null) {
-    const { data: pl } = await db.from("m2_plantas").select("area_privativa, selo").eq("predio_id", predioId).not("area_privativa", "is", null)
+    const { data: pl, error: erroPlanta } = await db.from("m2_plantas").select("area_privativa, selo").eq("predio_id", predioId).not("area_privativa", "is", null)
       .order("qtd_unidades", { ascending: false }).limit(1).maybeSingle();
+    if (erroPlanta) throw falha("a planta de referência", erroPlanta);
     areaRef = pl ? Number(pl.area_privativa) : null;
     origemArea = "planta_mais_comum";
   }
@@ -132,7 +135,8 @@ export async function comparableCandidates(db: M2Client, predioId: string, area:
 
 /** atualizado_em (13.2): fim da última calibração concluída, ou nulo. */
 export async function lastCalibration(db: M2Client): Promise<string | null> {
-  const { data } = await db.from("m2_execucoes_ingestao").select("concluida_em").eq("rotina", "calibracao").eq("status", "concluida")
+  const { data, error } = await db.from("m2_execucoes_ingestao").select("concluida_em").eq("rotina", "calibracao").eq("status", "concluida")
     .order("concluida_em", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw falha("a última calibração", error);
   return data?.concluida_em ?? null;
 }

@@ -16,14 +16,18 @@ export function bearerFrom(cabecalho: string | null): string | null {
 
 /**
  * Confere a chave. Recebe: cliente service role e a chave. Devolve: o id da chave se ativa; senão nulo.
- * Grava ultimo_uso_em sem esperar (a resposta não depende disso).
  */
 export async function verifyKey(db: M2Client, chave: string): Promise<string | null> {
   const { data, error } = await db.from("m2_chaves_api").select("id, ativa").eq("hash_chave", hashKey(chave)).maybeSingle();
   if (error) throw new Error(`Falha ao conferir a chave: ${error.message}`);
   if (!data?.ativa) return null;
-  void db.from("m2_chaves_api").update({ ultimo_uso_em: new Date().toISOString() }).eq("id", data.id).then(() => undefined);
   return data.id;
+}
+
+/** Grava ultimo_uso_em da chave (tela Chaves de API). Recebe: cliente e id. Erro só vai para o log. */
+export async function touchKey(db: M2Client, id: string): Promise<void> {
+  const { error } = await db.from("m2_chaves_api").update({ ultimo_uso_em: new Date().toISOString() }).eq("id", id);
+  if (error) console.error(`Falha ao gravar ultimo_uso_em da chave ${id}: ${error.message}`);
 }
 
 /** Resposta 401 da seção 6.3 / 15. */
