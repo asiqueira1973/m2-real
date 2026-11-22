@@ -359,3 +359,17 @@ describe("saveEdital: regra 11.11", () => {
     expect(gravacoes).toHaveLength(0);
   });
 });
+
+// Bug da 1ª rodada real (22/11/2026, Zuk, Alameda Ministro Rocha Azevedo, 988): a página listava
+// dois lotes (apartamento com 482,92 m² úteis e vaga com 31,52 m² de área total) e a extração
+// misturou os dois: área privativa 482,92 com área total 31,52. Área total menor que a privativa
+// é impossível na mesma unidade; o valor não pode ser gravado.
+describe("área total menor que a privativa (lotes misturados na página)", () => {
+  it("página do lote: área total impossível vira nula, a privativa fica", () => {
+    const r = fromLotPage({ tipo_pagina: "edital_leilao", logradouro: "Alameda Ministro Rocha Azevedo", numero: 988, area_privativa_m2: 482.92, area_total_m2: 31.52 })!;
+    expect(r.edital).toMatchObject({ area_privativa: 482.92, area_total: null });
+  });
+  it("documento: idem", () => {
+    expect(fromDocument({ ...CANARIO, area_privativa_m2: 184.32, area_total_m2: 31.52 }, "u")).toMatchObject({ area_privativa: 184.32, area_total: null });
+  });
+});
