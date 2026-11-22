@@ -101,3 +101,28 @@ describe("acesso: falha ao ler o perfil não desconecta", () => {
     expect(accessDecision(true, null, null)).toBe("sem-perfil");
   });
 });
+
+// Verifier do 8.7: a mediana da ficha saía sem selo (princípio 1: "nunca m² sem selo"; 11.17:
+// "sempre devolver junto a distribuição por selo"). O resumo traz a distribuição das vendas usadas.
+import { monthsBefore } from "./estatistica";
+
+describe("resumo da ficha: mediana com a distribuição por selo (princípio 1; 11.17)", () => {
+  it("conta os selos só das vendas que entram na mediana", () => {
+    const r = salesSummary([
+      { m2_privativo: 10_000, fora_da_curva: false, selo_area: "calibrada" },
+      { m2_privativo: 12_000, fora_da_curva: false, selo_area: "estimada" },
+      { m2_privativo: 13_000, fora_da_curva: false, selo_area: "calibrada" },
+      { m2_privativo: 50_000, fora_da_curva: true, selo_area: "confirmada" },
+    ] as never);
+    expect(r.distribuicao).toEqual({ calibrada: 2, estimada: 1 });
+  });
+});
+
+// Verifier do 8.7: a janela da ficha transbordava o dia (31/03 − 1 mês = 03/03) e divergia da
+// lista de prédios, que usa current_date − interval no Postgres (31/03 − 1 mês = 28/02).
+describe("janela de meses igual à do Postgres", () => {
+  it("dia que não existe no mês de destino vai para o último dia", () => {
+    expect(monthsBefore(new Date("2026-03-31T12:00:00Z"), 1)).toBe("2026-02-28");
+    expect(monthsBefore(new Date("2026-11-22T12:00:00Z"), 24)).toBe("2024-11-22");
+  });
+});
