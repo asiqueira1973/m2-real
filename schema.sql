@@ -592,10 +592,10 @@ CREATE OR REPLACE FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo"
   itens as (
     select 'planta'::text as tipo, pl.id as item_id, pl.motivo_revisao as motivo, pl.predio_id,
            pl.area_iptu_referencia as area_iptu, pl.area_privativa, pl.fator, pl.selo,
-           (select array_agg(coalesce(a.area_privativa, a.area_privativa_min) order by a.coletado_em)
+           (select array_agg(coalesce(a.area_privativa, a.area_privativa_min) order by coalesce(a.area_privativa, a.area_privativa_min), a.id)
               from public.m2_anuncios a
              where a.planta_id = pl.id and a.status_casamento = 'casado_planta') as areas_anuncios,
-           (select array_agg(e.area_privativa order by e.coletado_em)
+           (select array_agg(e.area_privativa order by e.area_privativa, e.id)
               from public.m2_editais_leilao e
               join public.m2_unidades u on u.id = e.unidade_id
              where u.planta_id = pl.id and e.status_casamento = 'casado_unidade' and e.area_privativa is not null) as areas_editais,
