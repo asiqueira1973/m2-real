@@ -41,4 +41,8 @@ Fonte única de verdade: `spec.md` (v1.1). Os princípios da seção 0 desempata
 - IPTU: download só manual (desafio anti-robô do GeoSampa); CSV em UTF-8, `;`, CRLF. O campo bairro vem vazio na maioria: o bairro do prédio sai da lógica da 11.2 (campo → voto por CEP → voto por quadra).
 - Número de condomínio do IPTU tem hífen ("01-9"): nunca reconstrua a partir da chave `setor-quadra-condominio`.
 - Filtro `.in(...)` do supabase-js vai na URL: no máximo ~100 UUIDs por chamada ("URI too long").
+- **max_rows = 1.000 do PostgREST corta respostas EM SILÊNCIO** (sem erro). Toda leitura ou RPC que possa devolver mais de 1.000 linhas precisa de lote que garanta menos que isso, ou de paginação.
+- Chamadas ao banco e ao Storage em rotina: use `withRetry` / `downloadIfExists` (shared/), porque o limite de 8 s do PostgREST derruba carga sob contenção. Só em operação idempotente.
+- ITBI: leia o .xlsx com `shared/xlsx.ts`, não com o streaming do exceljs (2024 tem workbook.xml no fim do zip). Há abas sem cabeçalho (JAN/OUT-2024) e cabeçalhos deslocados (2021/2022: "ACC" repetido). SQL e CEP vêm como número, sem zeros.
+- Critério de contagem do ITBI (13.289 / 11.355) é de guias de **apartamento**; o banco guarda todas as guias dos 10 bairros.
 - TypeScript fixado em `~6.0.3`: o `next build` usa a API JS do compilador, que mudou no TS 7 (port nativo).
