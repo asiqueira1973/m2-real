@@ -4,6 +4,60 @@ Domínio principal: `fechouporquanto.com.br`. O nome do produto mudou na v1.2 do
 
 Base de preço real de apartamentos por **prédio e planta**, em 10 bairros de São Paulo. O preço vem do ITBI e a área privativa sai de calibração, sempre com selo. Os dados são consultados por agentes via MCP e conferidos num painel interno (`/painel`). A raiz do site (`/` e `/conectar`) é a página pública do produto (épico 8.11). A especificação completa está em [`spec.md`](spec.md); os planos por épico, em [`plans/`](plans/).
 
+## O produto
+
+Site: **[fechouporquanto.com.br](https://fechouporquanto.com.br)**. Enquanto o domínio não publica, o endereço é [m2-real.vercel.app](https://m2-real.vercel.app).
+
+A pessoa pergunta ao seu assistente de IA (Claude, ChatGPT ou Grok). Ele consulta o MCP do Fechou por Quanto e responde com as vendas reais registradas no ITBI, prédio a prédio. Cada m² vem com um selo que diz de onde veio a área privativa.
+
+![Página inicial do site](docs/imagens/site-inicio.jpg)
+
+![Página Conectar, com o passo a passo de cada assistente](docs/imagens/site-conectar.jpg)
+
+### Perguntas de exemplo (no assistente, com o Fechou por Quanto selecionado)
+- "O que é o Fechou por Quanto e quais bairros ele cobre?" → ferramenta `sobre`
+- "Por quanto foram vendidos os apartamentos da Rua João Ramalho, 586 nos últimos dois anos?" → `buscar_predio`, depois `vendas_predio`
+- "Qual o m² mediano de apartamentos de 3 quartos em Perdizes?" → `m2_bairro`
+- "Tenho um apartamento de 95 m² no Itaim Bibi. Por quanto foram vendidos os parecidos?" → `buscar_predio`, depois `comparaveis`
+- "Me mostre a ficha do prédio da Rua Iguatemi, 150" → `ficha_predio`
+
+### Chamando o MCP direto (scripts e testes)
+O MCP é stateless e fala JSON-RPC por HTTP, em `POST /mcp`. Ele aceita duas credenciais:
+- um token OAuth, que é o que os assistentes usam;
+- uma chave de API criada no painel, em **Chaves de API**.
+
+As seis ferramentas são `sobre`, `buscar_predio`, `ficha_predio`, `vendas_predio`, `m2_bairro` e `comparaveis` (seção 13.2 do spec).
+
+```bash
+curl -s https://fechouporquanto.com.br/mcp \
+  -H "Authorization: Bearer $MCP_CHAVE" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buscar_predio","arguments":{"endereco":"Rua João Ramalho, 586"}}}'
+```
+
+A resposta (no campo `result.content[0].text`) vem em JSON:
+
+```json
+{
+  "predios": [
+    { "predio_id": "43cd91d0-47a4-4f91-b222-8bb1261dea36", "endereco": "RUA JOAO RAMALHO, 586", "bairro": "Perdizes",
+      "ano_construcao": 1974, "total_unidades": 300, "similaridade": 1 }
+  ],
+  "fonte": "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto",
+  "atualizado_em": "2026-11-22T19:18:24.713+00:00",
+  "dados_desatualizados": false,
+  "motivo_desatualizacao": null
+}
+```
+
+Depois, use o `predio_id` nas outras ferramentas:
+- `vendas_predio`: `{"predio_id": "…", "meses": 24}`;
+- `ficha_predio`: `{"predio_id": "…"}`;
+- `comparaveis`: `{"predio_id": "…", "area_privativa": 95}`.
+
+Sem credencial, a resposta é 401 com `WWW-Authenticate: Bearer resource_metadata="…"`. Por esse cabeçalho, o assistente descobre o OAuth sozinho. Acima do limite de uso da regra 11.22, a resposta é 429 com `Retry-After`. Os scripts `scripts/test-client.mjs` (MCP com chave) e `scripts/test-oauth.mjs` (fluxo OAuth e páginas públicas) testam um deploy de ponta a ponta.
+
 ## Requisitos
 - Node.js ≥ 20 (testado com 22) e npm 10
 - Docker (Supabase local)
