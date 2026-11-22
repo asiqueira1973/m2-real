@@ -9,7 +9,7 @@ const passa = (url: string) => unstable_doesMiddlewareMatch({ config, url });
 
 describe("proxy.matcher (8.11)", () => {
   it("site público fora do proxy", () => {
-    for (const u of ["/", "/conectar", "/privacidade", "/termos", "/robots.txt", "/sitemap.xml", "/site/hero.webp", "/opengraph-image"]) expect(passa(u), u).toBe(false);
+    for (const u of ["/", "/conectar", "/privacidade", "/termos", "/robots.txt", "/sitemap.xml", "/site/hero.webp", "/opengraph-image", "/icon.svg"]) expect(passa(u), u).toBe(false);
   });
   it("MCP e OAuth fora do proxy", () => {
     for (const u of ["/mcp", "/api/mcp", "/oauth/entrar", "/.well-known/oauth-authorization-server", "/api/auth/google"]) expect(passa(u), u).toBe(false);

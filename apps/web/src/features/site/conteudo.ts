@@ -81,7 +81,7 @@ export const SELOS = {
 export const PERGUNTAS = {
   rotulo: "Perguntas de exemplo",
   titulo: "Pergunte como você perguntaria a um colega.",
-  texto: "Copie uma pergunta e cole no seu assistente. Antes, selecione o Fechou por Quanto na conversa.",
+  texto: "Pergunte pelo endereço do prédio. Copie uma pergunta e cole no seu assistente; antes, selecione o Fechou por Quanto na conversa.",
   grupos: [
     {
       quem: "Para quem vai comprar",
@@ -100,15 +100,8 @@ export const PERGUNTAS = {
     {
       quem: "Para corretores e avaliadores",
       perguntas: [
-        "Me mostre a ficha do prédio da Rua Manuel Henrique Lopes, 105: plantas, áreas e unidades.",
-        "Quantas vendas teve o prédio da Rua Manuel Henrique Lopes, 105 em 2026?",
-      ],
-    },
-    {
-      quem: "Para começar",
-      perguntas: [
-        "O que é o Fechou por Quanto e quais bairros ele cobre?",
-        "O que significam os selos Calibrada e Estimada?",
+        "Quantas vendas teve o prédio da Rua Manuel Henrique Lopes, 105 em 2026, e por quanto?",
+        "Qual foi a venda mais barata e a mais cara da Rua Iguatemi, 150 no último ano?",
       ],
     },
   ],

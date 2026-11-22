@@ -41,5 +41,5 @@ export const config = {
   // Tudo, menos estáticos do Next, o MCP (/api/mcp e /mcp), que usa chave ou token (seção 6.3), o
   // fluxo OAuth do cliente MCP (8.10) e o site público (8.11: a raiz, /conectar, privacidade, termos,
   // imagens em /site, robots, sitemap e a imagem de compartilhamento), que não usam a sessão do painel.
-  matcher: ["/((?!$|_next/static|_next/image|favicon.ico|icon$|site/|api/mcp|mcp$|\\.well-known/|oauth/|api/auth/google|conectar$|privacidade$|termos$|robots\\.txt$|sitemap\\.xml$|opengraph-image(?:-[^/]*)?$).*)"],
+  matcher: ["/((?!$|_next/static|_next/image|favicon.ico|icon$|icon\\.svg$|site/|api/mcp|mcp$|\\.well-known/|oauth/|api/auth/google|conectar$|privacidade$|termos$|robots\\.txt$|sitemap\\.xml$|opengraph-image(?:-[^/]*)?$).*)"],
 };
