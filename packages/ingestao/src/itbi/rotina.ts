@@ -14,7 +14,7 @@ import { basename } from "node:path";
 import type { M2Client } from "@m2-real/db/server";
 import { ITBI_ANO_INICIAL } from "../config/regras.js";
 import { loadNeighborhoods } from "../iptu/rotina.js";
-import { sha256, storeRaw } from "../shared/brutos.js";
+import { rawStoreFromEnv, sha256, storeRaw } from "../shared/brutos.js";
 import { listSheets } from "../shared/xlsx.js";
 import { runRoutine, supabaseExecutionStore, type RoutineResult } from "../shared/execucao.js";
 import { assignNeighborhoods } from "./bairro.js";
@@ -91,7 +91,7 @@ async function loadYear(db: M2Client, p: Planilha, execucaoId: string): Promise<
     return { linhasLidas: 0, linhasGravadas: 0, linhasDescartadas: 0, caminhoStorage: ultima.caminho_storage, ...base };
   }
 
-  const caminhoStorage = await storeRaw(db, "itbi", String(p.ano), "xlsx", p.buffer, XLSX_MIME);
+  const caminhoStorage = await storeRaw(rawStoreFromEnv(db), "itbi", String(p.ano), "xlsx", p.buffer, XLSX_MIME);
   const lidas = await readItbiWorkbook(p.buffer);
   if (lidas.ano !== p.ano) throw new Error(`Ano das abas (${lidas.ano}) diferente do detectado (${p.ano}).`);
 

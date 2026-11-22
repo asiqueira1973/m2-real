@@ -13,6 +13,12 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Brutos no Cloudflare R2 (o Storage do Supabase grátis recusa arquivos acima de 50 MB; épico 8.8).
+      BRUTOS_ARMAZEM: r2
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
       ITBI_PAGINA_URL: ${{ vars.ITBI_PAGINA_URL }}
     steps:
       - uses: actions/checkout@v4

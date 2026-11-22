@@ -54,7 +54,7 @@ Os workflows ficam em `.github/workflows/` e rodam contra o banco na nuvem (proj
 | Workflow | Quando (São Paulo) | O que faz |
 |---|---|---|
 | `ingestao-itbi` | dia 8, 06:10, e manual | ITBI do ano corrente + calibração |
-| `ingestao-iptu` | só manual (com o ano) | IPTU do Storage + calibração |
+| `ingestao-iptu` | só manual (com o ano) | IPTU guardado no R2 + calibração |
 | `coleta-anuncios` | segunda, 05:40, e manual | anúncios (teto de 50 créditos do Firecrawl) + calibração |
 | `coleta-leiloes` | quarta, 05:40, e manual | editais de leilão (teto de 50 créditos) + calibração |
 | `calibracao` | manual | calibração |
@@ -64,12 +64,14 @@ Os workflows ficam em `.github/workflows/` e rodam contra o banco na nuvem (proj
 O botão "Executar agora" do painel (tela Execuções) dispara esses workflows pela API do GitHub (`GITHUB_TOKEN_DISPATCH`, só no servidor).
 
 **Configuração do repositório** (Settings → Secrets and variables → Actions):
-- Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `FIRECRAWL_API_KEY`, `ANTHROPIC_API_KEY`.
-- Variáveis: `NEXT_PUBLIC_SUPABASE_URL`, `FIRECRAWL_MAX_CREDITOS_EXECUCAO`, `CLAUDE_MAX_DOCUMENTOS_EXECUCAO`, `LEILAO_MAX_ALVOS_EXECUCAO`, `LEILAO_DOMINIOS` e, se quiser, `ITBI_PAGINA_URL` e `IPTU_ARQUIVO_URL`.
+- Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `FIRECRAWL_API_KEY`, `ANTHROPIC_API_KEY`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+- Variáveis: `NEXT_PUBLIC_SUPABASE_URL`, `R2_BUCKET`, `FIRECRAWL_MAX_CREDITOS_EXECUCAO`, `CLAUDE_MAX_DOCUMENTOS_EXECUCAO`, `LEILAO_MAX_ALVOS_EXECUCAO`, `LEILAO_DOMINIOS` e, se quiser, `ITBI_PAGINA_URL` e `IPTU_ARQUIVO_URL`.
 
 **Token do "Executar agora":** fine-grained token do GitHub só para este repositório, com a permissão *Actions: Read and write*. Vai em `GITHUB_TOKEN_DISPATCH`, junto com `GITHUB_REPO=asiqueira1973/m2-real`, no ambiente do painel.
 
-**Limite do plano grátis do Supabase:** o Storage aceita arquivos de até 50 MB, e o IPTU anual tem bem mais que isso. Por isso, a carga anual do IPTU no banco na nuvem fica como pendência registrada no plano do 8.8.
+**Arquivos brutos no Cloudflare R2:** o Storage do plano grátis do Supabase aceita até 50 MB por arquivo, e o IPTU anual é bem maior. Por isso, no Actions os brutos vão para o bucket `m2-brutos` do R2 (mesma conta do Assina), com `BRUTOS_ARMAZEM=r2`. No ambiente local continuam no Storage do Supabase local. Secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`; variável: `R2_BUCKET`.
+
+**IPTU anual na nuvem:** baixe o `IPTU_<ano>.zip` do GeoSampa e envie para `iptu/<ano>.zip` no bucket `m2-brutos` (painel da Cloudflare → R2 → m2-brutos → Upload). Depois rode o workflow `ingestao-iptu` informando o ano.
 
 ## Licença
 [MIT](LICENSE) — DabLab — Alexandre da Silva de Siqueira LTDA - ME.

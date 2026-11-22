@@ -1,6 +1,6 @@
 # Rotina "ingestao-iptu" (seção 4.4): SÓ MANUAL (decisão do usuário, plans/8.2-iptu.md). O GeoSampa
-# tem desafio anti-robô: o arquivo do ano é baixado à mão uma vez por ano e enviado ao Storage
-# (README). Sem cron, para não falhar todo 15/02 sem arquivo. Depois, calibração.
+# tem desafio anti-robô: o arquivo do ano é baixado à mão uma vez por ano e enviado ao R2,
+# em iptu/<ano>.zip no bucket m2-brutos (README). Sem cron, para não falhar todo 15/02 sem arquivo. Depois, calibração.
 name: ingestao-iptu
 on:
   workflow_dispatch:
@@ -16,6 +16,12 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Brutos no Cloudflare R2 (o Storage do Supabase grátis recusa arquivos acima de 50 MB; épico 8.8).
+      BRUTOS_ARMAZEM: r2
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
       IPTU_ARQUIVO_URL: ${{ vars.IPTU_ARQUIVO_URL }}
     steps:
       - uses: actions/checkout@v4
