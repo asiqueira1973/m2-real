@@ -100,3 +100,45 @@ describe("writeBuildings: regra 11.11, planta confirmada manualmente não é alt
     expect(counts.plantasNovas).toBe(0); // a confirmada continua casada (unidades apontam para ela)
   });
 });
+
+// Mesmo risco do ITBI (max_rows = 1.000 do PostgREST corta em silêncio): ler as plantas de
+// 100 prédios de uma vez pode passar de 1.000 linhas (até 20 plantas por prédio no IPTU 2026);
+// plantas cortadas viriam como "novas" e seriam duplicadas. A leitura precisa paginar.
+describe("writeBuildings: leitura das plantas existentes não perde linhas acima de 1.000", () => {
+  it("100 prédios com 20 plantas cada: todas casam, nenhuma planta nova", async () => {
+    const MAX_ROWS = 1000;
+    const plantasExistentes = Array.from({ length: 100 }, (_, p) =>
+      Array.from({ length: 20 }, (_, k) => ({ id: `pl-${p}-${k}`, predio_id: `id-${p + 1}`, area_iptu_referencia: 50 + k * 10, selo: "sem_dado", fonte_area: null })),
+    ).flat();
+    let n = 0;
+    const db = {
+      from: (tabela: string) => ({
+        upsert: (linhas: { chave_predio?: string }[]) => ({
+          select: async () => ({ data: linhas.map((l) => ({ id: `id-${++n}`, chave_predio: l.chave_predio })), error: null }),
+          then: (ok: (v: unknown) => void) => ok({ data: null, error: null }),
+        }),
+        select: () => {
+          const q = {
+            ids: [] as string[], de: 0, ate: MAX_ROWS - 1,
+            in(_c: string, ids: string[]) { q.ids = ids; return q; },
+            order() { return q; },
+            range(de: number, ate: number) { q.de = de; q.ate = ate; return q; },
+            then(ok: (v: unknown) => void) {
+              const todas = plantasExistentes.filter((p) => q.ids.includes(p.predio_id));
+              const fim = Math.min(q.ate, q.de + MAX_ROWS - 1);
+              ok({ data: tabela === "m2_plantas" ? todas.slice(q.de, fim + 1) : [], error: null });
+            },
+          };
+          return q;
+        },
+      }),
+    } as unknown as Parameters<typeof writeBuildings>[0];
+    const predios = Array.from({ length: 100 }, (_, i) => ({
+      ...building(i + 1),
+      plantas: Array.from({ length: 20 }, (_, k) => ({ areaIptuReferencia: 50 + k * 10, qtdUnidades: 1 })),
+    }));
+    const counts = await writeBuildings(db, predios);
+    expect(counts.plantasNovas).toBe(0);
+    expect(counts.plantasAtualizadas).toBe(2000);
+  });
+});
