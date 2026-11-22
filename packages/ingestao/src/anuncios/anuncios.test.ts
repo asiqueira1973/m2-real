@@ -146,3 +146,50 @@ describe("cliente do Firecrawl: teto de créditos e tentativas (seções 12 e 17
     expect(n).toBe(1);
   });
 });
+
+// Bug da 1ª rodada real com teto (22/11/2026): "11 páginas raspadas, 10 gravadas, 0 descartadas".
+// A página era contada antes do scrape; quando o teto parava a rodada naquela chamada, ficava
+// contada sem ter sido raspada. Raspada = scrape feito: lidas = gravadas + descartadas depois do scrape.
+import { runAdsCollection } from "./rotina.js";
+
+describe("coleta: contagem da execução quando o teto para a rodada no meio do prédio", () => {
+  it("página não raspada por causa do teto não conta como lida", async () => {
+    let resultado: { linhasLidas: number; linhasGravadas: number; linhasDescartadas: number } | null = null;
+    const tabela = () => {
+      const q: Record<string, unknown> = {};
+      const encadear = () => q;
+      Object.assign(q, {
+        select: encadear, eq: encadear, ilike: encadear, not: encadear, limit: encadear, order: encadear, update: encadear, upsert: encadear, lt: encadear,
+        insert: () => ({ select: () => ({ single: async () => ({ data: { id: "e1" }, error: null }) }) }),
+        maybeSingle: async () => ({ data: { id: "p1", logradouro: "RUA X", numero: 1, bairro: { nome: "Pinheiros" }, casado_manual: false }, error: null }),
+        single: async () => ({ data: { fator_predio: null }, error: null }),
+        then: (ok: (v: unknown) => void) => ok({ data: [], error: null }),
+      });
+      return q;
+    };
+    const db = {
+      from: (t: string) => {
+        const q = tabela();
+        if (t === "m2_execucoes_ingestao") {
+          (q as { update: unknown }).update = (linha: Record<string, unknown>) => {
+            if (linha.status === "concluida") resultado = { linhasLidas: linha.linhas_lidas as number, linhasGravadas: linha.linhas_gravadas as number, linhasDescartadas: linha.linhas_descartadas as number };
+            const fim = { data: [], error: null };
+            const eq = () => ({ lt: () => ({ select: async () => fim }), then: (ok: (v: unknown) => void) => ok(fim) });
+            return { eq };
+          };
+        }
+        return q;
+      },
+      rpc: async () => ({ data: [], error: null }),
+    } as unknown as Parameters<typeof runAdsCollection>[0];
+    // Teto de 12: busca (2) + 2 scrapes (10) cabem; o 3º scrape não.
+    const fc = createFirecrawl({
+      apiKey: "k", maxCreditos: 12, esperar: async () => {},
+      fetch: async (url) => new Response(JSON.stringify(String(url).endsWith("/search")
+        ? { creditsUsed: 2, data: { web: ["a", "b", "c"].map((x) => ({ url: `https://www.lopes.com.br/${x}` })) } }
+        : { data: { json: LOPES_MONDRIAN, metadata: { creditsUsed: 5 } } }), { status: 200 }),
+    });
+    await runAdsCollection(db, { apiKey: "k", firecrawl: fc, predio: "001-001-01-1" });
+    expect(resultado).toEqual({ linhasLidas: 2, linhasGravadas: 2, linhasDescartadas: 0 });
+  });
+});
