@@ -10,8 +10,11 @@ import { withRetry, type RetryOptions } from "../shared/retry.js";
 import type { GuiaComBairro } from "./bairro.js";
 
 const LOTE_INSERT = 1000;
-/** SQLs por chamada de m2_unidades_por_sql (vão no corpo do POST, sem limite de URL). */
-const LOTE_SQLS = 5000;
+/**
+ * SQLs por chamada de m2_unidades_por_sql. Cada SQL casa no máximo uma unidade, então um lote de
+ * até 1.000 SQLs nunca passa do max_rows = 1.000 do PostgREST (que corta a resposta EM SILÊNCIO).
+ */
+const LOTE_SQLS = 1000;
 
 export interface UnidadeDoSql {
   unidadeId: string;
