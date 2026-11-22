@@ -10,16 +10,22 @@ export function isPublicPath(caminho: string): boolean {
   return PUBLICAS.some((p) => caminho === p || caminho.startsWith(`${p}/`));
 }
 
-export type Decisao = "entrar" | "login" | "sem-perfil";
+export type Decisao = "entrar" | "login" | "sem-perfil" | "erro";
 
 /**
  * Seção 6.1: só entra quem tem linha em m2_perfis com papel admin e ativo.
- * Recebe: se há usuário autenticado e o perfil dele (ou nulo). Devolve: entrar, ir para o login
- * (sem sessão) ou "sem-perfil" (autenticado sem perfil admin ativo: é desconectado e vê a
- * mensagem "Acesso não autorizado" da seção 15).
+ * Recebe: se há usuário autenticado, o perfil dele (ou nulo) e o erro da leitura do perfil (ou nulo).
+ * Devolve: entrar; ir para o login (sem sessão); "sem-perfil" (autenticado sem perfil admin ativo:
+ * é desconectado e vê a mensagem "Acesso não autorizado" da seção 15); ou "erro" quando a leitura
+ * do perfil falhou — falha de banco não é ausência de perfil e não pode desconectar o admin.
  */
-export function accessDecision(temUsuario: boolean, perfil: { papel: string; ativo: boolean } | null): Decisao {
+export function accessDecision(
+  temUsuario: boolean,
+  perfil: { papel: string; ativo: boolean } | null,
+  erroLeitura: { message: string } | null = null,
+): Decisao {
   if (!temUsuario) return "login";
+  if (erroLeitura) return "erro";
   return perfil && perfil.papel === "admin" && perfil.ativo ? "entrar" : "sem-perfil";
 }
 

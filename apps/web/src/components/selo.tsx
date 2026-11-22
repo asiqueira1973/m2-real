@@ -19,7 +19,7 @@ export const COR_BARRA: Readonly<Record<Selo, string>> = {
   calibrada: "bg-selo-calibrada",
   indicativa: "bg-selo-indicativa",
   estimada: "bg-selo-estimada",
-  sem_dado: "bg-selo-sem-dado-fundo",
+  sem_dado: "bg-selo-sem-dado-barra", // cinza claro visível sobre o fundo da barra
 };
 
 export function SeloArea({ selo, fonte }: { selo: Selo | null; fonte?: string | null }) {

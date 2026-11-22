@@ -20,6 +20,7 @@
   --color-selo-estimada-fundo: #e8edf3;
   --color-selo-sem-dado: #5f6368;
   --color-selo-sem-dado-fundo: #f1f3f4;
+  --color-selo-sem-dado-barra: #c4c7cc;
 }
 
 @theme inline {

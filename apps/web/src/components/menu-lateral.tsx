@@ -17,7 +17,7 @@ function ativo(caminho: string, href: string): boolean {
 export function MenuLateral({ email, ambiente, sair }: { email: string; ambiente: "dev" | "prod"; sair: () => Promise<void> }) {
   const caminho = usePathname();
   return (
-    <nav aria-label="Menu principal" className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-white">
+    <nav aria-label="Menu principal" className="flex h-full w-52 shrink-0 flex-col border-r border-border bg-white">
       <p className="px-5 pt-6 pb-4 text-sm font-semibold">Fechou por Quanto</p>
       <div className="flex-1 overflow-y-auto">
         {GRUPOS.map((g, i) => (
