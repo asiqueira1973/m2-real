@@ -45,7 +45,7 @@ export default async function PrediosPage({ searchParams }: { searchParams: Prom
           Só com revisão pendente
         </label>
         <Button type="submit" size="sm">Filtrar</Button>
-        <Link href="/predios" className="text-sm text-primary hover:underline">Limpar</Link>
+        <Link href="/painel/predios" className="text-sm text-primary hover:underline">Limpar</Link>
       </form>
 
       {linhas.length === 0 ? (
@@ -65,7 +65,7 @@ export default async function PrediosPage({ searchParams }: { searchParams: Prom
               {linhas.map((p) => (
                 <TableRow key={p.id} className="relative">
                   <TableCell>
-                    <Link href={`/predios/${p.id}`} className="font-medium after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-primary">
+                    <Link href={`/painel/predios/${p.id}`} className="font-medium after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-primary">
                       {p.logradouro}{p.numero ? `, ${p.numero}` : ""}
                     </Link>
                   </TableCell>

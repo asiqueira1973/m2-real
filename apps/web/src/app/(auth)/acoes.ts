@@ -25,7 +25,7 @@ export async function entrar(_: EstadoForm, form: FormData): Promise<EstadoForm>
   const supabase = await createSessionClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) return { erro: "E-mail ou senha inválidos.", valores: { email } };
-  redirect("/");
+  redirect("/painel");
 }
 
 /**
@@ -50,7 +50,7 @@ export async function redefinirSenha(_: EstadoForm, form: FormData): Promise<Est
   const supabase = await createSessionClient();
   const { error } = await supabase.auth.updateUser({ password: senha });
   if (error) return { erro: "Não foi possível trocar a senha. Peça um link novo." };
-  redirect("/");
+  redirect("/painel");
 }
 
 /** Sair (rodapé do menu, seção 16). Encerra a sessão e volta ao login. */

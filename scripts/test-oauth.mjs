@@ -33,6 +33,6 @@ ok(tok.status === 400 && (await tok.json()).error === "invalid_grant", "código 
 const lixo = await get("/mcp", { method: "POST", headers: { authorization: "Bearer fpq_mcp_inexistente", "content-type": "application/json" }, body: "{}" });
 ok(lixo.status === 401, "token OAuth inexistente → 401");
 
-for (const p of ["/privacidade", "/termos", "/oauth/entrar"]) ok((await get(p)).status === 200, `${p} público`);
+for (const p of ["/", "/conectar", "/privacidade", "/termos", "/oauth/entrar", "/robots.txt", "/sitemap.xml"]) ok((await get(p)).status === 200, `${p} público`);
 console.log(falhas ? `${falhas} falha(s).` : "Tudo certo.");
 process.exit(falhas ? 1 : 0);

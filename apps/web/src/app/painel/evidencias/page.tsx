@@ -31,7 +31,7 @@ export default async function EvidenciasPage({ searchParams }: { searchParams: P
       <h1 className="text-2xl font-semibold">Evidências sem vínculo</h1>
       <nav className="flex gap-4 border-b border-border text-sm" aria-label="Abas">
         {(["anuncios", "editais"] as const).map((a) => (
-          <Link key={a} href={`/evidencias?aba=${a}`} aria-current={aba === a ? "page" : undefined}
+          <Link key={a} href={`/painel/evidencias?aba=${a}`} aria-current={aba === a ? "page" : undefined}
             className={`-mb-px border-b-2 px-1 pb-2 ${aba === a ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground"}`}>
             {a === "anuncios" ? "Anúncios" : "Editais"}
           </Link>

@@ -57,7 +57,7 @@ export default async function ExecucoesPage({ searchParams }: { searchParams: Pr
           </select>
         </label>
         <Button type="submit" size="sm">Filtrar</Button>
-        <Link href="/execucoes" className="text-sm text-primary hover:underline">Limpar</Link>
+        <Link href="/painel/execucoes" className="text-sm text-primary hover:underline">Limpar</Link>
       </form>
 
       {execucoes.length === 0 ? <EstadoVazio mensagem="Nenhuma execução com esses filtros." /> : (

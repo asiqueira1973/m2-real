@@ -26,7 +26,7 @@ export default async function RevisaoPage({ searchParams }: { searchParams: Prom
     const q = new URLSearchParams();
     if (bairro) q.set("bairro", String(bairro));
     for (const [k, v] of Object.entries(extra)) q.set(k, String(v));
-    return `/revisao?${q}`;
+    return `/painel/revisao?${q}`;
   };
 
   return (
@@ -46,7 +46,7 @@ export default async function RevisaoPage({ searchParams }: { searchParams: Prom
           </select>
         </label>
         <Button type="submit" size="sm">Filtrar</Button>
-        <Link href="/revisao" className="text-sm text-primary hover:underline">Limpar</Link>
+        <Link href="/painel/revisao" className="text-sm text-primary hover:underline">Limpar</Link>
       </form>
 
       {grupos.length === 0 ? <EstadoVazio mensagem="Nada para revisar agora." /> : grupos.map((g) => {
@@ -61,7 +61,7 @@ export default async function RevisaoPage({ searchParams }: { searchParams: Prom
                     <p className="font-medium">{i.logradouro}{i.numero ? `, ${i.numero}` : ""} <span className="font-normal text-muted-foreground">· {i.bairro_nome} · {numero(i.vendas_janela)} vendas em 24 meses</span></p>
                     <p className="flex items-center gap-2 text-xs text-muted-foreground"><SeloArea selo={parseSelo(i.selo)} /> {evidenceSummary({ ...i, areas_anuncios: i.areas_anuncios?.map(Number) ?? null, areas_editais: i.areas_editais?.map(Number) ?? null })}</p>
                   </div>
-                  <Link href={`/predios/${i.predio_id}?aba=${tabFor(i.tipo)}${i.tipo === "venda" ? "&meses=todas" : ""}`} className="shrink-0 text-primary hover:underline">Abrir ficha</Link>
+                  <Link href={`/painel/predios/${i.predio_id}?aba=${tabFor(i.tipo)}${i.tipo === "venda" ? "&meses=todas" : ""}`} className="shrink-0 text-primary hover:underline">Abrir ficha</Link>
                 </li>
               ))}
             </ul>

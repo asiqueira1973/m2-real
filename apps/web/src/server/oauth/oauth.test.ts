@@ -92,7 +92,7 @@ describe("6.5: cookies do cliente", () => {
     expect(safeReturnPath("/oauth/autorizar?client_id=a&state=b*")).toBe("/oauth/autorizar?client_id=a&state=b*");
     expect(safeReturnPath("https://malicioso.test")).toBe("/oauth/entrar");
     expect(safeReturnPath("//malicioso.test")).toBe("/oauth/entrar");
-    expect(safeReturnPath("/chaves")).toBe("/oauth/entrar");
+    expect(safeReturnPath("/painel/chaves")).toBe("/oauth/entrar");
     expect(decodeLoginCookie(encodeLoginCookie({ state: "s", verifier: "v", volta: "https://x" }))).toEqual({ state: "s", verifier: "v", volta: "/oauth/entrar" });
     expect(decodeLoginCookie("lixo")).toBeNull();
   });

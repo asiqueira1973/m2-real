@@ -9,9 +9,9 @@ import { createSessionClient } from "@/lib/supabase/servidor";
 
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
-  const proximoBruto = p.get("proximo") ?? "/";
+  const proximoBruto = p.get("proximo") ?? "/painel";
   // Só caminho interno: evita redirecionamento aberto para outro site.
-  const proximo = proximoBruto.startsWith("/") && !proximoBruto.startsWith("//") ? proximoBruto : "/";
+  const proximo = proximoBruto.startsWith("/") && !proximoBruto.startsWith("//") ? proximoBruto : "/painel";
   const supabase = await createSessionClient();
   const tokenHash = p.get("token_hash");
   const tipo = p.get("type") as EmailOtpType | null;

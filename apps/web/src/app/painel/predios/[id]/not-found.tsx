@@ -6,7 +6,7 @@ export default function PredioNaoEncontrado() {
   return (
     <div className="space-y-4">
       <EstadoVazio mensagem="Prédio não encontrado." />
-      <Link href="/predios" className="text-sm text-primary hover:underline">← Voltar para Prédios</Link>
+      <Link href="/painel/predios" className="text-sm text-primary hover:underline">← Voltar para Prédios</Link>
     </div>
   );
 }
