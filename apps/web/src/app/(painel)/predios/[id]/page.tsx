@@ -1,8 +1,9 @@
 /**
  * [Admin] Ficha do prédio (seção 10; critério 4 do 8.7). Cabeçalho (endereço, ano, pavimentos,
  * padrão, vagas com cadastro próprio, fator do prédio) e abas Plantas, Vendas (com período e
- * resumo), Anúncios e Editais (com link externo) e Histórico de calibração. Só leitura: as ações
- * (confirmar área, marcar especial, outlier, casar/descartar) entram no 8.8.
+ * resumo), Anúncios e Editais (com link externo) e Histórico de calibração. Ações do 8.8 (seção 10):
+ * confirmar área e marcar especial (Plantas), marcar fora da curva (Vendas), trocar a planta ou a
+ * unidade e descartar (Anúncios e Editais) — todas pelas funções da 7.4.
  * ?aba= abre direto numa aba (usado pela fila de revisão do 8.8); ?meses= filtra as vendas.
  */
 import Link from "next/link";
@@ -12,6 +13,10 @@ import { EstadoVazio } from "@/components/estado-vazio";
 import { SeloArea } from "@/components/selo";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BotaoAcao } from "@/components/revisao/botao-acao";
+import { ConfirmarArea, type Evidencia } from "@/components/revisao/confirmar-area";
+import { TrocarVinculo } from "@/components/revisao/trocar-vinculo";
+import { matchAd, matchEdital, setOutlier, setSpecial } from "@/features/revisao/acoes";
 import { loadBuildingFile } from "@/features/ficha/dados";
 import { PERIODOS_VENDAS, parsePeriod, salesSummary } from "@/lib/estatistica";
 import { area, data, dataHora, fator, numero, reais, reaisPorM2 } from "@/lib/formato";
@@ -30,7 +35,16 @@ export default async function FichaPage({ params, searchParams }: {
   const meses = parsePeriod(sp.meses, COBERTURA_JANELA_MESES);
   const ficha = await loadBuildingFile(id, meses);
   if (!ficha) notFound();
-  const { predio: p, plantas, vendas, anuncios, editais, historico } = ficha;
+  const { predio: p, plantas, vendas, anuncios, editais, unidades, historico } = ficha;
+  // Evidências de cada planta para o painel "Confirmar área": anúncios casados à planta e editais
+  // casados a uma unidade dela.
+  const evidenciasDe = (plantaId: string): Evidencia[] => [
+    ...anuncios.filter((a) => a.planta_id === plantaId).map((a) => ({ tipo: "Anúncio" as const, area: a.area_privativa === null ? null : Number(a.area_privativa), dominio: a.dominio, url: a.url })),
+    ...editais.filter((e) => (e.unidade as unknown as { planta_id: string | null } | null)?.planta_id === plantaId)
+      .map((e) => ({ tipo: "Edital" as const, area: e.area_privativa === null ? null : Number(e.area_privativa), dominio: e.dominio, url: e.url })),
+  ];
+  const opcoesPlanta = plantas.map((pl) => ({ id: pl.id, rotulo: `Planta de ${area(Number(pl.area_iptu_referencia))}` }));
+  const opcoesUnidade = unidades.map((u) => ({ id: u.id, rotulo: u.complemento ?? "sem complemento" }));
   const aba = (ABAS as readonly string[]).includes(sp.aba ?? "") ? sp.aba! : "plantas";
   const resumo = salesSummary(vendas.map((v) => ({ m2_privativo: v.m2_privativo === null ? null : Number(v.m2_privativo), fora_da_curva: v.fora_da_curva, selo_area: v.selo_area })));
   const bairro = (p.bairro as unknown as { nome: string } | null)?.nome;
@@ -70,7 +84,7 @@ export default async function FichaPage({ params, searchParams }: {
               <TableHeader><TableRow>
                 <TableHead className="text-right">Área IPTU</TableHead><TableHead className="text-right">Área privativa</TableHead>
                 <TableHead className="text-right">Fator</TableHead><TableHead>Selo</TableHead><TableHead className="text-right">Vagas inclusas</TableHead>
-                <TableHead className="text-right">Quartos</TableHead><TableHead className="text-right">Unidades</TableHead><TableHead>Observações</TableHead>
+                <TableHead className="text-right">Quartos</TableHead><TableHead className="text-right">Unidades</TableHead><TableHead>Observações</TableHead><TableHead>Ações</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {plantas.map((pl) => (
@@ -87,6 +101,11 @@ export default async function FichaPage({ params, searchParams }: {
                     <TableCell className="text-right tabular-nums">{pl.qtd_unidades}</TableCell>
                     <TableCell className="text-xs">
                       {[pl.especial && "Especial", pl.revisao_pendente && `Revisão: ${label(ROTULO_MOTIVO, pl.motivo_revisao)}`].filter(Boolean).join(" · ") || "—"}
+                    </TableCell>
+                    <TableCell className="space-y-1">
+                      <ConfirmarArea plantaId={pl.id} predioId={p.id} areaIptu={Number(pl.area_iptu_referencia)}
+                        areaAtual={pl.area_privativa === null ? null : Number(pl.area_privativa)} vagasAtuais={pl.vagas_inclusas} evidencias={evidenciasDe(pl.id)} />
+                      <BotaoAcao rotulo={pl.especial ? "Desmarcar especial" : "Marcar como especial"} acao={setSpecial.bind(null, pl.id, p.id, !pl.especial)} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -138,7 +157,10 @@ export default async function FichaPage({ params, searchParams }: {
                       <TableCell><SeloArea selo={parseSelo(v.selo_area)} fonte={(v.planta as unknown as { fonte_area: string | null } | null)?.fonte_area} /></TableCell>
                       <TableCell className="text-right tabular-nums">{reaisPorM2(v.m2_privativo === null ? null : Number(v.m2_privativo))}</TableCell>
                       <TableCell className="text-right tabular-nums">{reaisPorM2(Number(v.m2_iptu))}</TableCell>
-                      <TableCell>{v.fora_da_curva ? <span className="text-xs font-medium">Sim</span> : <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {v.fora_da_curva ? <span className="text-xs font-medium">Sim </span> : <span className="text-muted-foreground">— </span>}
+                        <BotaoAcao rotulo={v.fora_da_curva ? "Desmarcar" : "Marcar"} acao={setOutlier.bind(null, v.id, p.id, !v.fora_da_curva)} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -171,8 +193,14 @@ export default async function FichaPage({ params, searchParams }: {
                       <TableCell className="text-right tabular-nums">{a.vagas ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{a.andar ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{reais(a.preco_pedido === null ? null : Number(a.preco_pedido))}</TableCell>
-                      <TableCell>{label(ROTULO_STATUS_CASAMENTO, a.status_casamento)}</TableCell>
-                      <TableCell><a href={a.url} {...externo}>Abrir</a></TableCell>
+                      <TableCell>
+                        {label(ROTULO_STATUS_CASAMENTO, a.status_casamento)}
+                        <TrocarVinculo opcoes={opcoesPlanta} atual={a.planta_id} rotuloVazio="Só o prédio" acao={async (planta) => { "use server"; return matchAd(a.id, p.id, planta); }} />
+                      </TableCell>
+                      <TableCell className="space-y-1">
+                        <a href={a.url} {...externo}>Abrir</a>
+                        <BotaoAcao rotulo="Descartar" confirmar="Descartar este anúncio? Ele deixa de ser evidência do prédio." acao={matchAd.bind(null, a.id, null, null, p.id)} />
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -200,10 +228,14 @@ export default async function FichaPage({ params, searchParams }: {
                     <TableCell className="text-right tabular-nums">{e.vagas ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{reais(e.valor_avaliacao === null ? null : Number(e.valor_avaliacao))}</TableCell>
                     <TableCell className="tabular-nums">{data(e.data_leilao)}</TableCell>
-                    <TableCell>{label(ROTULO_STATUS_CASAMENTO, e.status_casamento)}</TableCell>
+                    <TableCell>
+                      {label(ROTULO_STATUS_CASAMENTO, e.status_casamento)}
+                      <TrocarVinculo opcoes={opcoesUnidade} atual={e.unidade_id} rotuloVazio="Só o prédio" acao={async (unidade) => { "use server"; return matchEdital(e.id, p.id, unidade); }} />
+                    </TableCell>
                     <TableCell className="space-x-2">
                       <a href={e.url} {...externo}>Lote</a>
                       {e.url_documento && <a href={e.url_documento} {...externo}>PDF</a>}
+                      <BotaoAcao rotulo="Descartar" confirmar="Descartar este edital? Ele deixa de ser evidência do prédio." acao={matchEdital.bind(null, e.id, null, null, p.id)} />
                     </TableCell>
                   </TableRow>
                 ))}

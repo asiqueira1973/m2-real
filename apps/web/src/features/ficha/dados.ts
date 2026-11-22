@@ -31,7 +31,7 @@ export async function loadBuildingFile(id: string, meses: number | null) {
     }
   };
 
-  const [predio, plantas, listaVendas, anuncios, editais] = await Promise.all([
+  const [predio, plantas, listaVendas, anuncios, editais, unidades] = await Promise.all([
     supabase.from("m2_predios")
       .select("id, logradouro, numero, numeros_imovel, ano_construcao, qtd_pavimentos, padrao_iptu, vagas_cadastro_proprio, fator_predio, total_unidades_residenciais, bairro:m2_bairros(nome)")
       .eq("id", id).maybeSingle(),
@@ -43,18 +43,22 @@ export async function loadBuildingFile(id: string, meses: number | null) {
       .select("id, url, dominio, fonte, finalidade, area_privativa, area_privativa_min, area_privativa_max, quartos, vagas, andar, preco_pedido, status_casamento, planta_id, coletado_em")
       .eq("predio_id", id).order("coletado_em", { ascending: false }),
     supabase.from("m2_editais_leilao")
-      .select("id, url, url_documento, dominio, complemento_extraido, matricula, area_privativa, area_total, vagas, valor_avaliacao, data_leilao, status_casamento, origem_documento, unidade:m2_unidades(complemento)")
+      .select("id, url, url_documento, dominio, complemento_extraido, matricula, area_privativa, area_total, vagas, valor_avaliacao, data_leilao, status_casamento, origem_documento, unidade_id, unidade:m2_unidades(complemento, planta_id)")
       .eq("predio_id", id).order("coletado_em", { ascending: false }),
+    // Unidades de apartamento, para "trocar a unidade" de um edital (8.8). O maior prédio tem 784,
+    // abaixo do max_rows de 1.000 do PostgREST.
+    supabase.from("m2_unidades").select("id, complemento").eq("predio_id", id).eq("tipo_unidade", "apartamento").order("complemento").limit(1000),
   ]);
   if (predio.error) throw falha("o prédio", predio.error);
   if (!predio.data) return null;
   if (plantas.error) throw falha("as plantas", plantas.error);
   if (anuncios.error) throw falha("os anúncios", anuncios.error);
   if (editais.error) throw falha("os editais", editais.error);
+  if (unidades.error) throw falha("as unidades", unidades.error);
 
   // Histórico (aba Histórico): as calibrações de todas as plantas, da mais recente para a mais antiga.
   const historico = plantas.data
     .flatMap((p) => p.calibracoes.map((c) => ({ ...c, plantaArea: p.area_iptu_referencia })))
     .sort((a, b) => b.criado_em.localeCompare(a.criado_em));
-  return { predio: predio.data, plantas: plantas.data, vendas: listaVendas, anuncios: anuncios.data, editais: editais.data, historico };
+  return { predio: predio.data, plantas: plantas.data, vendas: listaVendas, anuncios: anuncios.data, editais: editais.data, unidades: unidades.data, historico };
 }

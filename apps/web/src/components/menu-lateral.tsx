@@ -1,13 +1,16 @@
 "use client";
 /**
- * Menu lateral estilo App Store Connect (seção 16). No 8.7 só o grupo Base existe (decisão do
- * usuário, plans/8.7-painel.md); Qualidade e Operação entram no 8.8 com as telas.
+ * Menu lateral estilo App Store Connect (seção 16): grupos Base, Qualidade e Operação (8.7 e 8.8).
  * Recebe: e-mail do usuário, ambiente (dev/prod) e a ação de sair. Devolve: o menu.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const GRUPOS = [{ titulo: "Base", itens: [{ rotulo: "Visão geral", href: "/" }, { rotulo: "Prédios", href: "/predios" }] }] as const;
+const GRUPOS = [
+  { titulo: "Base", itens: [{ rotulo: "Visão geral", href: "/" }, { rotulo: "Prédios", href: "/predios" }] },
+  { titulo: "Qualidade", itens: [{ rotulo: "Fila de revisão", href: "/revisao" }, { rotulo: "Evidências sem vínculo", href: "/evidencias" }] },
+  { titulo: "Operação", itens: [{ rotulo: "Execuções", href: "/execucoes" }, { rotulo: "Chaves de API", href: "/chaves" }] },
+] as const;
 
 /** Item ativo: "/" só na raiz; os demais também nas subpáginas (/predios/[id]). */
 function ativo(caminho: string, href: string): boolean {
