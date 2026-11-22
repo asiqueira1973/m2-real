@@ -524,6 +524,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"m2_mediana_bairro":
+{ Args: { "bairro_slug": string,"janela_meses": number,"quartos": number }; Returns: {
+              "bairro": string,"com_vagas_inclusas": number,"distribuicao_selos": Json,"mediana_m2_privativo": number,"n_vendas": number,"p25": number,"p75": number
+            }[]
+                           },
 "m2_normalizar_endereco":
 { Args: { "texto": string }; Returns: string
                            },

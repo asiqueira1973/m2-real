@@ -81,27 +81,22 @@ export async function buildingSales(db: M2Client, predioId: string, meses: numbe
 }
 
 /**
- * m2_bairro (13.2; 11.17). Recebe: cliente, slug, meses e quartos (opcional: quartos da planta).
- * Devolve: o bairro, as vendas da janela e o pct_cobertura da última foto — ou nulo se o slug não existe.
+ * m2_bairro (13.2; 11.17): estatística calculada no banco (m2_mediana_bairro; antes, trazer as vendas
+ * da janela levava até 6 s). Recebe: cliente, slug, meses e quartos (opcional: quartos da planta).
+ * Devolve: o resumo da 11.17 e o pct_cobertura da última foto — ou nulo se o slug não existe.
  */
-export async function neighborhoodSales(db: M2Client, slug: string, meses: number, quartos: number | null, agora = new Date()) {
-  const { data: bairro, error } = await db.from("m2_bairros").select("id, nome").eq("slug", slug).maybeSingle();
-  if (error) throw falha("bairro", error);
-  if (!bairro) return null;
-  const desde = monthsBefore(agora, meses);
-  const linhas = await todas<LinhaVenda & { planta: { quartos: number | null } | null }>(
-    (de, ate) => {
-      let q = db.from("m2_vendas_consolidadas")
-        .select(`${CAMPOS_VENDA}, predio:m2_predios!inner(bairro_id), planta:m2_plantas${quartos !== null ? "!inner" : ""}(quartos)`)
-        .eq("predio.bairro_id", bairro.id).gte("data_transacao", desde);
-      // Filtro de quartos: quartos da planta (vêm dos anúncios); planta sem quartos fica de fora (plans/8.9-mcp.md).
-      if (quartos !== null) q = q.eq("planta.quartos", quartos);
-      return q.order("id").range(de, ate) as never;
-    },
-    "vendas do bairro",
-  );
-  const { data: cobertura } = await db.from("m2_cobertura_bairros").select("pct_cobertura").eq("bairro_id", bairro.id).order("calculado_em", { ascending: false }).limit(1).maybeSingle();
-  return { bairro: bairro.nome, vendas: linhas.map(toVenda), pct_cobertura: cobertura ? Number(cobertura.pct_cobertura) : null };
+export async function neighborhoodStats(db: M2Client, slug: string, meses: number, quartos: number | null) {
+  const { data, error } = await db.rpc("m2_mediana_bairro", { bairro_slug: slug, janela_meses: meses, quartos: quartos as never });
+  if (error) throw falha("mediana do bairro", error);
+  const r = data?.[0];
+  if (!r) return null;
+  const { data: b } = await db.from("m2_bairros").select("id").eq("slug", slug).single();
+  const { data: cobertura } = await db.from("m2_cobertura_bairros").select("pct_cobertura").eq("bairro_id", b!.id).order("calculado_em", { ascending: false }).limit(1).maybeSingle();
+  return {
+    bairro: r.bairro, mediana_m2_privativo: num(r.mediana_m2_privativo), p25: num(r.p25), p75: num(r.p75), n_vendas: r.n_vendas,
+    distribuicao_selos: (r.distribuicao_selos ?? {}) as Record<string, number>, com_vagas_inclusas: r.com_vagas_inclusas,
+    pct_cobertura: cobertura ? Number(cobertura.pct_cobertura) : null,
+  };
 }
 
 /**

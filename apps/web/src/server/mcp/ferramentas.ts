@@ -11,7 +11,7 @@ import {
 import { loadHealth } from "@m2-real/ingestao/saude";
 import { z } from "zod";
 import { decade, medianSummary, pickComparables } from "./calculos";
-import { buildingFile, buildingSales, comparableCandidates, lastCalibration, neighborhoodSales, searchBuilding } from "./dados";
+import { buildingFile, buildingSales, comparableCandidates, lastCalibration, neighborhoodStats, searchBuilding } from "./dados";
 
 /** 13.2: fonte de toda resposta. */
 export const FONTE = "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto";
@@ -99,9 +99,9 @@ export async function runTool<K extends keyof typeof ESQUEMAS>(db: M2Client, nom
     }
     case "m2_bairro": {
       const x = e as Entrada<"m2_bairro">;
-      const r = await neighborhoodSales(db, x.bairro, x.meses, x.quartos ?? null);
+      const r = await neighborhoodStats(db, x.bairro, x.meses, x.quartos ?? null);
       if (!r) return { mensagem: MENSAGENS_MCP.foraDaCobertura, ...base };
-      return { bairro: r.bairro, meses: x.meses, quartos: x.quartos ?? null, ...medianSummary(r.vendas), pct_cobertura: r.pct_cobertura, ...base };
+      return { ...r, meses: x.meses, quartos: x.quartos ?? null, ...base };
     }
     case "comparaveis": {
       const x = e as Entrada<"comparaveis">;
