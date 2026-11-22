@@ -183,8 +183,12 @@ export const CASAMENTO_TOLERANCIA_PLANTA = 0.12;
 /** Seção 12: em 429/5xx do Firecrawl, até 3 tentativas com espera de 10, 30 e 90 s. */
 export const FIRECRAWL_ESPERAS_S = [10, 30, 90] as const;
 
-/** Seção 17: teto padrão de créditos do Firecrawl por execução (FIRECRAWL_MAX_CREDITOS_EXECUCAO). */
-export const FIRECRAWL_MAX_CREDITOS_PADRAO = 600;
+/**
+ * Teto padrão de créditos do Firecrawl por execução (FIRECRAWL_MAX_CREDITOS_EXECUCAO; seção 17).
+ * O spec diz 600; o usuário decidiu 100 em 22/11/2026: plano grátis do Firecrawl (1.000/mês)
+ * dividido com outros apps dele. Vale para anúncios (8.5) e editais (8.5.1); ~4 prédios por rodada.
+ */
+export const FIRECRAWL_MAX_CREDITOS_PADRAO = 100;
 
 /** Custo previsto de uma busca (créditos), só para decidir se cabe no teto; a conta usa o creditsUsed real. */
 export const FIRECRAWL_CUSTO_BUSCA = 2;
