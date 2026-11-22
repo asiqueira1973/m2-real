@@ -195,3 +195,42 @@ export const FIRECRAWL_CUSTO_BUSCA = 2;
 
 /** Custo previsto de um scrape com extração JSON (créditos), idem. */
 export const FIRECRAWL_CUSTO_SCRAPE = 5;
+
+// ---------------------------------------------------------------------------
+// Épico 8.5.1 — editais de leilão (regras 11.19 e 11.20; seções 4.2, 17 e 18.4; assunção A10).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.19 (a): guias de arrematação/consolidação fiduciária dos últimos 36 meses apontam alvos. */
+export const LEILAO_ALVOS_JANELA_MESES = 36;
+
+/** Regra 11.19 (b): os 100 prédios de maior prioridade_coleta sem planta confirmada. */
+export const LEILAO_ALVOS_MAX_PRIORIDADE = 100;
+
+/** Regra 11.19: cada prédio é buscado em leilões no máximo uma vez a cada 180 dias. */
+export const LEILAO_RECOLETA_DIAS = 180;
+
+/** Épico 8.5.1 / seção 18.4: teto padrão de alvos por execução (LEILAO_MAX_ALVOS_EXECUCAO). */
+export const LEILAO_MAX_ALVOS_PADRAO = 100;
+
+/** Seção 17: teto padrão de documentos lidos pela Claude API por execução (CLAUDE_MAX_DOCUMENTOS_EXECUCAO). */
+export const CLAUDE_MAX_DOCUMENTOS_PADRAO = 150;
+
+/** Épico 8.5.1: até 3 resultados da busca são raspados por alvo. */
+export const LEILAO_RESULTADOS_POR_ALVO = 3;
+
+/** Assunção A10: allowlist inicial de leilões (LEILAO_DOMINIOS substitui, seção 18.4). */
+export const LEILAO_DOMINIOS_PADRAO = [
+  "venda-imoveis.caixa.gov.br",
+  "portalzuk.com.br",
+  "megaleiloes.com.br",
+  "sodresantoro.com.br",
+  "frazaoleiloes.com.br",
+  "biasileiloes.com.br",
+  "lancejudicial.com.br",
+] as const;
+
+/** Limite técnico: tamanho máximo de PDF enviado à Claude API (limite de requisição de 32 MB). */
+export const PDF_TAMANHO_MAXIMO_BYTES = 32 * 1024 * 1024;
+
+/** Seção 4.2: leitura de PDFs de leilão com o Sonnet da geração atual. */
+export const MODELO_EXTRACAO_PDF = "claude-sonnet-5";

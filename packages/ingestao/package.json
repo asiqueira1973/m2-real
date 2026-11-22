@@ -7,10 +7,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "@m2-real/db": "*",
     "csv-parse": "^7.0.3",
     "saxes": "^6.0.0",
-    "yauzl": "^3.4.0"
+    "yauzl": "^3.4.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/yauzl": "^3.4.0",

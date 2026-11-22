@@ -1,8 +1,8 @@
 /**
  * Ponto de entrada da ingestão: `tsx src/cli.ts <rotina> [argumentos]` (seção 18.3).
  *
- * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu), 8.3 (itbi), 8.4 (calibracao: consolidação).
- * Entram nos épicos seguintes: 8.5 (anúncios), 8.5.1 (leilões), 8.6 (resto da calibração).
+ * Valida o nome da rotina contra a seção 4.4 e despacha. Ligadas: 8.2 (iptu), 8.3 (itbi), 8.4 (calibracao: consolidação), 8.5 (anuncios), 8.5.1 (leiloes).
+ * Entra no épico seguinte: 8.6 (resto da calibração).
  * Variáveis de ambiente: .env.local na raiz (carregado pelo script "cli"), seção 18.4.
  */
 import { resolve } from "node:path";
@@ -95,6 +95,26 @@ export async function main(argv: readonly string[]): Promise<number> {
         const teto = process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO ? Number(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO) : undefined;
         const { runAdsCollection } = await import("./anuncios/rotina.js");
         await runAdsCollection(createServiceClient(), { apiKey, maxCreditos: teto, predio: option(args, "predio") });
+        return 0;
+      }
+      case "coleta-leiloes": {
+        // Uso: leiloes [--predio <chave_predio>]; tetos em FIRECRAWL_MAX_CREDITOS_EXECUCAO,
+        // LEILAO_MAX_ALVOS_EXECUCAO e CLAUDE_MAX_DOCUMENTOS_EXECUCAO; allowlist em LEILAO_DOMINIOS (18.4).
+        const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
+        if (!firecrawlApiKey) throw new Error("FIRECRAWL_API_KEY não definida (seção 18.4).");
+        if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não definida (seção 18.4).");
+        const numero = (v: string | undefined) => (v ? Number(v) : undefined);
+        const dominios = process.env.LEILAO_DOMINIOS?.split(",").map((d) => d.trim()).filter(Boolean);
+        const { runAuctionCollection } = await import("./leiloes/rotina.js");
+        await runAuctionCollection(createServiceClient(), {
+          firecrawlApiKey,
+          anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+          maxCreditos: numero(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
+          maxAlvos: numero(process.env.LEILAO_MAX_ALVOS_EXECUCAO),
+          maxDocumentos: numero(process.env.CLAUDE_MAX_DOCUMENTOS_EXECUCAO),
+          dominios: dominios?.length ? dominios : undefined,
+          predio: option(args, "predio"),
+        });
         return 0;
       }
       case "calibracao": {

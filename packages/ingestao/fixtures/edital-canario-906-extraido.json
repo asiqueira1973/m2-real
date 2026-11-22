@@ -1,0 +1,17 @@
+{
+  "_origem": "Resposta da Claude API (claude-sonnet-5, schema da 13.4) na sonda de 22/11/2026, já filtrada pela allowlist: só os campos da 13.4, nenhum dado de pessoa. Entrada: trecho público do laudo do apto 52 da Rua Canário, 906 (Edifício Oxford Park), citado na página do lote 1243 da Franklin Leilões, convertido em PDF só em memória. O PDF não foi guardado.",
+  "origem_documento": "laudo",
+  "logradouro": "Rua Canário",
+  "numero": 906,
+  "complemento": "Apartamento 52, 5º andar, Edifício Oxford Park",
+  "matricula": "13667",
+  "cartorio": "14º Cartório de Registro de Imóveis de São Paulo / SP",
+  "area_privativa_m2": 184.32,
+  "area_comum_m2": 80.69,
+  "area_total_m2": 317.45,
+  "fracao_ideal": null,
+  "vagas": 2,
+  "vagas_vinculadas_area": true,
+  "valor_avaliacao": 2625000,
+  "data_leilao": null
+}
