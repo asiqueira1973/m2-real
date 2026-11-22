@@ -78,3 +78,29 @@ describe("avaliarSaude (observabilidade O2)", () => {
     expect(r.cobertura).toEqual([expect.objectContaining({ bairro_id: 3, queda_pontos: 7.5 })]);
   });
 });
+
+// Bug achado pela vigia no 8.8 (22/11/2026): a carga do ITBI de 2026 (ano parcial, 7.364 linhas)
+// foi comparada com a mediana das cargas de 2023–2025 (anos inteiros, ~21 mil) e deu volume
+// anômalo. O volume só é comparável dentro da mesma referência (o mesmo ano do ITBI).
+describe("volume anômalo: compara só execuções da mesma referência", () => {
+  it("carga de um ano novo e menor não é anômala diante de anos anteriores", () => {
+    const execs = [
+      ...SAUDAVEL.filter((e) => e.rotina !== "ingestao-itbi"),
+      ok("ingestao-itbi", 1, 7364, { referencia: "2026" }),
+      ok("ingestao-itbi", 2, 21000, { referencia: "2025" }),
+      ok("ingestao-itbi", 3, 21390, { referencia: "2024" }),
+      ok("ingestao-itbi", 4, 22000, { referencia: "2023" }),
+    ];
+    expect(estado(execs, "ingestao-itbi").estado).toBe("ok");
+  });
+  it("queda dentro da mesma referência continua anômala", () => {
+    const execs = [
+      ...SAUDAVEL.filter((e) => e.rotina !== "ingestao-itbi"),
+      ok("ingestao-itbi", 1, 1000, { referencia: "2026" }),
+      ok("ingestao-itbi", 30, 7000, { referencia: "2026" }),
+      ok("ingestao-itbi", 60, 7200, { referencia: "2026" }),
+      ok("ingestao-itbi", 90, 7300, { referencia: "2026" }),
+    ];
+    expect(estado(execs, "ingestao-itbi").estado).toBe("volume_anomalo");
+  });
+});
