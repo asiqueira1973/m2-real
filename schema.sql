@@ -135,6 +135,57 @@ CREATE TYPE "public"."m2_tipo_unidade" AS ENUM (
 ALTER TYPE "public"."m2_tipo_unidade" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_aplicar_calibracao_plantas"("plantas" "jsonb", "historico" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_ids uuid[];
+begin
+  with alteradas as (
+    update public.m2_plantas p
+       set area_privativa   = x.area_privativa,
+           vagas_inclusas   = x.vagas_inclusas,
+           quartos          = x.quartos,
+           fator            = x.fator,
+           selo             = x.selo,
+           fonte_area       = x.fonte_area,
+           faixa_erro_pct   = x.faixa_erro_pct,
+           especial         = x.especial,
+           revisao_pendente = x.revisao_pendente,
+           motivo_revisao   = x.motivo_revisao,
+           atualizado_em    = now()
+      from jsonb_to_recordset(m2_aplicar_calibracao_plantas.plantas) as x(
+             id uuid, area_privativa numeric, vagas_inclusas smallint, quartos smallint, fator numeric,
+             selo public.m2_selo_area, fonte_area public.m2_fonte_dado, faixa_erro_pct numeric,
+             especial boolean, revisao_pendente boolean, motivo_revisao public.m2_motivo_revisao)
+     where p.id = x.id
+       and not (p.selo = 'confirmada' and p.fonte_area = 'revisao_manual')  -- regra 11.11
+       and (p.area_privativa, p.vagas_inclusas, p.quartos, p.fator, p.selo, p.fonte_area, p.faixa_erro_pct,
+            p.especial, p.revisao_pendente, p.motivo_revisao)
+           is distinct from
+           (x.area_privativa::numeric(8,2), x.vagas_inclusas, x.quartos, x.fator::numeric(5,3), x.selo, x.fonte_area,
+            x.faixa_erro_pct::numeric(5,1), x.especial, x.revisao_pendente, x.motivo_revisao)
+    returning p.id
+  )
+  select coalesce(array_agg(id), '{}') into v_ids from alteradas;
+
+  insert into public.m2_calibracoes (planta_id, area_privativa, vagas_inclusas, fator, selo, fonte, anuncios_ids, editais_ids, autor)
+  select h.planta_id, h.area_privativa, h.vagas_inclusas, h.fator, h.selo, h.fonte,
+         coalesce(h.anuncios_ids, '{}'), coalesce(h.editais_ids, '{}'), 'pipeline'
+    from jsonb_to_recordset(m2_aplicar_calibracao_plantas.historico) as h(
+           planta_id uuid, area_privativa numeric, vagas_inclusas smallint, fator numeric,
+           selo public.m2_selo_area, fonte public.m2_fonte_dado, anuncios_ids uuid[], editais_ids uuid[])
+   where h.planta_id = any (v_ids);  -- só plantas atualizadas agora (nunca as da 11.11)
+
+  return coalesce(array_length(v_ids, 1), 0);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_aplicar_calibracao_plantas"("plantas" "jsonb", "historico" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_atualizar_atualizado_em"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -147,6 +198,30 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_atualizar_atualizado_em"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_atualizar_fator_predio"("ids" "uuid"[], "fatores" numeric[]) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_atualizados integer;
+begin
+  if coalesce(array_length(ids, 1), 0) <> coalesce(array_length(fatores, 1), 0) then
+    raise exception 'ids e fatores com tamanhos diferentes.' using errcode = '22023';
+  end if;
+  update public.m2_predios p
+     set fator_predio = x.fator, atualizado_em = now()
+    from unnest(m2_atualizar_fator_predio.ids, m2_atualizar_fator_predio.fatores) as x(id, fator)
+   where p.id = x.id
+     and p.fator_predio is distinct from x.fator;
+  get diagnostics v_atualizados = row_count;
+  return v_atualizados;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_atualizar_fator_predio"("ids" "uuid"[], "fatores" numeric[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_atualizar_prioridades"("ids" "uuid"[], "prioridades" integer[]) RETURNS integer
@@ -673,6 +748,29 @@ $$;
 
 
 ALTER FUNCTION "public"."m2_normalizar_endereco"("texto" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_inseridos integer;
+begin
+  delete from public.m2_fatores_referencia where true;
+  insert into public.m2_fatores_referencia
+         (bairro_id, decada_construcao, vagas_cadastro_proprio, fator_mediano, fator_p25, fator_p75, qtd_plantas, calculado_em)
+  select x.bairro_id, x.decada_construcao, x.vagas_cadastro_proprio, x.fator_mediano, x.fator_p25, x.fator_p75, x.qtd_plantas, now()
+    from jsonb_to_recordset(m2_substituir_fatores_referencia.linhas) as x(
+           bairro_id smallint, decada_construcao smallint, vagas_cadastro_proprio boolean,
+           fator_mediano numeric, fator_p25 numeric, fator_p75 numeric, qtd_plantas integer);
+  get diagnostics v_inseridos = row_count;
+  return v_inseridos;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."m2_unidades_por_sql"("sqls" "text"[]) RETURNS TABLE("sql" "text", "unidade_id" "uuid", "predio_id" "uuid", "bairro_id" smallint)
@@ -1423,8 +1521,18 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_aplicar_calibracao_plantas"("plantas" "jsonb", "historico" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_aplicar_calibracao_plantas"("plantas" "jsonb", "historico" "jsonb") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_atualizar_atualizado_em"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_atualizar_atualizado_em"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_atualizar_fator_predio"("ids" "uuid"[], "fatores" numeric[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_atualizar_fator_predio"("ids" "uuid"[], "fatores" numeric[]) TO "service_role";
 
 
 
@@ -1512,6 +1620,11 @@ GRANT ALL ON FUNCTION "public"."m2_marcar_planta_especial"("planta_id" "uuid", "
 REVOKE ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_normalizar_endereco"("texto" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") TO "service_role";
 
 
 

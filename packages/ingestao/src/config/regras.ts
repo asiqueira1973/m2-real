@@ -243,3 +243,40 @@ export const LEILAO_GUIAS_POR_MATRICULA = 100;
 
 /** Seção 4.2: leitura de PDFs de leilão com o Sonnet da geração atual. */
 export const MODELO_EXTRACAO_PDF = "claude-sonnet-5";
+
+// ---------------------------------------------------------------------------
+// Épico 8.6 — calibração (regras 11.9, 11.10 e 11.12; seção 8.6; D12; assunção A6).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.9: evidências concordam para "calibrada" se ficam a até 3% da mediana delas. */
+export const CALIBRADA_CONCORDANCIA = 0.03;
+
+/** Regra 11.9: "calibrada" exige ≥ 2 evidências concordantes, de URLs distintas. */
+export const CALIBRADA_MIN_EVIDENCIAS = 2;
+
+/** Regra 11.9: ≥ 2 evidências que não concordam a 3% mas concordam a 8% → "indicativa". */
+export const INDICATIVA_CONCORDANCIA = 0.08;
+
+/** Regra 11.9: 2+ editais na mesma planta valem pela mediana se concordam a 3%. */
+export const EDITAIS_CONCORDANCIA = 0.03;
+
+/** Seção 8.6: edital que diverge mais de 5% da área calibrada por anúncios → revisão edital_divergente. */
+export const EDITAL_DIVERGENCIA_ANUNCIOS = 0.05;
+
+/** Regra 11.10: usa o grupo de fator mais específico com pelo menos 8 plantas. */
+export const FATOR_GRUPO_MIN_PLANTAS = 8;
+
+/** Regra 11.12: cada fator deve ficar a até 10% do fator_predio. */
+export const COERENCIA_FATOR_PREDIO = 0.1;
+
+/** Regra 11.12: a coerência só se aplica a prédios com ≥ 2 plantas de selo ≥ indicativa. */
+export const COERENCIA_MIN_PLANTAS = 2;
+
+/** Regra 11.12: planta especial tem no máximo 2 unidades… */
+export const ESPECIAL_MAX_UNIDADES = 2;
+
+/** Regra 11.12: …e área ≥ 1,4 × a da planta seguinte. */
+export const ESPECIAL_RAZAO_AREA = 1.4;
+
+/** D12 / 7.2 (cobertura_bairros.vendas_24m): vendas consolidadas dos últimos 24 meses. */
+export const COBERTURA_JANELA_MESES = 24;

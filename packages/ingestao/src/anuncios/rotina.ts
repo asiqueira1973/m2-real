@@ -8,6 +8,8 @@
 import type { M2Client } from "@m2-real/db/server";
 import { CASAMENTO_SIMILARIDADE_MINIMA, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
 import { fetchAllPages } from "../calibracao/dados.js";
+import { decadeOf, groupFor } from "../calibracao/fatores.js";
+import { loadReferenceFactors } from "../calibracao/plantas.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
 import { casarAnuncio, type Casamento, type PlantaDoPredio } from "./casamento.js";
@@ -203,12 +205,14 @@ async function matchAd(db: M2Client, a: AnuncioExtraido): Promise<Casamento> {
     () => db.from("m2_plantas").select("id, area_iptu_referencia").eq("predio_id", predioId),
     "Falha ao ler plantas do prédio do anúncio",
   );
-  const p = await withRetry<{ fator_predio: number | null }>(
-    () => db.from("m2_predios").select("fator_predio").eq("id", predioId).single(),
+  const p = await withRetry<{ fator_predio: number | null; bairro_id: number; ano_construcao: number | null; vagas_cadastro_proprio: boolean }>(
+    () => db.from("m2_predios").select("fator_predio, bairro_id, ano_construcao, vagas_cadastro_proprio").eq("id", predioId).single(),
     "Falha ao ler fator do prédio",
   );
-  // Fator de referência do grupo (11.10) entra no 8.6; até lá, só o do prédio.
-  const fator = p?.fator_predio == null ? null : Number(p.fator_predio);
+  // 11.8: fator do prédio ou, sem ele, o fator de referência do grupo (11.10, gravado pela calibração do 8.6).
+  const fator = p.fator_predio != null
+    ? Number(p.fator_predio)
+    : groupFor(await loadReferenceFactors(db), p.bairro_id, decadeOf(p.ano_construcao), p.vagas_cadastro_proprio)?.fatorMediano ?? null;
   const lista: PlantaDoPredio[] = (plantas ?? []).map((x) => ({ id: x.id, areaIptuReferencia: Number(x.area_iptu_referencia) }));
   return casarAnuncio(a, predio, lista, fator);
 }

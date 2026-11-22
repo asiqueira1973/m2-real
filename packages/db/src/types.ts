@@ -339,7 +339,13 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "m2_atualizar_prioridades":
+            "m2_aplicar_calibracao_plantas":
+{ Args: { "historico": Json,"plantas": Json }; Returns: number
+                           },
+"m2_atualizar_fator_predio":
+{ Args: { "fatores": (number)[],"ids": (string)[] }; Returns: number
+                           },
+"m2_atualizar_prioridades":
 { Args: { "ids": (string)[],"prioridades": (number)[] }; Returns: number
                            },
 "m2_buscar_predio_por_endereco":
@@ -505,6 +511,9 @@ isOneToOne: false
       } },
 "m2_normalizar_endereco":
 { Args: { "texto": string }; Returns: string
+                           },
+"m2_substituir_fatores_referencia":
+{ Args: { "linhas": Json }; Returns: number
                            },
 "m2_unidades_por_sql":
 { Args: { "sqls": (string)[] }; Returns: {
