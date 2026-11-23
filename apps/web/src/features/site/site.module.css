@@ -167,4 +167,5 @@
 .testeAviso { margin: 20px 0 0; color: var(--ink-70); }
 .testeResultado { margin-top: 28px; padding: 20px; border: 1px solid var(--line-strong); background: #fff; }
 .testeResultado p { margin: 0 0 12px; }
+.testeResultado .botao { margin-top: 20px; }
 .testePredio { font-weight: 500; }
