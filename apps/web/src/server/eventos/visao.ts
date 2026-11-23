@@ -83,6 +83,7 @@ export async function send(corpo: unknown, rotulo: string): Promise<void> {
 /**
  * Registra um evento depois da resposta. Recebe: nome e uma função que devolve quem e as
  * propriedades (pode consultar o banco; nulo descarta), e a chave de deduplicação opcional.
+ * Devolve: nada (o envio fica para depois da resposta).
  */
 export function track<N extends NomeEvento>(nome: N, calcular: () => Promise<{ quem: string; propriedades: Propriedades<N> } | null>, chave?: string): void {
   if (!process.env.VISAO_INGEST_URL || !process.env.VISAO_API_KEY) return;

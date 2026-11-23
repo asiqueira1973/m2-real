@@ -1045,7 +1045,7 @@ Regra: toda mudança de schema, regra ou tela atualiza este documento no mesmo c
 | `fechou_por_quanto_primeira_conexao` | a pessoa entra com o Google pela primeira vez (conta nova) | e-mail da conta | Entrar com Google | nenhuma |
 | `fechou_por_quanto_pergunta` | cada consulta de um assistente a uma ferramenta (`tools/call`); uma pergunta pode gerar mais de uma | e-mail da conta (token OAuth) ou `chave_<id>` (chave do painel) | MCP | `ferramenta`, `credencial` (`oauth`/`chave`), `cliente` (nome do app: Claude, ChatGPT…) |
 
-O catálogo é fechado: o endereço, o texto da pergunta e os argumentos da ferramenta nunca saem. O uso operacional continua no banco: `execucoes_ingestao`, `cobertura_bairros`, `ultimo_uso_em` e `m2_uso_mcp`.
+O catálogo é fechado: o endereço, o texto da pergunta e os argumentos da ferramenta nunca saem. O nome do app (`cliente`) vem do registro dinâmico OAuth, limitado a 100 caracteres. A política de privacidade (`/privacidade`) informa esses eventos, e o e-mail como identificador; a seção 20 vale com essa ressalva. O uso operacional continua no banco: `execucoes_ingestao`, `cobertura_bairros`, `ultimo_uso_em` e `m2_uso_mcp`.
 
 ---
 
