@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.5 (eventos de produto no Visão de Produto, épico 8.12) |
+| Versão | 1.6 (teste por endereço no site, épico 8.13) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -672,6 +672,11 @@ Critérios de aceite:
 - [ ] Toda resposta com m² traz o selo e a área usada (princípio 1).
 - [ ] Teste de cliente com `node scripts/test-client.mjs` contra o deploy de preview passa.
 
+### 8.13 Teste por endereço no site
+- [ ] O site tem o "Teste aqui": endereço → prédio e 3 vendas mais recentes, seguidos do convite para conectar.
+- [ ] Uma busca por IP a cada 30 dias (11.23): outro prédio mostra o limite; o mesmo prédio repete; endereço não encontrado não gasta.
+- [ ] Turnstile conferido no servidor; o IP guardado só como HMAC; evento `fechou_por_quanto_teste_site` (anônimo).
+
 ### 8.12 Eventos de produto
 - [ ] Conta nova no login com Google gera `fechou_por_quanto_primeira_conexao` (uma vez por conta; id estável).
 - [ ] Cada `tools/call` no MCP gera `fechou_por_quanto_pergunta` com só `ferramenta`, `credencial` e `cliente`.
@@ -728,7 +733,7 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | [Cliente MCP] Entrar | "Entrar com Google" e mensagens de erro (8.10) | — | entrar | — | `clientes` (servidor) |
 | [Cliente MCP] Autorizar conexão | nome do cliente, o que pode e não pode, host de volta, conta | — | permitir; cancelar; usar outra conta | `oauth_clientes` | `oauth_codigos` (servidor) |
 | [Público] Privacidade e Termos | texto legal (8.10) | — | — | — | — |
-| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses, resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
+| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses, "Teste aqui" (8.13, regra 11.23), resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
 | [Público] Conectar (`/conectar`) | endereço do MCP com botão de copiar e passo a passo do Claude, do ChatGPT e do Grok em abas (8.10/8.11) | assistente | copiar endereço | — | — |
 
 ---
@@ -757,6 +762,7 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | 11.19 | Alvos da coleta de leilões | (a) Prédios com guia do ITBI de natureza "4.Arrematação" ou "17.Resolução da alienação fiduciária" nos últimos 36 meses; (b) os 100 prédios de maior `prioridade_coleta` (regra 11.13) sem nenhuma planta `confirmada`. Cada prédio é buscado no máximo uma vez a cada 180 dias (`ultima_coleta_leilao_em`) | ingestão |
 | 11.20 | Casamento edital → prédio → unidade | Prédio: mesmo critério de endereço da regra 11.8. Unidade, por ordem de força: (1) `matricula` igual à de uma guia do ITBI de uma unidade do prédio → `casado_unidade`; (2) complemento normalizado igual ao de uma unidade do prédio ("APTO 52" = "AP 52" = "APARTAMENTO 52") → `casado_unidade`; (3) senão → `casado_predio`, sem efeito na área (vai para a lista de evidências sem vínculo). Edital de prédio fora dos 10 bairros é descartado | ingestão |
 | 11.21 | Limite de contas novas | No máximo 50 contas de cliente criadas nas últimas 24 h. Acima disso, o login mostra a mensagem da seção 15. Quem já tem conta entra sempre; conta bloqueada não entra | OAuth (8.10) |
+| 11.23 | Teste do site | O "Teste aqui" mostra o prédio e as 3 vendas mais recentes (36 meses), com data, valor e vaga. Uma busca por IP a cada 30 dias: repetir o mesmo prédio não conta e endereço não encontrado não gasta. Turnstile (Cloudflare) contra robôs. O IP nunca é guardado, só o HMAC dele (`m2_testes_site`), apagado depois da janela | site (8.13) |
 | 11.22 | Limite de uso do MCP | Por token OAuth: até 30 chamadas no minuto corrente e 1.000 nas últimas 24 h. A chamada recusada não conta e recebe 429 com o tempo de espera. Chaves do painel não têm limite | MCP (8.10) |
 | 11.18 | O que não é automático | A **descontar o valor das vagas inclusas** no preço não é feito no MVP: o m² é devolvido com a informação `vagas_inclusas_area` e o agente decide. Também não há correção monetária dos preços antigos | — |
 
@@ -1043,6 +1049,7 @@ Regra: toda mudança de schema, regra ou tela atualiza este documento no mesmo c
 | Evento | Quando | `distinct_id` | Tela | Propriedades |
 |---|---|---|---|---|
 | `fechou_por_quanto_primeira_conexao` | a pessoa entra com o Google pela primeira vez (conta nova) | e-mail da conta | Entrar com Google | nenhuma |
+| `fechou_por_quanto_teste_site` | cada busca no "Teste aqui" do site (8.13) | `anon_<12 primeiros caracteres do HMAC do IP>` | Site | `encontrou`, `permitido`, `vendas` (quantidade) |
 | `fechou_por_quanto_pergunta` | cada consulta de um assistente a uma ferramenta (`tools/call`); uma pergunta pode gerar mais de uma | e-mail da conta (token OAuth) ou `chave_<id>` (chave do painel) | MCP | `ferramenta`, `credencial` (`oauth`/`chave`), `cliente` (nome do app: Claude, ChatGPT…) |
 
 O catálogo é fechado: o endereço, o texto da pergunta e os argumentos da ferramenta nunca saem. O nome do app (`cliente`) vem do registro dinâmico OAuth, limitado a 100 caracteres. A política de privacidade (`/privacidade`) informa esses eventos, e o e-mail como identificador; a seção 20 vale com essa ressalva. O uso operacional continua no banco: `execucoes_ingestao`, `cobertura_bairros`, `ultimo_uso_em` e `m2_uso_mcp`.

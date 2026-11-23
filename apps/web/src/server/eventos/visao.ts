@@ -1,6 +1,7 @@
 /**
  * Eventos de produto no Visão de Produto (seção 21; épico 8.12). SÓ SERVIDOR.
- * - Dois eventos: a primeira conexão de uma pessoa e cada consulta de um assistente a uma ferramenta.
+ * - Três eventos: a primeira conexão de uma pessoa, cada consulta de um assistente a uma ferramenta
+ *   e cada teste de endereço no site (8.13; o visitante é anônimo: anon_<início do hash do IP>).
  * - Catálogo fechado: as propriedades passam por um schema `.strict()`; o que não está nele não sai.
  *   Nunca vão o endereço, o texto da pergunta nem os argumentos da ferramenta.
  * - Dispara e esquece: o envio roda depois da resposta (after do Next), com timeout, e um erro só
@@ -28,6 +29,15 @@ export const EVENTOS = {
       ferramenta: z.enum(FERRAMENTAS),
       credencial: z.enum(["oauth", "chave"]),
       cliente: z.string().max(100).nullable(),
+    }).strict(),
+  },
+  fechou_por_quanto_teste_site: {
+    tela: "Site",
+    descricao: "visitante testou um endereço no site (8.13)",
+    schema: z.object({
+      encontrou: z.boolean(),
+      permitido: z.boolean(),
+      vendas: z.number().int().min(0).max(100),
     }).strict(),
   },
 } as const;

@@ -33,3 +33,10 @@ describe("eventos do Visão de Produto (seção 21)", () => {
     expect(f).toHaveBeenCalledWith("https://ingest.test", expect.objectContaining({ method: "POST", headers: expect.objectContaining({ "x-api-key": "k" }) }));
   });
 });
+
+describe("evento do teste do site (8.13)", () => {
+  it("só encontrou, permitido e vendas", () => {
+    expect(buildPayload("fechou_por_quanto_teste_site", "anon_abc", { encontrou: true, permitido: true, vendas: 3 })?.eventos[0]?.tela).toBe("Site");
+    expect(buildPayload("fechou_por_quanto_teste_site", "anon_abc", { encontrou: true, permitido: true, vendas: 3, endereco: "Rua X" } as never)).toBeNull();
+  });
+});

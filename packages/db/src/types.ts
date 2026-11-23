@@ -291,6 +291,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"m2_testes_site": {
+                  Row: {
+                    "criado_em": string,"ip_hash": string,"predio_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "criado_em"?: string,"ip_hash": string,"predio_id": string
+                  }
+                  Update: {
+                    "criado_em"?: string,"ip_hash"?: string,"predio_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "m2_testes_site_predio_id_fkey"
+      columns: ["predio_id"]
+isOneToOne: false
+      referencedRelation: "m2_predios"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"m2_tokens_mcp": {
                   Row: {
                     "cliente_id": string,"criado_em": string,"hash_token": string,"id": string,"oauth_cliente_id": string | null,"prefixo": string,"revogado_em": string | null,"ultimo_uso_em": string | null
@@ -656,6 +676,9 @@ isOneToOne: false
                            },
 "m2_registra_cliente_oauth":
 { Args: { "p_dias_sem_uso": number,"p_limite_hora": number,"p_nome": string,"p_redirect_uris": (string)[] }; Returns: string
+                           },
+"m2_registra_teste_site":
+{ Args: { "p_ip_hash": string,"p_janela_dias": number,"p_predio_id": string }; Returns: boolean
                            },
 "m2_substituir_fatores_referencia":
 { Args: { "linhas": Json }; Returns: number

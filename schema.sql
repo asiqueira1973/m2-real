@@ -1031,6 +1031,28 @@ $$;
 ALTER FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_redirect_uris" "text"[], "p_limite_hora" integer, "p_dias_sem_uso" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_registra_teste_site"("p_ip_hash" "text", "p_predio_id" "uuid", "p_janela_dias" integer) RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  v_t public.m2_testes_site;
+begin
+  perform pg_advisory_xact_lock(hashtext(p_ip_hash));
+  delete from public.m2_testes_site where criado_em < now() - make_interval(days => p_janela_dias);
+  select * into v_t from public.m2_testes_site where ip_hash = p_ip_hash;
+  if v_t.ip_hash is null then
+    insert into public.m2_testes_site (ip_hash, predio_id) values (p_ip_hash, p_predio_id);
+    return true;
+  end if;
+  return v_t.predio_id = p_predio_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."m2_registra_teste_site"("p_ip_hash" "text", "p_predio_id" "uuid", "p_janela_dias" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") RETURNS integer
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -1386,6 +1408,16 @@ CREATE TABLE IF NOT EXISTS "public"."m2_predios" (
 ALTER TABLE "public"."m2_predios" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."m2_testes_site" (
+    "ip_hash" "text" NOT NULL,
+    "predio_id" "uuid" NOT NULL,
+    "criado_em" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."m2_testes_site" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."m2_tokens_mcp" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "cliente_id" "uuid" NOT NULL,
@@ -1578,6 +1610,11 @@ ALTER TABLE ONLY "public"."m2_predios"
 
 
 
+ALTER TABLE ONLY "public"."m2_testes_site"
+    ADD CONSTRAINT "m2_testes_site_pkey" PRIMARY KEY ("ip_hash");
+
+
+
 ALTER TABLE ONLY "public"."m2_tokens_mcp"
     ADD CONSTRAINT "m2_tokens_mcp_hash_token_key" UNIQUE ("hash_token");
 
@@ -1704,6 +1741,14 @@ CREATE INDEX "m2_predios_logradouro_numero_idx" ON "public"."m2_predios" USING "
 
 
 CREATE INDEX "m2_predios_logradouro_trgm_idx" ON "public"."m2_predios" USING "gin" ("logradouro" "extensions"."gin_trgm_ops");
+
+
+
+CREATE INDEX "m2_testes_site_criado_em_idx" ON "public"."m2_testes_site" USING "btree" ("criado_em");
+
+
+
+CREATE INDEX "m2_testes_site_predio_idx" ON "public"."m2_testes_site" USING "btree" ("predio_id");
 
 
 
@@ -1895,6 +1940,11 @@ ALTER TABLE ONLY "public"."m2_predios"
 
 
 
+ALTER TABLE ONLY "public"."m2_testes_site"
+    ADD CONSTRAINT "m2_testes_site_predio_id_fkey" FOREIGN KEY ("predio_id") REFERENCES "public"."m2_predios"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."m2_tokens_mcp"
     ADD CONSTRAINT "m2_tokens_mcp_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "public"."m2_clientes"("id") ON DELETE CASCADE;
 
@@ -2052,6 +2102,9 @@ ALTER TABLE "public"."m2_predios" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "m2_predios_leitura_admin" ON "public"."m2_predios" FOR SELECT TO "authenticated" USING (( SELECT "public"."m2_eh_admin"() AS "m2_eh_admin"));
 
+
+
+ALTER TABLE "public"."m2_testes_site" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."m2_tokens_mcp" ENABLE ROW LEVEL SECURITY;
@@ -2240,6 +2293,11 @@ GRANT ALL ON FUNCTION "public"."m2_registra_cliente_oauth"("p_nome" "text", "p_r
 
 
 
+REVOKE ALL ON FUNCTION "public"."m2_registra_teste_site"("p_ip_hash" "text", "p_predio_id" "uuid", "p_janela_dias" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_registra_teste_site"("p_ip_hash" "text", "p_predio_id" "uuid", "p_janela_dias" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_substituir_fatores_referencia"("linhas" "jsonb") TO "service_role";
 
@@ -2354,6 +2412,10 @@ GRANT SELECT ON TABLE "public"."m2_perfis" TO "authenticated";
 GRANT ALL ON TABLE "public"."m2_predios" TO "service_role";
 GRANT SELECT ON TABLE "public"."m2_predios" TO "anon";
 GRANT SELECT ON TABLE "public"."m2_predios" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."m2_testes_site" TO "service_role";
 
 
 

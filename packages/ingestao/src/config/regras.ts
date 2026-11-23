@@ -389,3 +389,19 @@ export const SITE_REVALIDAR_S = 86400;
 
 /** Seção 21: tempo máximo do envio de um evento ao Visão de Produto, em ms (nunca atrasa a resposta). */
 export const VISAO_TIMEOUT_MS = 4000;
+
+// ---------------------------------------------------------------------------
+// Épico 8.13 — "Teste aqui" no site (regra 11.23).
+// ---------------------------------------------------------------------------
+
+/** Regra 11.23: uma busca por IP a cada tantos dias (o hash do IP é apagado depois). */
+export const SITE_TESTE_JANELA_DIAS = 30;
+
+/** Regra 11.23: vendas mostradas na amostra do site (as mais recentes). */
+export const SITE_TESTE_VENDAS = 3;
+
+/** Regra 11.23: janela das vendas da amostra, em meses. */
+export const SITE_TESTE_MESES = 36;
+
+/** 8.13: tempo máximo da conferência do Turnstile, em ms. */
+export const TURNSTILE_TIMEOUT_MS = 5000;

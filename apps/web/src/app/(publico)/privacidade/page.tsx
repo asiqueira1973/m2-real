@@ -15,6 +15,7 @@ const SECOES = [
     "Ao conectar um assistente (como o Claude) com sua conta Google, guardamos só o identificador da conta Google e o e-mail. Não guardamos nome, foto, contatos nem nada do seu Google além disso.",
     "Guardamos também o nome do aplicativo que você conectou, a data da conexão, a data do último uso e quantas consultas foram feitas por minuto, para aplicar os limites de uso e evitar abuso.",
     "Não guardamos o conteúdo das suas conversas com o assistente; recebemos só as consultas que ele faz às ferramentas (por exemplo, um endereço).",
+    "No teste de endereço do site, sem login, guardamos por 30 dias só um código irreversível gerado a partir do seu endereço IP e o prédio consultado, para limitar o teste a um prédio por pessoa. O IP em si não é guardado.",
   ] },
   { titulo: "Para que usamos", paragrafos: [
     "Para identificar a sua conexão, aplicar os limites de uso, bloquear uso abusivo e entender como o serviço é usado. Não vendemos seus dados a ninguém e não mandamos e-mails de marketing.",
