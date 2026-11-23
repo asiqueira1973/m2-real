@@ -194,3 +194,20 @@ export const PAGINA_CONECTAR = {
   dica: "Dica: o assistente só consulta o Fechou por Quanto quando ele está selecionado na conversa. Se a resposta vier de buscas na internet, selecione o conector e pergunte de novo.",
   teste: "Para testar, pergunte: “O que é o Fechou por Quanto e quais bairros ele cobre?”",
 };
+
+/** "Teste aqui" (8.13; regra 11.23). */
+export const TESTE = {
+  rotulo: "Teste aqui",
+  titulo: "Veja as últimas vendas de um prédio.",
+  texto: "Digite o endereço de um prédio dos bairros cobertos. Você vê as três vendas mais recentes registradas na Prefeitura. Para ver tudo e perguntar do seu jeito, conecte no seu assistente.",
+  rotuloCampo: "Endereço do prédio",
+  exemplo: "Ex.: Rua João Ramalho, 586",
+  botao: "Ver vendas",
+  buscando: "Buscando…",
+  semVendas: "Nenhuma venda registrada nos últimos três anos neste prédio.",
+  vagaJunto: "vaga de",
+  semVaga: "sem vaga separada",
+  convite: "Essas são as três vendas mais recentes. No seu assistente você vê todas, compara prédios e pergunta do seu jeito.",
+  limite: "O teste no site é de um prédio por pessoa. Para consultar outros, conecte o Fechou por Quanto no seu assistente: é grátis e leva três minutos.",
+  conectar: "Conectar ao meu assistente",
+};

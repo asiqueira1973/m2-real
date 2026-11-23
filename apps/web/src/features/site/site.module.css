@@ -157,3 +157,14 @@
 .dablab { color: var(--ink) !important; font-weight: 500; }
 .rodapeProduto { margin: 0; font-weight: 500; color: var(--ink); }
 .rodapeFrase { margin: 4px 0 0; }
+
+/* "Teste aqui" (8.13) */
+.teste { max-width: 720px; }
+.testeForm { display: grid; gap: 12px; }
+.testeRotulo { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-45); }
+.testeLinha { display: flex; gap: 8px; flex-wrap: wrap; }
+.testeCampo { flex: 1 1 260px; min-width: 0; height: 48px; padding: 0 14px; font: inherit; border: 1px solid var(--ink); background: #fff; border-radius: 2px; }
+.testeAviso { margin: 20px 0 0; color: var(--ink-70); }
+.testeResultado { margin-top: 28px; padding: 20px; border: 1px solid var(--line-strong); background: #fff; }
+.testeResultado p { margin: 0 0 12px; }
+.testePredio { font-weight: 500; }

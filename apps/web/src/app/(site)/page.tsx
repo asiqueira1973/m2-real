@@ -1,17 +1,19 @@
 /**
  * [Público] Site do Fechou por Quanto (épico 8.11; seção 10): explica o produto em linguagem de
  * negócio, mostra uma conversa de exemplo com vendas reais do ITBI, os selos (11.9), perguntas de
- * exemplo, os bairros cobertos com as vendas de 24 meses e o resumo de como conectar. Relido uma vez por dia.
+ * exemplo, os bairros cobertos com as vendas de 24 meses, o "Teste aqui" (8.13) e o resumo de como conectar. Relido uma vez por dia.
  */
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ATUALIZACAO, BAIRROS, COMO_FUNCIONA, CONECTAR, CONVERSA, ENDERECO_MCP, FAQ, HERO, PAGINA_CONECTAR, PERGUNTAS, PROBLEMA, SELOS,
+  ATUALIZACAO, BAIRROS, COMO_FUNCIONA, CONECTAR, CONVERSA, ENDERECO_MCP, FAQ, HERO, PAGINA_CONECTAR, PERGUNTAS, PROBLEMA, SELOS, TESTE,
 } from "@/features/site/conteudo";
 import { Copiar } from "@/features/site/copiar";
+import { TesteEndereco } from "@/features/site/teste";
 import s from "@/features/site/site.module.css";
 import { loadSiteData } from "@/server/site/dados";
+import { turnstileSiteKey } from "@/server/site/teste";
 
 // Next exige número literal aqui; é o SITE_REVALIDAR_S de regras.ts (um dia), conferido em teste.
 export const revalidate = 86400;
@@ -74,6 +76,17 @@ export default async function SitePage() {
           <Image src="/site/skyline.webp" alt="Skyline de prédios residenciais de São Paulo ao entardecer" width={1800} height={1020} priority sizes="(max-width: 1120px) 100vw, 1120px" />
         </div>
       </section>
+
+      {turnstileSiteKey() && (
+        <section id="teste" className={`${s.secao} ${s.secaoAlt}`}>
+          <div className={s.wrap}>
+            <p className={s.rotulo}>{TESTE.rotulo}</p>
+            <h2 className={`${s.display} ${s.titulo}`}>{TESTE.titulo}</h2>
+            <p className={s.lead}>{TESTE.texto}</p>
+            <TesteEndereco siteKey={turnstileSiteKey()} />
+          </div>
+        </section>
+      )}
 
       <section className={s.secao}>
         <div className={s.wrap}>
