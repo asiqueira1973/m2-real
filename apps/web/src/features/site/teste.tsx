@@ -1,9 +1,9 @@
 "use client";
 /**
  * "Teste aqui" (épico 8.13; regra 11.23): campo de endereço, Turnstile e o resultado com as 3 vendas
- * mais recentes, seguido do convite para conectar o assistente. Recebe: a chave pública do Turnstile e
- * as classes do site.
+ * mais recentes, seguido do convite para conectar o assistente. Recebe: a chave pública do Turnstile.
  */
+import { MCP_ENDERECO_MAX, MCP_ENDERECO_MIN } from "@m2-real/ingestao/regras";
 import Link from "next/link";
 import Script from "next/script";
 import { useActionState, useEffect, useRef } from "react";
@@ -61,7 +61,7 @@ export function TesteEndereco({ siteKey }: { siteKey: string }) {
       <form action={enviar} className={s.testeForm}>
         <label className={s.testeRotulo} htmlFor="endereco">{TESTE.rotuloCampo}</label>
         <div className={s.testeLinha}>
-          <input id="endereco" name="endereco" required minLength={3} maxLength={200} placeholder={TESTE.exemplo} className={s.testeCampo} autoComplete="street-address" />
+          <input id="endereco" name="endereco" required minLength={MCP_ENDERECO_MIN} maxLength={MCP_ENDERECO_MAX} placeholder={TESTE.exemplo} className={s.testeCampo} autoComplete="street-address" />
           <button type="submit" disabled={pendente} className={s.botao}>{pendente ? TESTE.buscando : TESTE.botao}</button>
         </div>
         <div ref={widget} />

@@ -213,6 +213,7 @@ RLS ligado em todas as tabelas. Função auxiliar `eh_admin()` (SECURITY DEFINER
 | `plantas`, `anuncios`, `editais_leilao`, `vendas_consolidadas` | admin | admin: update **só** pelas funções `confirmar_area_planta`, `casar_anuncio`, `casar_edital`, `marcar_outlier` | `<tabela>_leitura_admin`; sem política de update direta |
 | `perfis` | o próprio usuário lê a própria linha | ninguém pela API | `perfis_leitura_propria` |
 | `chaves_api` | admin | admin (insert/update de `ativa`) | `chaves_api_leitura_admin`, `chaves_api_escrita_admin` |
+| `testes_site` (8.13) | ninguém pela API | só o servidor (service role) pela função `registra_teste_site` | RLS ligado, sem política |
 | `clientes`, `oauth_clientes`, `oauth_codigos`, `tokens_mcp`, `uso_mcp` (8.10) | ninguém pela API; admin lê as contas por `clientes_mcp()` | só o servidor (service role) pelas funções `entra_cliente`, `cria_codigo_oauth`, `troca_codigo_oauth`, `usa_token_mcp`; admin bloqueia por `bloqueia_cliente` | RLS ligado, sem política |
 
 ### 6.5 OAuth do MCP e contas de cliente (épico 8.10)
@@ -542,6 +543,7 @@ perfis 1 ── N chaves_api
 | `casar_edital(edital_id, predio_id, unidade_id)` | função SECURITY DEFINER | `editais_leilao` | Exige `eh_admin()`; grava o vínculo com `casado_manual = true` e status `casado_unidade`, `casado_predio` ou `descartado` |
 | `marcar_outlier(venda_id, fora_da_curva)` | função SECURITY DEFINER | `vendas_consolidadas` | Exige `eh_admin()`; grava `fora_da_curva` e `marcado_manual = true` |
 | `buscar_predio_por_endereco(texto)` | função | `predios` | Normaliza o texto (regra 11.5) e devolve até 5 prédios por similaridade trigram + número exato |
+| `registra_teste_site(ip_hash, predio_id, janela_dias)` (8.13) | função SECURITY DEFINER, só service role | `testes_site` | Regra 11.23: permite a primeira busca do IP na janela e o mesmo prédio de novo; nega outro prédio; apaga as linhas vencidas |
 
 As rotinas pesadas (montar plantas, consolidar vendas, calibrar, calcular cobertura) rodam **no código da ingestão** (`packages/ingestao/src/calibracao/`), não no banco, para ficarem testáveis com Vitest.
 
@@ -904,6 +906,10 @@ Português claro, sem jargão. Mensagens fixas:
 | Login: cadastros pausados (11.21) | "Os cadastros novos estão pausados por hoje. Tente de novo amanhã." |
 | Login: conta bloqueada | "Esta conta está bloqueada. Fale com o administrador do Fechou por Quanto." |
 | Consentimento | "<cliente> quer acessar o Fechou por Quanto"; "Poderá: buscar prédios e consultar vendas, fichas, comparáveis e o m² dos bairros cobertos."; "Não poderá: alterar dados nem ver qualquer informação pessoal." |
+| Teste do site: endereço inválido | "Digite o endereço do prédio, com rua e número (3 a 200 caracteres)." |
+| Teste do site: robô | "Não conseguimos confirmar que você não é um robô. Recarregue a página e tente de novo." |
+| Teste do site: limite (11.23) | "O teste no site é de um prédio por pessoa. Para consultar outros, conecte o Fechou por Quanto no seu assistente: é grátis e leva três minutos." |
+| Teste do site: convite | "Essas são as três vendas mais recentes. No seu assistente você vê todas, compara prédios e pergunta do seu jeito." |
 | Pedido OAuth inválido | "Pedido de conexão inválido. Volte ao seu assistente e comece a conexão de novo." |
 
 Rótulos dos selos no painel e no MCP: Confirmada, Calibrada, Indicativa, Estimada, Sem dado.
@@ -1030,6 +1036,7 @@ Regra: toda mudança de schema, regra ou tela atualiza este documento no mesmo c
 - **Segredos:** credencial de serviço, token do GitHub, chave do Firecrawl e chave da Claude API só no servidor (Vercel, rotas) e nos segredos do Actions. Hook `guard-secrets.sh`.
 - **RLS** em todas as tabelas (6.4); o MCP lê pelo servidor depois de validar a chave.
 - **Supabase:** rodar `get_advisors` (security e performance) depois de cada DDL; nenhum alerta crítico pendente.
+- **Teste do site (8.13):** o IP do visitante vai ao Turnstile da Cloudflare só para checar robô e nunca é guardado. O banco guarda só o HMAC do IP (com `SESSION_SECRET`) e o prédio consultado, apagados na primeira limpeza depois de 30 dias (regra 11.23). O evento do Visão de Produto usa os 12 primeiros caracteres desse HMAC.
 - **Retenção:** brutos no Storage, 2 versões por fonte/ano; anúncios com mais de 3 anos são apagados pelo pipeline (a calibração que eles geraram fica em `calibracoes`).
 
 ---

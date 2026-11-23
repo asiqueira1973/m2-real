@@ -1,5 +1,5 @@
 // Épico 8.13: "Teste aqui" do site (regra 11.23).
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const searchBuilding = vi.fn();
 const buildingSales = vi.fn();
@@ -11,7 +11,13 @@ const db = (permitido: boolean) => ({ rpc: vi.fn(async () => ({ data: permitido,
 const passa = async () => true;
 const venda = (data: string) => ({ data, valor_total: 1_000_000, valor_vagas: 100_000, unidade: "AP 1", area_privativa: null, selo_area: "sem_dado", m2_privativo: null });
 
+// A partir dos ajustes do verifier, o HMAC exige SESSION_SECRET forte (como a sessão do cliente).
+beforeAll(() => { vi.stubEnv("SESSION_SECRET", "s".repeat(40)); });
+
 describe("teste do site (8.13; 11.23)", () => {
+  it("sem SESSION_SECRET forte, o hash falha em vez de sair sem chave", () => {
+    expect(() => ipHash("200.1.2.3", "curto")).toThrow(/SESSION_SECRET/);
+  });
   it("hash do IP é estável, irreversível sem o segredo e não contém o IP", () => {
     expect(ipHash("200.1.2.3", "s".repeat(40))).toBe(ipHash("200.1.2.3", "s".repeat(40)));
     expect(ipHash("200.1.2.3", "s".repeat(40))).not.toContain("200.1.2.3");

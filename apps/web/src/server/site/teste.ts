@@ -38,6 +38,8 @@ export function clientIp(headers: Headers): string {
 
 /** Regra 11.23: HMAC do IP (irreversível sem o segredo). Recebe: IP e segredo. Devolve: hex. */
 export function ipHash(ip: string, segredo = process.env.SESSION_SECRET ?? ""): string {
+  // Sem segredo forte, o HMAC de um IPv4 sairia por força bruta: melhor falhar (o teste mostra o erro).
+  if (segredo.length < 32) throw new Error("SESSION_SECRET ausente ou curto (mín. 32 caracteres)");
   return createHmac("sha256", segredo).update(`teste-site:${ip}`).digest("hex");
 }
 
@@ -69,8 +71,8 @@ export const MENSAGENS_TESTE = {
 export async function runSiteTest(
   db: M2Client, endereco: string, token: string, ip: string, turnstile: (t: string, ip: string) => Promise<boolean> = verifyTurnstile,
 ): Promise<{ resultado: ResultadoTeste; hash: string }> {
-  const hash = ipHash(ip);
   const e = endereco.trim();
+  const hash = ipHash(ip);
   if (e.length < MCP_ENDERECO_MIN || e.length > MCP_ENDERECO_MAX) return { resultado: { tipo: "erro", mensagem: MENSAGENS_TESTE.endereco }, hash };
   if (!(await turnstile(token, ip))) return { resultado: { tipo: "erro", mensagem: MENSAGENS_TESTE.robo }, hash };
   const [predio] = await searchBuilding(db, e);
