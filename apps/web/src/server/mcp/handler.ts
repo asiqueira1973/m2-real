@@ -7,7 +7,8 @@
 import { createServiceClient } from "@m2-real/db/server";
 import { createMcpHandler } from "mcp-handler";
 import { after } from "next/server";
-import { bearerFrom, tooManyRequests, touchKey, unauthorized, verifyCredential } from "./auth";
+import { toolCalls, track } from "@/server/eventos/visao";
+import { bearerFrom, tooManyRequests, touchKey, unauthorized, verifyCredential, type Credencial } from "./auth";
 import { DESCRICOES, ESQUEMAS, runTool } from "./ferramentas";
 import { withSealLabels } from "./rotulos";
 import { INSTRUCOES_MCP } from "./sobre";
@@ -38,5 +39,23 @@ export async function mcpHandler(request: Request): Promise<Response> {
   if (!credencial) return unauthorized();
   if (credencial.tipo === "token" && !credencial.permitido) return tooManyRequests(credencial.esperaS);
   if (credencial.tipo === "chave") after(() => touchKey(db, credencial.id));
+  // Seção 21: um evento por ferramenta chamada (só o nome da ferramenta; nunca os argumentos).
+  for (const ferramenta of toolCalls(await request.clone().json().catch(() => null))) {
+    track("fechou_por_quanto_pergunta", async () => {
+      const { quem, cliente } = await whoCalled(db, credencial);
+      return { quem, propriedades: { ferramenta, credencial: credencial.tipo === "token" ? "oauth" : "chave", cliente } };
+    });
+  }
   return mcp(request);
+}
+
+/**
+ * Quem chamou (seção 21): no token OAuth, o e-mail da conta e o nome do app (Claude, ChatGPT…);
+ * na chave do painel, "chave_<id>". Roda depois da resposta. Recebe: cliente e credencial.
+ */
+async function whoCalled(db: ReturnType<typeof createServiceClient>, credencial: Credencial): Promise<{ quem: string; cliente: string | null }> {
+  if (credencial.tipo === "chave") return { quem: `chave_${credencial.id}`, cliente: null };
+  const { data } = await db.from("m2_tokens_mcp").select("m2_clientes(email), m2_oauth_clientes(nome)").eq("id", credencial.id).maybeSingle();
+  const linha = data as { m2_clientes: { email: string } | null; m2_oauth_clientes: { nome: string } | null } | null;
+  return { quem: linha?.m2_clientes?.email ?? `token_${credencial.id}`, cliente: linha?.m2_oauth_clientes?.nome?.slice(0, 100) ?? null };
 }

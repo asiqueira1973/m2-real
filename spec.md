@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.4 (site público e painel em /painel, épico 8.11) |
+| Versão | 1.5 (eventos de produto no Visão de Produto, épico 8.12) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -672,6 +672,11 @@ Critérios de aceite:
 - [ ] Toda resposta com m² traz o selo e a área usada (princípio 1).
 - [ ] Teste de cliente com `node scripts/test-client.mjs` contra o deploy de preview passa.
 
+### 8.12 Eventos de produto
+- [ ] Conta nova no login com Google gera `fechou_por_quanto_primeira_conexao` (uma vez por conta; id estável).
+- [ ] Cada `tools/call` no MCP gera `fechou_por_quanto_pergunta` com só `ferramenta`, `credencial` e `cliente`.
+- [ ] Envio depois da resposta, com timeout, e nenhum envio sem `VISAO_INGEST_URL`/`VISAO_API_KEY`.
+
 ### 8.11 Site público
 - [ ] `/` e `/conectar` abertos, sem login; o painel em `/painel`, com login; o login leva a `/painel`.
 - [ ] O site explica o produto em linguagem de negócio, com exemplo de conversa de dados reais, selos, perguntas de exemplo, bairros com vendas em 24 meses e o passo a passo do Claude, do ChatGPT e do Grok.
@@ -1033,7 +1038,14 @@ Regra: toda mudança de schema, regra ou tela atualiza este documento no mesmo c
 | Plantas com selo `confirmada` vindo de edital | ≥ 150 nos 10 bairros | 6 meses após o épico 8.5.1 |
 | Respostas do MCP que devolvem m² com selo `estimada` ou melhor | ≥ 90% das consultas sobre prédios dos 10 bairros | 3 meses após o épico 8.9 |
 
-Sem telemetria de terceiros no MVP; o próprio `execucoes_ingestao`, o `cobertura_bairros` e o campo `ultimo_uso_em` das chaves bastam.
+**Eventos de produto (épico 8.12; decisão do usuário em 23/11/2026).** Vão para o Visão de Produto, o produto de analytics da DabLab (`POST {VISAO_INGEST_URL}` com `x-api-key: VISAO_API_KEY`), depois da resposta e sem nunca atrasá-la. Sem essas variáveis, nada é enviado.
+
+| Evento | Quando | `distinct_id` | Tela | Propriedades |
+|---|---|---|---|---|
+| `fechou_por_quanto_primeira_conexao` | a pessoa entra com o Google pela primeira vez (conta nova) | e-mail da conta | Entrar com Google | nenhuma |
+| `fechou_por_quanto_pergunta` | cada consulta de um assistente a uma ferramenta (`tools/call`); uma pergunta pode gerar mais de uma | e-mail da conta (token OAuth) ou `chave_<id>` (chave do painel) | MCP | `ferramenta`, `credencial` (`oauth`/`chave`), `cliente` (nome do app: Claude, ChatGPT…) |
+
+O catálogo é fechado: o endereço, o texto da pergunta e os argumentos da ferramenta nunca saem. O uso operacional continua no banco: `execucoes_ingestao`, `cobertura_bairros`, `ultimo_uso_em` e `m2_uso_mcp`.
 
 ---
 

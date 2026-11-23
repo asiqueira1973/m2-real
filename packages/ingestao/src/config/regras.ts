@@ -382,3 +382,10 @@ export const CONTAS_CONECTADAS_POR_PAGINA = 50;
 
 /** 8.11: o site relê a cobertura e a venda mais recente uma vez por dia (s). */
 export const SITE_REVALIDAR_S = 86400;
+
+// ---------------------------------------------------------------------------
+// Épico 8.12 — eventos de produto no Visão de Produto (seção 21).
+// ---------------------------------------------------------------------------
+
+/** Seção 21: tempo máximo do envio de um evento ao Visão de Produto, em ms (nunca atrasa a resposta). */
+export const VISAO_TIMEOUT_MS = 4000;
