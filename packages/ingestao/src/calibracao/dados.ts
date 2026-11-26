@@ -26,6 +26,27 @@ export async function fetchAllPages<T>(
   }
 }
 
+/**
+ * Lê todas as linhas por chave (id > último lido, em ordem de id), em páginas de PAGINA. Ao contrário
+ * do OFFSET (range), o custo de cada página não cresce com a posição: com ~90 mil guias, as páginas
+ * finais por OFFSET passavam dos 8 s do PostgREST (calibração na nuvem, 8.14).
+ * Recebe: a consulta de uma página a partir do último id (nulo na primeira), rótulo e retry.
+ * Devolve: todas as linhas. Só para leitura idempotente.
+ */
+export async function fetchAllByKey<T extends { id: string }>(
+  pagina: (depoisDe: string | null, limite: number) => PromiseLike<{ data: T[] | null; error: { message: string; code?: string } | null }>,
+  rotulo: string,
+  retry: RetryOptions = {},
+): Promise<T[]> {
+  const todas: T[] = [];
+  for (let ultimo: string | null = null; ; ) {
+    const linhas = await withRetry(() => pagina(ultimo, PAGINA), rotulo, retry);
+    todas.push(...linhas);
+    if (linhas.length < PAGINA) return todas;
+    ultimo = linhas[linhas.length - 1]!.id;
+  }
+}
+
 interface LinhaGuia {
   id: string;
   predio_id: string;
@@ -49,9 +70,9 @@ interface LinhaGuia {
  * (entrada da regra 11.15). Recebe: cliente service role. Devolve: guias no formato de consolidar.ts.
  */
 export async function loadPurchaseSlips(db: M2Client, retry: RetryOptions = {}): Promise<GuiaCompraVenda[]> {
-  const linhas = await fetchAllPages<LinhaGuia>(
-    (de, ate) =>
-      db
+  const linhas = await fetchAllByKey<LinhaGuia>(
+    (depoisDe, limite) => {
+      const q = db
         .from("m2_transacoes")
         .select(
           "id, predio_id, unidade_id, data_transacao, valor_declarado, valor_venal_referencia, matricula, unidade_sem_cadastro_proprio, " +
@@ -59,9 +80,9 @@ export async function loadPurchaseSlips(db: M2Client, retry: RetryOptions = {}):
             "predio:m2_predios(bairro_id)",
         )
         .eq("eh_compra_venda", true)
-        .not("unidade_id", "is", null)
-        .order("id")
-        .range(de, ate) as unknown as PromiseLike<{ data: LinhaGuia[] | null; error: { message: string } | null }>,
+        .not("unidade_id", "is", null);
+      return (depoisDe ? q.gt("id", depoisDe) : q).order("id").limit(limite) as unknown as PromiseLike<{ data: LinhaGuia[] | null; error: { message: string } | null }>;
+    },
     "Falha ao ler as guias de compra e venda",
     retry,
   );
