@@ -29,7 +29,7 @@ export const SLUGS_BAIRROS = BAIRROS_COBERTOS.map((b) => b.slug) as unknown as r
 /** Nomes de exibição, na ordem da lista. */
 export const NOMES_BAIRROS = BAIRROS_COBERTOS.map((b) => b.nome);
 
-/** "A, B, C e D": lista em português. */
+/** Junta nomes em português ("A, B, C e D"). Recebe: os nomes. Devolve: o texto (vazio se não houver nomes). */
 export function listaPorExtenso(nomes: readonly string[]): string {
   return nomes.length <= 1 ? (nomes[0] ?? "") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
 }

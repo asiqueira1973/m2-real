@@ -12,7 +12,7 @@ export const BAIRROS_COBERTOS = NOMES_BAIRROS;
 
 /** Instruções do servidor (campo `instructions` do initialize do MCP): o resumo que o assistente lê ao conectar. */
 export const INSTRUCOES_MCP = [
-  `Fechou por Quanto: por quanto os apartamentos foram realmente vendidos em ${BAIRROS_COBERTOS.length} bairros de São Paulo`,
+  `Fechou por Quanto: por quanto os apartamentos foram realmente vendidos em ${BAIRROS_COBERTOS.length} bairros de São Paulo, nas zonas oeste e sul e no centro expandido`,
   `(${BAIRROS_COBERTOS.join(", ")}), a partir do ITBI da Prefeitura, com a área privativa calibrada por anúncios e editais.`,
   "Diferencial: as vendas vêm do ITBI, carregado todo mês (dia 8), assim que a Prefeitura publica; não são preços de anúncio.",
   "Todo m² vem com um selo de confiança da área privativa: Confirmada (edital ou revisão), Calibrada (2+ anúncios que concordam),",
@@ -49,6 +49,7 @@ export function aboutPayload(cobertura: readonly CoberturaBairro[], vendaMaisRec
       iptu: "anual",
     },
     bairros: BAIRROS_COBERTOS,
+    regioes: "Zona oeste e centro expandido (Perdizes a Itaim Bibi) e zona sul (Moema, Vila Nova Conceição, Brooklin e Campo Belo).",
     fontes: [
       { fonte: "ITBI da Prefeitura de São Paulo", uso: "Vendas reais: data, valor declarado e unidade. Carregado todo mês, no dia 8." },
       { fonte: "IPTU (GeoSampa)", uso: "Prédios, unidades, área construída e ano de construção. Carga anual." },
