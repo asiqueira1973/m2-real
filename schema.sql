@@ -1797,6 +1797,10 @@ CREATE INDEX "m2_transacoes_sql_idx" ON "public"."m2_transacoes" USING "btree" (
 
 
 
+CREATE INDEX "m2_transacoes_sql_sem_unidade_idx" ON "public"."m2_transacoes" USING "btree" ("sql") WHERE ("unidade_id" IS NULL);
+
+
+
 CREATE INDEX "m2_transacoes_unidade_idx" ON "public"."m2_transacoes" USING "btree" ("unidade_id");
 
 
