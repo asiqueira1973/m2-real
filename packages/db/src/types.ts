@@ -601,6 +601,9 @@ isOneToOne: false
               "area_iptu": number,"area_privativa": number,"areas_anuncios": (number)[],"areas_editais": (number)[],"bairro_nome": string,"data_venda": string,"fator": number,"fator_predio": number,"item_id": string,"logradouro": string,"m2_privativo": number,"motivo": Database["public"]['Enums']["m2_motivo_revisao"],"numero": number,"predio_id": string,"selo": Database["public"]['Enums']["m2_selo_area"],"tipo": string,"total_motivo": number,"unidade": string,"valor_total": number,"vendas_janela": number
             }[]
                            },
+"m2_itbi_reatribuir_bairros":
+{ Args: { "p_bairros": (number)[],"p_hashes": (string)[],"p_origens": (Database["public"]['Enums']["m2_origem_bairro"])[] }; Returns: number
+                           },
 "m2_itbi_substituir_ano":
 { Args: { "ano": number,"execucao_id": string,"hashes": (string)[] }; Returns: number
                            },

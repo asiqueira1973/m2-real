@@ -183,7 +183,7 @@ describe("regra 11.2 nas guias", () => {
     expect(origem("01501409991")).toBe("cep"); // mesmo CEP de 2 guias de Pinheiros
     expect(origem("01501409992")).toBe("quadra"); // CEP sem votos; quadra 015014 com 3 votos
     expect(origem("09999909993")).toBeUndefined(); // nenhum passo achou bairro
-    expect(r.descartes["fora dos 10 bairros (nenhum passo da 11.2 achou bairro)"]).toBe(1);
+    expect(r.descartes["fora dos bairros cobertos (nenhum passo da 11.2 achou bairro)"]).toBe(1);
   });
 });
 

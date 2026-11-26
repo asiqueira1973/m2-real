@@ -1,7 +1,7 @@
 /**
  * Leitura do arquivo do IPTU em stream (épico 8.2; seção 4.2: csv-parse em stream,
  * filtrando por CEP antes de gravar). O CSV completo tem ~900 MB e milhões de linhas;
- * só as linhas com CEP dos 10 bairros são guardadas em memória.
+ * só as linhas com CEP dos bairros cobertos são guardadas em memória.
  */
 import { createReadStream } from "node:fs";
 import type { Readable } from "node:stream";
@@ -13,7 +13,7 @@ import type { IptuRow } from "./montagem.js";
 export interface IptuReadResult {
   rows: IptuRow[];
   linhasLidas: number;
-  /** Linhas fora dos prefixos de CEP dos 10 bairros (descarte esperado, não é erro). */
+  /** Linhas fora dos prefixos de CEP dos bairros cobertos (descarte esperado, não é erro). */
   foraDosBairros: number;
   /** Linhas dentro dos bairros, mas inválidas (SQL ou área ilegível). */
   invalidas: number;
@@ -51,7 +51,7 @@ export async function openIptuFile(source: string | Buffer, nome: string): Promi
 }
 
 /**
- * Lê as linhas do IPTU e guarda só as dos 10 bairros.
+ * Lê as linhas do IPTU e guarda só as dos bairros cobertos.
  * Recebe: stream do CSV (";", UTF-8, cabeçalho na 1ª linha) e os prefixos de CEP aceitos (11.2).
  * Devolve: linhas já convertidas pela allowlist de colunas (sem dado pessoal, seção 20) e contagens.
  * Lança erro se faltar coluna obrigatória (iptu/colunas.ts).

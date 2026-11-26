@@ -405,3 +405,10 @@ export const SITE_TESTE_MESES = 36;
 
 /** 8.13: tempo máximo da conferência do Turnstile, em ms. */
 export const TURNSTILE_TIMEOUT_MS = 5000;
+
+// ---------------------------------------------------------------------------
+// Épico 8.14 — bairros da zona sul.
+// ---------------------------------------------------------------------------
+
+/** 8.14: guias por chamada de m2_itbi_reatribuir_bairros na carga forçada do ITBI (abaixo do corte de 1.000). */
+export const REATRIBUIR_LOTE = 500;

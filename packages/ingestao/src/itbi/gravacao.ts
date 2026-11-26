@@ -6,6 +6,7 @@
  * - erro transitório do banco é repetido (shared/retry.ts): todas as operações são idempotentes.
  */
 import type { M2Client } from "@m2-real/db/server";
+import { REATRIBUIR_LOTE } from "../config/regras.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
 import type { GuiaComBairro } from "./bairro.js";
 
@@ -114,4 +115,30 @@ export async function replaceYear(
     `Falha na substituição do ano ${ano} (regra 11.1)`,
     retry,
   );
+}
+
+/**
+ * 8.14: reatribui bairro e origem (regra 11.2) das guias já gravadas, em lotes, pela função
+ * m2_itbi_reatribuir_bairros (só muda as que estão diferentes). Usado na carga forçada, quando a lista
+ * de bairros muda. Recebe: cliente e as guias atribuídas. Devolve: quantas mudaram.
+ */
+export async function reassignNeighborhoods(db: M2Client, atribuidas: readonly GuiaComBairro[], lote = REATRIBUIR_LOTE, retry?: RetryOptions): Promise<number> {
+  let mudadas = 0;
+  for (let i = 0; i < atribuidas.length; i += lote) {
+    const parte = atribuidas.slice(i, i + lote);
+    const n = await withRetry(
+      async () => {
+        const r = await db.rpc("m2_itbi_reatribuir_bairros", {
+          p_hashes: parte.map((a) => a.guia.hashLinha),
+          p_bairros: parte.map((a) => a.bairroId),
+          p_origens: parte.map((a) => a.origem),
+        });
+        return r;
+      },
+      "Falha ao reatribuir bairros",
+      retry,
+    );
+    mudadas += Number(n ?? 0);
+  }
+  return mudadas;
 }

@@ -109,7 +109,7 @@ export const PERGUNTAS = {
 
 export const BAIRROS = {
   rotulo: "Onde funciona",
-  titulo: "Dez bairros da zona oeste e do centro expandido.",
+  titulo: "Catorze bairros das zonas oeste e sul e do centro expandido.",
   texto: "Começamos onde há mais vendas e mais dúvida sobre o preço. O número embaixo de cada bairro é quantas vendas de apartamento a Prefeitura registrou nos últimos dois anos.",
   rotuloVendas: "vendas em 24 meses",
 };
@@ -133,7 +133,7 @@ export const FAQ = {
     { p: "Vocês veem quem comprou ou vendeu?", r: "Não. O Fechou por Quanto não guarda nome, CPF ou qualquer dado de compradores, vendedores ou proprietários. Da sua conta, guardamos só o e-mail do Google." },
     { p: "Com que frequência os dados mudam?", r: "As vendas entram todo mês, no dia 8. Os anúncios e editais que calibram a área são conferidos toda semana." },
     { p: "Por que o m² às vezes não aparece?", r: "Quando ainda não há base para a área real do apartamento, mostramos o valor da venda com o selo Sem dado, em vez de arriscar um m² errado." },
-    { p: "Meu bairro não está na lista. E agora?", r: "Começamos por dez bairros. Escreva para alexandre@dablab.com.br contando qual bairro você quer ver; isso ajuda a decidir os próximos." },
+    { p: "Meu bairro não está na lista. E agora?", r: "Começamos por catorze bairros. Escreva para alexandre@dablab.com.br contando qual bairro você quer ver; isso ajuda a decidir os próximos." },
   ],
 };
 

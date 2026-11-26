@@ -47,7 +47,7 @@ console.log("    ", de2025.map((v) => `${v.data} ${v.unidade} R$ ${v.valor_total
 
 // 4b) sobre: bairros, selos e cobertura (acréscimo de 23/11/2026).
 const sobre = json(await cliente.callTool({ name: "sobre", arguments: {} }));
-conferir(sobre.bairros?.length === 10 && sobre.selos?.length === 5 && Array.isArray(sobre.cobertura_atual), `sobre: ${sobre.bairros?.length} bairros, ${sobre.selos?.length} selos, cobertura de ${sobre.cobertura_atual?.length} bairros`);
+conferir(sobre.bairros?.length === 14 && sobre.selos?.length === 5 && Array.isArray(sobre.cobertura_atual), `sobre: ${sobre.bairros?.length} bairros, ${sobre.selos?.length} selos, cobertura de ${sobre.cobertura_atual?.length} bairros`);
 
 // 5) Fora da cobertura e as outras ferramentas.
 const fora = json(await cliente.callTool({ name: "buscar_predio", arguments: { endereco: "Avenida Paulista, 1" } }));

@@ -70,7 +70,7 @@ export function assignNeighborhoods(
     const candidato: [number, OrigemBairro] | null =
       porCep !== null ? [porCep, "cep"] : ((q) => (q !== null ? [q, "quadra"] : null))(vote(votosQuadra.get(g.sql.slice(0, 6)) ?? []));
     if (!candidato) {
-      descartar("fora dos 10 bairros (nenhum passo da 11.2 achou bairro)");
+      descartar("fora dos bairros cobertos (nenhum passo da 11.2 achou bairro)");
       continue;
     }
     if (temPrefixo(g.cep, candidato[0])) atribuidas.push({ guia: g, bairroId: candidato[0], origem: candidato[1] });

@@ -183,7 +183,7 @@ describe("regras 11.4 e 11.6: montagem de prédios", () => {
   });
 });
 
-describe("montagem: bairro por voto e prédios fora dos 10 bairros (regra 11.2; P3)", () => {
+describe("montagem: bairro por voto e prédios fora dos bairros cobertos (regra 11.2; P3)", () => {
   const predio = (cond: string, quadra: string, p: Partial<IptuRow>, n = 4, numeros?: number[]) =>
     Array.from({ length: n }, (_, i) =>
       row({ sql: `081${quadra}${cond}${String(i).padStart(2, "0")}1`, numeroCondominio: `${cond}-1`, numero: numeros?.[i] ?? 577, ...p }));
@@ -209,7 +209,7 @@ describe("montagem: bairro por voto e prédios fora dos 10 bairros (regra 11.2; 
   it("prédio do centro com CEP 012 não entra em Higienópolis", () => {
     expect(por("15")).toBeUndefined();
     expect(discarded).toEqual(expect.arrayContaining([
-      { chave: "081-020-15-1", motivo: "fora dos 10 bairros ou bairro indecidível (regra 11.2)", linhas: 4 },
+      { chave: "081-020-15-1", motivo: "fora dos bairros cobertos ou bairro indecidível (regra 11.2)", linhas: 4 },
     ]));
   });
 

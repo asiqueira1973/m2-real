@@ -46,7 +46,7 @@ select ok(public.m2_eh_admin(), 'm2_eh_admin() é verdadeiro para admin ativo');
 -- Independente do conteúdo do banco local (pode ter a carga real do IPTU): confere que o admin
 -- vê a linha da fixture. (As asserções de "0 linhas" acima valem para a tabela inteira.)
 select is((select count(*)::int from public.m2_predios where id = '00000000-0000-0000-0000-0000000000d1'), 1, 'admin recebe as linhas de m2_predios (8.1)');
-select is((select count(*)::int from public.m2_bairros), 10, 'admin vê os 10 bairros');
+select is((select count(*)::int from public.m2_bairros), 14, 'admin vê os 14 bairros (8.14)');
 select throws_ok($$update public.m2_plantas set especial = true$$, '42501', null,
   'admin não faz update direto em m2_plantas (só via funções, 6.4)');
 select is((select array_agg(email) from public.m2_perfis), array['admin@m2.test'], 'admin lê só o próprio perfil (6.4)');

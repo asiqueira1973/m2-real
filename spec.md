@@ -1,8 +1,8 @@
-# Fechou por Quanto: base de preço real por prédio e planta (10 bairros de São Paulo)
+# Fechou por Quanto: base de preço real por prédio e planta (14 bairros de São Paulo)
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.6 (teste por endereço no site, épico 8.13) |
+| Versão | 1.7 (Moema, Vila Nova Conceição, Brooklin e Campo Belo, épico 8.14) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -30,7 +30,7 @@ As seções são numeradas e a numeração é estável. O prompt de implementaç
 
 ## 1. Visão e problema
 
-O Fechou por Quanto é uma base de dados de preço real de apartamentos, organizada por **prédio e planta**, para 10 bairros de São Paulo: Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi. Ela é consultada por agentes de IA via MCP e conferida num painel web interno.
+O Fechou por Quanto é uma base de dados de preço real de apartamentos, organizada por **prédio e planta**, para 14 bairros de São Paulo: Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi (zona oeste e centro expandido, desde o MVP) e Moema, Vila Nova Conceição, Brooklin e Campo Belo (zona sul, desde o épico 8.14). Ela é consultada por agentes de IA via MCP e conferida num painel web interno.
 
 **O problema.** O preço de venda é público: a prefeitura publica todo mês as guias de ITBI. Esse número sozinho, porém, não serve para comparar imóveis, por três motivos:
 - a área da guia é a área construída do IPTU, que inclui áreas comuns e às vezes as vagas (de 1,4 a 1,9 vez a área privativa, nos casos testados);
@@ -45,7 +45,7 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 - não é portal de anúncios nem buscador de imóveis à venda;
 - não é avaliador automático com laudo (não emite valor de um imóvel específico);
 - não é ferramenta para o público final no MVP: não tem cadastro aberto nem cobrança;
-- não cobre a cidade inteira nem casas, lojas ou salas no MVP, só apartamentos residenciais nos 10 bairros.
+- não cobre a cidade inteira nem casas, lojas ou salas no MVP, só apartamentos residenciais nos 14 bairros.
 
 ---
 
@@ -64,8 +64,8 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 
 | # | Item |
 |---|---|
-| D1 | Ingestão do ITBI da cidade de São Paulo (planilhas anuais/mensais), de 2021 até o mês mais recente publicado, filtrada para os 10 bairros |
-| D2 | Ingestão da base do IPTU (GeoSampa, emissão geral mais recente) filtrada para os 10 bairros |
+| D1 | Ingestão do ITBI da cidade de São Paulo (planilhas anuais/mensais), de 2021 até o mês mais recente publicado, filtrada para os 14 bairros |
+| D2 | Ingestão da base do IPTU (GeoSampa, emissão geral mais recente) filtrada para os 14 bairros |
 | D3 | Montagem automática de prédios, unidades e plantas a partir do IPTU |
 | D4 | Atribuição de bairro às guias, com inferência por CEP e por quadra |
 | D5 | Consolidação de vendas (apartamento + vagas vendidas em guias separadas) |
@@ -76,7 +76,7 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 | D10 | Servidor MCP somente leitura com 5 ferramentas (seção 13.2) |
 | D11 | Painel web de conferência para um perfil admin (seção 10) |
 | D12 | Indicador de cobertura por bairro: % das vendas com área "calibrada" ou "confirmada" |
-| D13 | Coleta de editais de leilão (páginas e PDFs de edital, laudo e matrícula) dos 10 bairros, extraindo só área privativa, área total, vagas, matrícula, unidade e valor de avaliação, como gabarito oficial gratuito da área (épico 8.5.1) |
+| D13 | Coleta de editais de leilão (páginas e PDFs de edital, laudo e matrícula) dos 14 bairros, extraindo só área privativa, área total, vagas, matrícula, unidade e valor de avaliação, como gabarito oficial gratuito da área (épico 8.5.1) |
 
 ### Fora
 
@@ -84,7 +84,7 @@ O m² ingênuo sai até 30% errado. O que vale dinheiro é a base que converte c
 |---|---|---|
 | Dados do cartório (ONR, matrícula online) | Adiado (28.2) | Tem custo por consulta; decisão de orçamento pendente (pergunta P1) |
 | Modelo estatístico (regressão) do fator | Adiado para v2 (28.3) | O MVP usa mediana por grupo (regra 11.10); o modelo precisa de massa de prédios calibrados primeiro |
-| Outras cidades e bairros | Adiado (28.4) | Primeiro validar cobertura ≥ 70% nos 10 bairros |
+| Outras cidades e bairros | Adiado (28.4) | Primeiro validar cobertura ≥ 70% nos 14 bairros |
 | Venda/cobrança do MCP | Adiado (28.5) | Depende da validação da tese. O acesso externo gratuito, com cadastro e limites, entrou no 8.10 |
 | Casas, lojas, salas comerciais, terrenos | Descartado no MVP | Foco em apartamento residencial; as guias ficam armazenadas, mas não são analisadas |
 | Confirmação por moradores/síndicos | Descartado | Não é automatizável (princípio 2) |
@@ -125,7 +125,7 @@ Vercel ┌───────────────────────�
 | Linguagem | TypeScript em tudo (ingestão, painel, MCP) | Decisão do usuário: uma linguagem só | Python para ETL (mais natural para dados, mas duas linguagens) |
 | Runtime da ingestão | Node.js 20+ executado com `tsx`, em **GitHub Actions** agendado | Arquivos de 50–300 MB e processamento de minutos; Actions não tem o limite de tempo das funções serverless | Vercel Functions ou Supabase Edge Functions (limites de tempo e memória) |
 | Leitura de XLSX | `exceljs` no modo streaming (`stream.xlsx.WorkbookReader`) | A planilha do ITBI tem ~230 mil linhas e ~47 MB; ler tudo em memória é arriscado | SheetJS carregando o arquivo inteiro |
-| Leitura de CSV do IPTU | `csv-parse` em stream, filtrando por CEP antes de gravar | A base inteira tem milhões de linhas; só os 10 bairros interessam | Carregar tudo no banco e filtrar depois (estouraria o plano gratuito) |
+| Leitura de CSV do IPTU | `csv-parse` em stream, filtrando por CEP antes de gravar | A base inteira tem milhões de linhas; só os 14 bairros interessam | Carregar tudo no banco e filtrar depois (estouraria o plano gratuito) |
 | Banco | Supabase (Postgres 15+), projeto próprio | Stack padrão do usuário; RLS, Auth e Storage num lugar só | — |
 | Painel + MCP | Um app Next.js (App Router) na Vercel | Um deploy só; o usuário já hospeda apps pagos na Vercel | Dois apps separados |
 | MCP | `mcp-handler@^2` + `@modelcontextprotocol/server@^2` + `zod@^4` em `app/api/mcp/route.ts` | mcp-handler 2.x serve o protocolo stateless de 2026-07-28 e o Streamable HTTP de 2025 num único handler, sem Redis | `mcp-handler` 1.x / SDK 1.x |
@@ -165,7 +165,7 @@ Dois perfis: **admin** (pessoa, no painel) e **cliente MCP** (pessoa que conecta
 
 | Ação | Admin (painel) | Cliente MCP | Pipeline (service role) |
 |---|---|---|---|
-| Ver prédios, plantas, unidades, vendas, anúncios | ✅ todos os 10 bairros | ✅ só pelas 5 ferramentas da 13.2, somente leitura | ✅ |
+| Ver prédios, plantas, unidades, vendas, anúncios | ✅ todos os 14 bairros | ✅ só pelas 5 ferramentas da 13.2, somente leitura | ✅ |
 | Confirmar área privativa de uma planta (revisão manual) | ✅ qualquer planta | ❌ | ❌ (o pipeline nunca sobrescreve um selo `confirmada`, regra 11.11) |
 | Casar ou descasar anúncio com prédio/planta | ✅ qualquer anúncio | ❌ | ✅ automático |
 | Casar ou descasar edital de leilão com prédio/unidade | ✅ qualquer edital | ❌ | ✅ automático |
@@ -248,7 +248,7 @@ Convenção: tabelas, colunas, enums, funções, triggers e políticas em **port
 
 ### 7.2 Tabelas
 
-**`bairros`**: os 10 bairros cobertos.
+**`bairros`**: os 14 bairros cobertos.
 
 | Coluna | Tipo | Nulo | Default | Observação |
 |---|---|---|---|---|
@@ -336,7 +336,7 @@ Convenção: tabelas, colunas, enums, funções, triggers e políticas em **port
 | `revisao_pendente` | boolean | não | false | |
 | `motivo_revisao` | motivo_revisao | sim | | nulo quando não há revisão pendente |
 
-**`transacoes`**: uma linha por guia de ITBI dos 10 bairros (todas as naturezas e usos).
+**`transacoes`**: uma linha por guia de ITBI dos 14 bairros (todas as naturezas e usos).
 
 | Coluna | Tipo | Nulo | Default | Observação |
 |---|---|---|---|---|
@@ -419,7 +419,7 @@ Convenção: tabelas, colunas, enums, funções, triggers e políticas em **port
 | `casado_manual` | boolean | não | false | admin definiu o vínculo; o pipeline não altera (regra 11.11) |
 | `coletado_em` | timestamptz | não | now() | |
 
-**`editais_leilao`**: edital de leilão (judicial ou extrajudicial) de uma unidade dos 10 bairros, só com os campos extraídos. O PDF não é guardado.
+**`editais_leilao`**: edital de leilão (judicial ou extrajudicial) de uma unidade dos 14 bairros, só com os campos extraídos. O PDF não é guardado.
 
 | Coluna | Tipo | Nulo | Default | Observação |
 |---|---|---|---|---|
@@ -469,7 +469,7 @@ Convenção: tabelas, colunas, enums, funções, triggers e políticas em **port
 | Coluna | Tipo | Nulo | Default | Observação |
 |---|---|---|---|---|
 | `id` | uuid | não | `gen_random_uuid()` | pk |
-| `bairro_id` | smallint | sim | | nulo = grupo da cidade toda (os 10 bairros) |
+| `bairro_id` | smallint | sim | | nulo = grupo da cidade toda (os 14 bairros) |
 | `decada_construcao` | smallint | sim | | 1960, 1970…; nulo = todas |
 | `vagas_cadastro_proprio` | boolean | não | | |
 | `fator_mediano` | numeric(5,3) | não | | |
@@ -556,7 +556,7 @@ As rotinas pesadas (montar plantas, consolidar vendas, calibrar, calcular cobert
 
 ### 7.6 Seed
 
-- Os 10 bairros em `bairros`, com os prefixos de CEP e padrões de nome da tabela 11.2.
+- Os 14 bairros em `bairros`, com os prefixos de CEP e padrões de nome da tabela 11.2.
 - Primeiro admin (6.2).
 
 ### 7.7 Trade-offs declarados
@@ -583,12 +583,12 @@ Ordem de implementação: 8.0 → 8.9.
 - [ ] Teste de RLS: um usuário autenticado sem perfil recebe 0 linhas em `predios`; um admin recebe as linhas; `anon` recebe 0 linhas.
 - [ ] `confirmar_area_planta` chamada por não-admin gera erro; por admin com observação vazia gera erro.
 - [ ] Advisors do Supabase (security + performance) sem alerta crítico.
-- [ ] Seed dos 10 bairros aplicado.
+- [ ] Seed dos 14 bairros aplicado.
 
 ### 8.2 Ingestão do IPTU e montagem de prédios
-**Objetivo:** estrutura de prédios, unidades e plantas dos 10 bairros.
+**Objetivo:** estrutura de prédios, unidades e plantas dos 14 bairros.
 
-Fluxo: localizar o arquivo da emissão geral → baixar (ou ler do Storage, se enviado manualmente para `brutos/iptu/<ano>.csv`) → gravar o bruto no Storage → ler em stream → filtrar por prefixo de CEP dos 10 bairros → montar prédios e unidades (regras 11.3, 11.4, 11.6, 11.7) → agrupar plantas (regra 11.7) → registrar a execução.
+Fluxo: localizar o arquivo da emissão geral → baixar (ou ler do Storage, se enviado manualmente para `brutos/iptu/<ano>.csv`) → gravar o bruto no Storage → ler em stream → filtrar por prefixo de CEP dos 14 bairros → montar prédios e unidades (regras 11.3, 11.4, 11.6, 11.7) → agrupar plantas (regra 11.7) → registrar a execução.
 - [ ] Nomes de colunas conferidos contra o `Dicionario_dados_IPTU.xlsx` e registrados em `packages/ingestao/src/iptu/colunas.ts` (resolve PV3).
 - [ ] Prédios de teste existem com os valores esperados: Rua Joaquim Antunes, 577 (Pinheiros), com unidades de apartamento de área construída ≈ 132 m² e vagas com cadastro próprio (`vagas_cadastro_proprio = true`); Rua Caiubi, 324 (Perdizes), com unidades de área ≈ 169 m² e `vagas_cadastro_proprio = false`.
 - [ ] Rodar duas vezes o mesmo arquivo não duplica nenhuma linha.
@@ -596,10 +596,10 @@ Fluxo: localizar o arquivo da emissão geral → baixar (ou ler do Storage, se e
 - [ ] Se o download falhar, a execução fica `falhou` com mensagem, e a rotina aceita o arquivo pelo caminho do Storage.
 
 ### 8.3 Ingestão do ITBI
-**Objetivo:** guias de 2021 até o mês mais recente nos 10 bairros.
+**Objetivo:** guias de 2021 até o mês mais recente nos 14 bairros.
 
-Fluxo: abrir a página de dados do ITBI da Fazenda → listar os links .xlsx → para cada ano (2021+), baixar → calcular o hash → pular se for igual ao da última execução concluída daquele ano → ler em stream as 12 abas mensais (ignorar LEGENDA, EXPLICAÇÕES e tabelas auxiliares) → atribuir bairro (regra 11.2) → descartar guias fora dos 10 bairros → gravar (regra 11.1) → ligar a `unidades`/`predios` pelo SQL → marcar unidade sem cadastro próprio (regra 11.14).
-- [ ] Planilha de 2025: 13.289 ± 2% guias nos 10 bairros, 11.355 ± 2% de compra e venda (valores medidos na análise de 20/11/2026).
+Fluxo: abrir a página de dados do ITBI da Fazenda → listar os links .xlsx → para cada ano (2021+), baixar → calcular o hash → pular se for igual ao da última execução concluída daquele ano → ler em stream as 12 abas mensais (ignorar LEGENDA, EXPLICAÇÕES e tabelas auxiliares) → atribuir bairro (regra 11.2) → descartar guias fora dos 14 bairros → gravar (regra 11.1) → ligar a `unidades`/`predios` pelo SQL → marcar unidade sem cadastro próprio (regra 11.14).
+- [ ] Planilha de 2025: 13.289 ± 2% guias nos 10 bairros originais (antes do 8.14), 11.355 ± 2% de compra e venda (valores medidos na análise de 20/11/2026).
 - [ ] Guias da Joaquim Antunes, 577 em 2025: 6 (3 apartamentos e 3 vagas), com os valores da tabela de teste T1 (seção 22).
 - [ ] Planilha de mesmo hash não gera nova execução de gravação (a execução registra "sem mudança" e conclui com 0 linhas gravadas).
 - [ ] Abas com 28 ou 29 colunas são lidas pelo nome do cabeçalho, não pela posição.
@@ -634,7 +634,7 @@ Fluxo:
 7. Casar com prédio e unidade (regra 11.20).
 
 Critérios de aceite:
-- [ ] Teste de extração com o laudo público do apto 52 da Rua Canário, 906 (Indianópolis, fora dos 10 bairros, usado só como fixture de extração): área privativa = 184,32 m² e vagas = 2.
+- [ ] Teste de extração com o laudo público do apto 52 da Rua Canário, 906 (Indianópolis, fora dos 14 bairros, usado só como fixture de extração): área privativa = 184,32 m² e vagas = 2.
 - [ ] Nenhum nome, CPF, CNPJ, estado civil ou endereço de pessoa chega ao insert: um teste confere as chaves do objeto, e outro, com PDF de exemplo, verifica que a resposta da API passa pelo filtro de campos.
 - [ ] Nenhum PDF é gravado em disco nem no Storage (teste do módulo: o buffer não é persistido).
 - [ ] Edital cuja matrícula bate com a `matricula` de uma guia do ITBI da mesma unidade casa com `casado_unidade`.
@@ -673,6 +673,12 @@ Critérios de aceite:
 - [ ] `vendas_predio` da Joaquim Antunes, 577 devolve as 3 vendas de 2025 com `valor_total`, `m2_privativo` e `selo_area`.
 - [ ] Toda resposta com m² traz o selo e a área usada (princípio 1).
 - [ ] Teste de cliente com `node scripts/test-client.mjs` contra o deploy de preview passa.
+
+### 8.14 Bairros da zona sul
+- [ ] Moema, Vila Nova Conceição, Brooklin e Campo Belo cadastrados (tabela 11.2), com a lista do código numa fonte só (`config/bairros.ts`) e testada contra o seed.
+- [ ] IPTU recarregado: prédios e unidades nos 4 bairros; a recarga mantém a calibração (11.11).
+- [ ] ITBI com `--forcar`: reprocessa os anos e reatribui o bairro das guias já gravadas; sem a opção, nada muda.
+- [ ] Site, `sobre`, MCP e textos falam em 14 bairros e nas zonas oeste e sul e no centro expandido.
 
 ### 8.13 Teste por endereço no site
 - [ ] O site tem o "Teste aqui": endereço → prédio e 3 vendas mais recentes, seguidos do convite para conectar.
@@ -714,7 +720,7 @@ Critérios de aceite:
 - Download falha: execução `falhou`, e o painel mostra o erro na tela de execuções. Nada é apagado.
 - Guia com SQL inexistente no IPTU (unidade nova): grava com `unidade_id` nulo; quando o IPTU do ano seguinte trouxer o SQL, a calibração liga a guia à unidade.
 - Prédio sem anúncio nenhum: fica `estimada` pelo fator de referência, com faixa de erro.
-- Pergunta ao MCP sobre endereço fora dos 10 bairros: resposta de "fora da cobertura" (seção 15), não erro.
+- Pergunta ao MCP sobre endereço fora dos 14 bairros: resposta de "fora da cobertura" (seção 15), não erro.
 
 ---
 
@@ -735,7 +741,7 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | [Cliente MCP] Entrar | "Entrar com Google" e mensagens de erro (8.10) | — | entrar | — | `clientes` (servidor) |
 | [Cliente MCP] Autorizar conexão | nome do cliente, o que pode e não pode, host de volta, conta | — | permitir; cancelar; usar outra conta | `oauth_clientes` | `oauth_codigos` (servidor) |
 | [Público] Privacidade e Termos | texto legal (8.10) | — | — | — | — |
-| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 10 bairros com vendas em 24 meses, "Teste aqui" (8.13, regra 11.23), resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
+| [Público] Site (`/`) | o que é, o problema, como funciona, atualização mensal com a venda mais recente, selos, perguntas de exemplo, os 14 bairros com vendas em 24 meses, "Teste aqui" (8.13, regra 11.23), resumo de como conectar, perguntas frequentes; rodapé "Um produto DabLab" (8.11) | — | copiar pergunta; ir para Conectar | `cobertura_atual()`, `vendas_consolidadas` (data mais recente), `execucoes_ingestao` (última conferência do ITBI), pelo servidor | — |
 | [Público] Conectar (`/conectar`) | endereço do MCP com botão de copiar e passo a passo do Claude, do ChatGPT e do Grok em abas (8.10/8.11) | assistente | copiar endereço | — | — |
 
 ---
@@ -762,7 +768,7 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | 11.16 | Venda fora da curva | Com ≥ 3 vendas do prédio nos 36 meses: fora se `m2_privativo` < 0,6 × ou > 1,6 × a mediana do prédio. Com menos: usar a mediana do bairro no mesmo selo. Vendas com `valor_declarado` < 0,5 × o valor venal de referência também são marcadas. Ficam fora das medianas devolvidas pelo MCP, mas aparecem na lista de vendas com a marca | ingestão |
 | 11.17 | Medianas do MCP | m² mediano de prédio ou bairro = mediana de `m2_privativo` das vendas de compra e venda não fora da curva, com selo ≥ `estimada`, na janela pedida (padrão 24 meses). Sempre devolver junto: n de vendas, distribuição por selo e se há vagas inclusas na área | MCP |
 | 11.19 | Alvos da coleta de leilões | (a) Prédios com guia do ITBI de natureza "4.Arrematação" ou "17.Resolução da alienação fiduciária" nos últimos 36 meses; (b) os 100 prédios de maior `prioridade_coleta` (regra 11.13) sem nenhuma planta `confirmada`. Cada prédio é buscado no máximo uma vez a cada 180 dias (`ultima_coleta_leilao_em`) | ingestão |
-| 11.20 | Casamento edital → prédio → unidade | Prédio: mesmo critério de endereço da regra 11.8. Unidade, por ordem de força: (1) `matricula` igual à de uma guia do ITBI de uma unidade do prédio → `casado_unidade`; (2) complemento normalizado igual ao de uma unidade do prédio ("APTO 52" = "AP 52" = "APARTAMENTO 52") → `casado_unidade`; (3) senão → `casado_predio`, sem efeito na área (vai para a lista de evidências sem vínculo). Edital de prédio fora dos 10 bairros é descartado | ingestão |
+| 11.20 | Casamento edital → prédio → unidade | Prédio: mesmo critério de endereço da regra 11.8. Unidade, por ordem de força: (1) `matricula` igual à de uma guia do ITBI de uma unidade do prédio → `casado_unidade`; (2) complemento normalizado igual ao de uma unidade do prédio ("APTO 52" = "AP 52" = "APARTAMENTO 52") → `casado_unidade`; (3) senão → `casado_predio`, sem efeito na área (vai para a lista de evidências sem vínculo). Edital de prédio fora dos 14 bairros é descartado | ingestão |
 | 11.21 | Limite de contas novas | No máximo 50 contas de cliente criadas nas últimas 24 h. Acima disso, o login mostra a mensagem da seção 15. Quem já tem conta entra sempre; conta bloqueada não entra | OAuth (8.10) |
 | 11.23 | Teste do site | O "Teste aqui" mostra o prédio e as 3 vendas mais recentes (36 meses), com data, valor e vaga. Uma busca por IP a cada 30 dias: repetir o mesmo prédio não conta e endereço não encontrado não gasta. Turnstile (Cloudflare) contra robôs. O IP nunca é guardado, só o HMAC dele (`m2_testes_site`), apagado depois da janela | site (8.13) |
 | 11.22 | Limite de uso do MCP | Por token OAuth: até 30 chamadas no minuto corrente e 1.000 nas últimas 24 h. A chamada recusada não conta e recebe 429 com o tempo de espera. Chaves do painel não têm limite | MCP (8.10) |
@@ -782,6 +788,10 @@ As telas **[Admin]** ficam em `/painel` (épico 8.11; antes ficavam na raiz). A 
 | Jardins | 014 | `^(JARDIM\|JD\.?) (PAULISTA\|AMERICA\|EUROPA\|PAULISTANO)$` |
 | Cerqueira César | 013, 014, 0540 | `^CERQUEIRA CE[SZ]AR$` |
 | Itaim Bibi | 045 | `^(ITAIM ?BIBI\|ITAIM\|VL\.? ITAIM\|VILA ITAIM)$` |
+| Moema (8.14) | 04029, 04075 a 04090 (exceto 04085), 04514 a 04517, 04520 a 04524 | `^MOEMA$` |
+| Vila Nova Conceição (8.14) | 04505, 04507 a 04513, 04535, 04537, 04543, 04545 | `^(VILA\|VL\.?) NOVA CONCEICAO$` |
+| Brooklin (8.14) | 04555 a 04571, 04575, 04576, 04578, 04580 a 04583, 04601, 04602, 04610, 04620 a 04623, 04634, 04702 a 04705, 04707, 04710 | `^BROOKLIN( PAULISTA\| NOVO\| VELHO\| PAULISTA NOVO\| PTA\.?( NOVO)?)?$` |
+| Campo Belo (8.14) | 04601 a 04603, 04605 a 04620, 04624, 04625 | `^CAMPO BELO$` |
 
 ---
 
@@ -821,7 +831,7 @@ Autenticação: token OAuth (6.5), com os limites da regra 11.22, ou chave de AP
 
 | Ferramenta | Entrada (zod) | Saída |
 |---|---|---|
-| `sobre` (acréscimo de 23/11/2026) | `{}` | o que é o serviço, os 10 bairros, as fontes, o método, os 5 selos explicados, a cobertura atual por bairro, as ferramentas, os limites e os avisos; o servidor também manda um resumo no campo `instructions` do initialize |
+| `sobre` (acréscimo de 23/11/2026) | `{}` | o que é o serviço, os 14 bairros, as fontes, o método, os 5 selos explicados, a cobertura atual por bairro, as ferramentas, os limites e os avisos; o servidor também manda um resumo no campo `instructions` do initialize |
 | `buscar_predio` | `{ endereco: string (3–200) }` | até 5 `{ predio_id, endereco, bairro, ano_construcao, total_unidades, similaridade }`; vazio + mensagem "fora da cobertura" se nada casar |
 | `ficha_predio` | `{ predio_id: uuid }` | prédio + plantas `{ area_iptu, area_privativa, fator, selo, fonte_area, faixa_erro_pct, vagas_inclusas, quartos, qtd_unidades, especial }` + `vagas_cadastro_proprio` |
 | `vendas_predio` | `{ predio_id: uuid, meses?: int 1–120 = 36 }` | lista `{ data, unidade, valor_total, valor_apartamento, valor_vagas, area_privativa, selo_area, m2_privativo, m2_iptu, vagas_inclusas_area, fora_da_curva }` + mediana (regra 11.17) |
@@ -896,7 +906,7 @@ Português claro, sem jargão. Mensagens fixas:
 | Situação | Texto |
 |---|---|
 | MCP sem chave/chave inválida | "Chave de API inválida ou revogada." |
-| MCP fora da cobertura | "Este endereço não está na base do Fechou por Quanto, que hoje cobre Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi." |
+| MCP fora da cobertura | "Este endereço não está na base do Fechou por Quanto, que hoje cobre Perdizes, Pompeia, Pinheiros, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César, Itaim Bibi, Moema, Vila Nova Conceição, Brooklin e Campo Belo." (a lista sai de `packages/ingestao/src/config/bairros.ts`) |
 | MCP prédio sem vendas no período | "Nenhuma venda registrada neste prédio no período. Use a ferramenta comparaveis para ver vendas parecidas no bairro." |
 | Painel sem perfil | "Acesso não autorizado. Fale com o administrador do Fechou por Quanto." |
 | Lista vazia de revisão | "Nada para revisar agora." |
@@ -1046,10 +1056,10 @@ Regra: toda mudança de schema, regra ou tela atualiza este documento no mesmo c
 | Métrica | Alvo | Prazo |
 |---|---|---|
 | Cobertura (vendas dos últimos 24 meses com área `calibrada` ou `confirmada`) em Pinheiros, Itaim Bibi e Jardins | ≥ 70% | 3 meses após o épico 8.6 |
-| Cobertura nos 10 bairros, somados | ≥ 55% | 3 meses após o épico 8.6 |
+| Cobertura nos 14 bairros, somados | ≥ 55% | 3 meses após o épico 8.6 |
 | Erro da área calibrada por anúncios contra o gabarito dos editais de leilão (plantas que têm os dois) | mediana ≤ 3% | a cada calibração |
-| Plantas com selo `confirmada` vindo de edital | ≥ 150 nos 10 bairros | 6 meses após o épico 8.5.1 |
-| Respostas do MCP que devolvem m² com selo `estimada` ou melhor | ≥ 90% das consultas sobre prédios dos 10 bairros | 3 meses após o épico 8.9 |
+| Plantas com selo `confirmada` vindo de edital | ≥ 150 nos 14 bairros | 6 meses após o épico 8.5.1 |
+| Respostas do MCP que devolvem m² com selo `estimada` ou melhor | ≥ 90% das consultas sobre prédios dos 14 bairros | 3 meses após o épico 8.9 |
 
 **Eventos de produto (épico 8.12; decisão do usuário em 23/11/2026).** Vão para o Visão de Produto, o produto de analytics da DabLab (`POST {VISAO_INGEST_URL}` com `x-api-key: VISAO_API_KEY`), depois da resposta e sem nunca atrasá-la. Sem essas variáveis, nada é enviado.
 
@@ -1156,7 +1166,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 - [ ] Advisors do Supabase rodados após a última DDL, sem alerta crítico.
 - [ ] Guardrails do Anexo B instalados e cada hook testado uma vez.
 - [ ] Os 5 workflows rodando no GitHub Actions, com uma execução concluída de cada.
-- [ ] Indicador de cobertura calculado para os 10 bairros.
+- [ ] Indicador de cobertura calculado para os 14 bairros.
 - [ ] MCP conectado a um Claude e respondendo às 5 ferramentas.
 - [ ] `plans/` com o plano aprovado de cada épico, consistente com o código.
 - [ ] `DOCUMENTACAO-TECNICA.md` gerado e conferido; `CLAUDE.md` e `README.md` em dia; `schema.sql` atualizado.
@@ -1176,7 +1186,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 ## 28. Roadmap: próximas releases
 
-**28.1 Editais de leilão: movido para o MVP na versão 1.1 (épico 8.5.1, regras 11.19 e 11.20).** Texto original preservado: Coletar editais de leilão judicial e bancário dos 10 bairros (os sites publicam a matrícula e às vezes um laudo com área privativa). Extrair área privativa, vagas e endereço por OCR/LLM, casar com a planta e dar selo `confirmada` com fonte própria (`edital_leilao`, novo valor do enum `fonte_dado`). O próprio ITBI aponta os casos: natureza "4.Arrematação". Exemplo encontrado: laudo de um apartamento na Rua Canário, 906, apto 52, com 184,32 m² privativos e 2 vagas.
+**28.1 Editais de leilão: movido para o MVP na versão 1.1 (épico 8.5.1, regras 11.19 e 11.20).** Texto original preservado: Coletar editais de leilão judicial e bancário dos 14 bairros (os sites publicam a matrícula e às vezes um laudo com área privativa). Extrair área privativa, vagas e endereço por OCR/LLM, casar com a planta e dar selo `confirmada` com fonte própria (`edital_leilao`, novo valor do enum `fonte_dado`). O próprio ITBI aponta os casos: natureza "4.Arrematação". Exemplo encontrado: laudo de um apartamento na Rua Canário, 906, apto 52, com 184,32 m² privativos e 2 vagas.
 
 **28.2 Cartório (ONR).** O Provimento CNJ 195/2025 (art. 343-J do Provimento 149/2023) criou a informação eletrônica de transações registradas, com data, preço, fração, tipo, matrícula e endereço, cobrada por transação (o menor valor entre uma pesquisa e 1/20 da certidão digital). Usos: auditoria mensal por amostra (medir o erro da base) e preço registrado para outras cidades. Depende de P1.
 

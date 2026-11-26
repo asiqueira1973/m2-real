@@ -257,7 +257,7 @@ export function assembleBuildings(
   const buildings: Building[] = [];
   for (const { chave, grupo, tipos, aptos, cep, bairroId, origem } of candidatos) {
     if (bairroId === null) {
-      discarded.push({ chave, motivo: "fora dos 10 bairros ou bairro indecidível (regra 11.2)", linhas: grupo.length });
+      discarded.push({ chave, motivo: "fora dos bairros cobertos ou bairro indecidível (regra 11.2)", linhas: grupo.length });
       continue;
     }
     const { plantas, indexOf } = groupPlans(aptos.map((r) => r.areaConstruida));

@@ -4,16 +4,15 @@
  * dados, como o m² é calculado, o que os selos significam e qual é a cobertura atual de cada bairro,
  * para que ele responda sem inventar. SÓ SERVIDOR.
  */
+import { NOMES_BAIRROS } from "@m2-real/ingestao/bairros";
 import { MCP_CHAMADAS_POR_DIA, MCP_CHAMADAS_POR_MINUTO } from "@m2-real/ingestao/regras";
 
-/** Os 10 bairros da tabela 11.2, com o nome de exibição. */
-export const BAIRROS_COBERTOS = [
-  "Perdizes", "Pompeia", "Pinheiros", "Vila Madalena", "Alto de Pinheiros", "Alto da Lapa", "Higienópolis", "Jardins", "Cerqueira César", "Itaim Bibi",
-] as const;
+/** Os bairros da tabela 11.2, com o nome de exibição (fonte única em @m2-real/ingestao/bairros). */
+export const BAIRROS_COBERTOS = NOMES_BAIRROS;
 
 /** Instruções do servidor (campo `instructions` do initialize do MCP): o resumo que o assistente lê ao conectar. */
 export const INSTRUCOES_MCP = [
-  "Fechou por Quanto: por quanto os apartamentos foram realmente vendidos em 10 bairros de São Paulo",
+  `Fechou por Quanto: por quanto os apartamentos foram realmente vendidos em ${BAIRROS_COBERTOS.length} bairros de São Paulo`,
   `(${BAIRROS_COBERTOS.join(", ")}), a partir do ITBI da Prefeitura, com a área privativa calibrada por anúncios e editais.`,
   "Diferencial: as vendas vêm do ITBI, carregado todo mês (dia 8), assim que a Prefeitura publica; não são preços de anúncio.",
   "Todo m² vem com um selo de confiança da área privativa: Confirmada (edital ou revisão), Calibrada (2+ anúncios que concordam),",

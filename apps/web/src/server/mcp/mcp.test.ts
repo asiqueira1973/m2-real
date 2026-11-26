@@ -75,7 +75,7 @@ describe("ferramentas (13.2): schemas, mensagens e campos comuns", () => {
   it("schemas: limites da 13.2 e padrões", () => {
     expect(ESQUEMAS.buscar_predio.safeParse({ endereco: "ab" }).success).toBe(false);
     expect(ESQUEMAS.vendas_predio.parse({ predio_id: "82d8617e-488e-44b3-a94b-c3ac1778c48b" }).meses).toBe(36);
-    expect(ESQUEMAS.m2_bairro.safeParse({ bairro: "moema" }).success).toBe(false);
+    expect(ESQUEMAS.m2_bairro.safeParse({ bairro: "tatuape" }).success).toBe(false);
     expect(ESQUEMAS.m2_bairro.parse({ bairro: "pinheiros" }).meses).toBe(24);
     expect(ESQUEMAS.comparaveis.safeParse({ predio_id: "82d8617e-488e-44b3-a94b-c3ac1778c48b", limite: 31 }).success).toBe(false);
   });
