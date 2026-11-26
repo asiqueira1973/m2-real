@@ -8,6 +8,7 @@ import {
   MCP_BAIRRO_MESES_MAX, MCP_BAIRRO_MESES_PADRAO, MCP_COMPARAVEIS_FAIXA_AREA, MCP_COMPARAVEIS_LIMITE_MAX, MCP_COMPARAVEIS_LIMITE_PADRAO,
   MCP_COMPARAVEIS_MESES_PADRAO, MCP_ENDERECO_MAX, MCP_ENDERECO_MIN, MCP_SAUDE_CACHE_MS, MCP_VENDAS_MESES_MAX, MCP_VENDAS_MESES_PADRAO,
 } from "@m2-real/ingestao/regras";
+import { listaPorExtenso, NOMES_BAIRROS, SLUGS_BAIRROS } from "@m2-real/ingestao/bairros";
 import { loadHealth } from "@m2-real/ingestao/saude";
 import { z } from "zod";
 import { decade, medianSummary, pickComparables } from "./calculos";
@@ -19,15 +20,13 @@ export const FONTE = "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fecho
 
 /** Seção 15: mensagens fixas do MCP. */
 export const MENSAGENS_MCP = {
-  foraDaCobertura: "Este endereço não está na base do Fechou por Quanto, que hoje cobre Perdizes, Pinheiros, Pompeia, Vila Madalena, Alto de Pinheiros, Alto da Lapa, Higienópolis, Jardins, Cerqueira César e Itaim Bibi.",
+  foraDaCobertura: `Este endereço não está na base do Fechou por Quanto, que hoje cobre ${listaPorExtenso(NOMES_BAIRROS)}.`,
   semVendas: "Nenhuma venda registrada neste prédio no período. Use a ferramenta comparaveis para ver vendas parecidas no bairro.",
   predioNaoEncontrado: "Prédio não encontrado.",
 } as const;
 
-/** Os 10 slugs da tabela 11.2 (enum de m2_bairro). */
-export const SLUGS_BAIRROS = [
-  "perdizes", "pompeia", "pinheiros", "vila-madalena", "alto-de-pinheiros", "alto-da-lapa", "higienopolis", "jardins", "cerqueira-cesar", "itaim-bibi",
-] as const;
+/** Os slugs da tabela 11.2 (enum de m2_bairro), da fonte única em @m2-real/ingestao/bairros. */
+export { SLUGS_BAIRROS };
 
 /** Schemas de entrada (zod) da 13.2. */
 export const ESQUEMAS = {
@@ -54,7 +53,7 @@ export const ESQUEMAS = {
 /** Descrições (em português) que o agente lê. */
 export const DESCRICOES: Record<keyof typeof ESQUEMAS, string> = {
   sobre: "O que é o Fechou por Quanto: frequência de atualização (ITBI mensal) e a venda mais recente da base, bairros cobertos, fontes de dados, como o m² é calculado, o que significam os selos e a cobertura atual de cada bairro. Use para perguntas sobre o próprio serviço.",
-  buscar_predio: "Acha até 5 prédios dos 10 bairros cobertos pelo endereço (similaridade de texto + número).",
+  buscar_predio: "Acha até 5 prédios dos bairros cobertos pelo endereço (similaridade de texto + número).",
   ficha_predio: "Ficha do prédio: plantas com área IPTU, área privativa, fator e selo de confiança, e se as vagas têm cadastro próprio.",
   vendas_predio: "Vendas reais (ITBI) do prédio na janela, com m² privativo e selo de cada uma, e a mediana do m² (regra 11.17).",
   m2_bairro: "Mediana, p25 e p75 do m² privativo das vendas do bairro, com o número de vendas, a distribuição por selo e a cobertura.",

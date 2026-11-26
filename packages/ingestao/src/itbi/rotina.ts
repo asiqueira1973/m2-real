@@ -4,7 +4,7 @@
  * Fluxo (8.3): abrir a página da Fazenda → listar os .xlsx → para cada um: baixar, calcular o
  * hash e descobrir o ano pelas abas (o nome do arquivo não diz o ano) → só anos ≥ 2021 (A2) →
  * hash igual ao da última execução concluída daquele ano = "sem mudança" (0 gravadas) → senão:
- * ler as abas mensais, atribuir bairro (11.2), descartar fora dos 10 bairros, gravar (11.1),
+ * ler as abas mensais, atribuir bairro (11.2), descartar fora dos bairros cobertos, gravar (11.1),
  * ligar a unidades/prédios pelo SQL, marcar 11.14 e substituir o ano (11.1).
  * Cada ano é uma execução em m2_execucoes_ingestao (runRoutine: falha → "falhou" + exit ≠ 0).
  * Alternativa ao download (PV1): --arquivo <xlsx> processa um arquivo local.
@@ -18,7 +18,7 @@ import { rawStoreFromEnv, sha256, storeRaw } from "../shared/brutos.js";
 import { listSheets } from "../shared/xlsx.js";
 import { runRoutine, supabaseExecutionStore, type RoutineResult } from "../shared/execucao.js";
 import { assignNeighborhoods } from "./bairro.js";
-import { insertGuias, lookupUnits, replaceYear } from "./gravacao.js";
+import { insertGuias, lookupUnits, replaceYear, reassignNeighborhoods } from "./gravacao.js";
 import { sheetMonth } from "./guias.js";
 import { readItbiWorkbook } from "./leitor.js";
 
@@ -33,6 +33,11 @@ export interface ItbiOptions {
   paginaUrl?: string;
   /** Restringe a um ano (ex.: `npm run ingestao -- itbi 2025`). */
   ano?: number;
+  /**
+   * 8.14: reprocessa mesmo com o hash igual ao da última carga e reatribui o bairro (11.2) das guias
+   * já gravadas. Usado quando a lista de bairros muda (`npm run ingestao -- itbi --forcar`).
+   */
+  forcar?: boolean;
 }
 
 interface Planilha {
@@ -55,7 +60,7 @@ export async function runItbi(db: M2Client, opts: ItbiOptions): Promise<{ ano: n
   for (const p of planilhas) {
     if (p.ano < ITBI_ANO_INICIAL || (opts.ano && p.ano !== opts.ano)) continue;
     try {
-      const { result } = await runRoutine(supabaseExecutionStore(db), "ingestao-itbi", "itbi", String(p.ano), (exec) => loadYear(db, p, exec.id));
+      const { result } = await runRoutine(supabaseExecutionStore(db), "ingestao-itbi", "itbi", String(p.ano), (exec) => loadYear(db, p, exec.id, opts.forcar ?? false));
       resumo.push({ ano: p.ano, resultado: result });
     } catch (erro) {
       primeiroErro ??= erro;
@@ -82,10 +87,10 @@ export function githubOutputLine(nome: string, valor: string | boolean): string 
 
 /**
  * Carga de um ano (dentro de runRoutine).
- * Recebe: cliente, a planilha e o id da execução aberta por runRoutine.
+ * Recebe: cliente, a planilha, o id da execução aberta por runRoutine e se é carga forçada (8.14).
  * Devolve: contagens para m2_execucoes_ingestao.
  */
-async function loadYear(db: M2Client, p: Planilha, execucaoId: string): Promise<RoutineResult> {
+async function loadYear(db: M2Client, p: Planilha, execucaoId: string, forcar: boolean): Promise<RoutineResult> {
   const hash = sha256(p.buffer);
   const base = { referencia: String(p.ano), arquivoUrl: p.url, arquivoHash: hash };
 
@@ -100,7 +105,7 @@ async function loadYear(db: M2Client, p: Planilha, execucaoId: string): Promise<
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`Falha ao ler a última execução do ITBI ${p.ano}: ${error.message}`);
-  if (ultima?.arquivo_hash === hash) {
+  if (!forcar && ultima?.arquivo_hash === hash) {
     console.log(`ITBI ${p.ano}: sem mudança (hash igual ao da última execução concluída).`);
     return { linhasLidas: 0, linhasGravadas: 0, linhasDescartadas: 0, caminhoStorage: ultima.caminho_storage, ...base };
   }
@@ -115,14 +120,17 @@ async function loadYear(db: M2Client, p: Planilha, execucaoId: string): Promise<
   const { atribuidas, descartes } = assignNeighborhoods(lidas.guias, bairros, bairroPorSql);
 
   const novas = await insertGuias(db, atribuidas, execucaoId, unidades);
+  // 8.14: carga forçada reatribui o bairro das guias já gravadas (o insert acima não as toca).
+  const reatribuidas = forcar ? await reassignNeighborhoods(db, atribuidas) : 0;
   // Regra 11.1: só depois de gravar tudo; se algo falhou antes, runRoutine marca "falhou" e isto não roda (seção 12).
   const apagadas = await replaceYear(db, p.ano, execucaoId, atribuidas.map((a) => a.guia.hashLinha));
 
   const origens: Record<string, number> = {};
   for (const a of atribuidas) origens[a.origem] = (origens[a.origem] ?? 0) + 1;
   console.log(
-    `ITBI ${p.ano}: ${lidas.linhasLidas} linhas lidas, ${atribuidas.length} guias nos 10 bairros ` +
-      `(${Object.entries(origens).map(([k, v]) => `${k} ${v}`).join(", ")}), ${novas} novas, ${apagadas} apagadas da carga anterior.`,
+    `ITBI ${p.ano}: ${lidas.linhasLidas} linhas lidas, ${atribuidas.length} guias nos bairros cobertos ` +
+      `(${Object.entries(origens).map(([k, v]) => `${k} ${v}`).join(", ")}), ${novas} novas, ${apagadas} apagadas da carga anterior` +
+      (forcar ? `, ${reatribuidas} com bairro reatribuído (carga forçada).` : "."),
   );
   for (const [motivo, n] of Object.entries(descartes)) console.log(`  descartadas: ${n} guias — ${motivo}`);
   return {

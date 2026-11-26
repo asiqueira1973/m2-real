@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "10 9 8 * *"
   workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Reprocessar mesmo sem mudança na planilha e reatribuir bairros (8.14)"
+        type: boolean
+        default: false
 concurrency: { group: ingestao-itbi, cancel-in-progress: false }
 # Token do GitHub só com leitura do código (as rotinas não escrevem no repositório).
 permissions:
@@ -31,7 +36,9 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - id: itbi
-        run: npm run ingestao -- itbi
+        env:
+          FORCAR: ${{ inputs.forcar }}
+        run: npm run ingestao -- itbi $([ "$FORCAR" = "true" ] && echo --forcar)  # no cron, FORCAR vem vazio
       # Seção 9.2: planilha sem mudança (mesmo hash) → a calibração não roda.
       - if: steps.itbi.outputs.calibrar == 'true'
         run: npm run ingestao -- calibracao

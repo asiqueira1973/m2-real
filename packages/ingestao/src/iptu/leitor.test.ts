@@ -9,7 +9,7 @@ const CABECALHO =
 const LINHAS = [
   // Joaquim Antunes, 577 (linha real do IPTU 2026) + nome injetado
   "0150140156-4;2026;1;01/01/26;01-9;10000-1;R JOAQUIM ANTUNES;577;APTO 72;PINHEIROS;;05415-011;0;0.0158;1000;132;132;3000.00;2500.00;1979;18;20.00;Apartamento em condomínio;Residencial vertical - padrão C;Normal;0.60;1980;1;0;FULANO DE TAL",
-  // Fora dos 10 bairros (Santa Efigênia, CEP 011)
+  // Fora dos bairros cobertos (Santa Efigênia, CEP 011)
   "0010030001-4;2026;1;01/01/26;00-0;03812-1;R S CAETANO;13;;SANTA EFIGENIA;;01104-001;1;1.0000;136;135;108;4394.00;2856.00;1924;1;13.00;Loja;Comercial horizontal - padrão B;De esquina;0.20;1963;1;0;BELTRANO",
   // Dentro dos bairros, mas área construída ilegível → inválida
   "0150140157-2;2026;1;01/01/26;01-9;10000-1;R JOAQUIM ANTUNES;577;APTO 73;PINHEIROS;;05415-011;0;0.0123;1000;;132;3000.00;2500.00;1979;18;20.00;Apartamento em condomínio;Residencial vertical - padrão C;Normal;0.60;1980;1;0;CICLANO",
@@ -19,7 +19,7 @@ const csv = (linhas: string[], cabecalho = CABECALHO) => Readable.from([`﻿${ca
 const PREFIXOS = ["050", "0125", "054", "012", "013", "014", "0540", "045"];
 
 describe("leitor do IPTU (épico 8.2)", () => {
-  it("lê só as linhas dos 10 bairros e converte os campos", async () => {
+  it("lê só as linhas dos bairros cobertos e converte os campos", async () => {
     const r = await readIptuRows(csv(LINHAS), PREFIXOS);
     expect(r).toMatchObject({ linhasLidas: 3, foraDosBairros: 1, invalidas: 1 });
     expect(r.rows).toEqual([

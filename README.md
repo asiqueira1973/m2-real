@@ -2,7 +2,7 @@
 
 Domínio: `fechouporquanto.com.br`. Os identificadores técnicos usam `m2-real` (repositório, pacotes, projetos Supabase/Vercel) e `m2_` (banco).
 
-Base de preço real de apartamentos por **prédio e planta**, em 10 bairros de São Paulo. O preço vem do ITBI e a área privativa sai de calibração, sempre com selo. Os dados são consultados por agentes via MCP e conferidos num painel interno (`/painel`). A raiz do site (`/` e `/conectar`) é a página pública do produto. A especificação completa está em [`spec.md`](spec.md); os planos por épico, em [`plans/`](plans/).
+Base de preço real de apartamentos por **prédio e planta**, em 14 bairros de São Paulo. O preço vem do ITBI e a área privativa sai de calibração, sempre com selo. Os dados são consultados por agentes via MCP e conferidos num painel interno (`/painel`). A raiz do site (`/` e `/conectar`) é a página pública do produto. A especificação completa está em [`spec.md`](spec.md); os planos por épico, em [`plans/`](plans/).
 
 ## O produto
 
@@ -70,7 +70,7 @@ Sem credencial, a resposta é 401 com `WWW-Authenticate: Bearer resource_metadat
 npm install
 cp .env.example .env.local      # preencha as chaves; nunca versione
 supabase start -x vector,logflare,realtime,edge-runtime   # Postgres, Auth, REST e Storage em Docker
-supabase db reset               # aplica supabase/migrations e o seed dos 10 bairros
+supabase db reset               # aplica supabase/migrations e o seed dos 14 bairros
 ```
 A saída de `supabase start` mostra a `anon key` e a `service_role key` locais. Coloque-as em `.env.local`.
 

@@ -3,6 +3,7 @@
  * para ficar legível em miniatura. Devolve: PNG 1200×630.
  */
 import { ImageResponse } from "next/og";
+import { BAIRROS_COBERTOS } from "@m2-real/ingestao/bairros";
 import { HERO } from "@/features/site/conteudo";
 
 export const alt = "Fechou por Quanto: por quanto o apartamento foi vendido, de verdade";
@@ -18,7 +19,7 @@ export default function OpengraphImage() {
           {HERO.titulo.map((l) => <span key={l}>{l}</span>)}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 26, color: "rgba(10,10,10,0.6)", borderTop: "2px solid #0a0a0a", paddingTop: 20 }}>
-          <span>Vendas reais do ITBI · 10 bairros de São Paulo</span>
+          <span>Vendas reais do ITBI · {BAIRROS_COBERTOS.length} bairros de São Paulo</span>
           <span>Um produto DabLab</span>
         </div>
       </div>

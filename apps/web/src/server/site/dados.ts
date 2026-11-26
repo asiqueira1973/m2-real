@@ -1,7 +1,7 @@
 /**
  * Dados do site público (épico 8.11): as vendas de 24 meses de cada bairro, a venda mais recente da
  * base e a última conferência do ITBI. Lidos com a credencial de serviço, SÓ NO SERVIDOR (seção 20), e
- * só agregados (nada por pessoa). Falha de leitura não derruba o site: os 10 bairros aparecem sem números.
+ * só agregados (nada por pessoa). Falha de leitura não derruba o site: os bairros cobertos aparecem sem números.
  */
 import { createServiceClient } from "@m2-real/db/server";
 import { currentCoverage, latestSaleDate } from "@/server/mcp/dados";

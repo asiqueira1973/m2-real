@@ -22,6 +22,7 @@
   },
   "exports": {
     "./regras": "./src/config/regras.ts",
-    "./saude": "./src/observabilidade/index.ts"
+    "./saude": "./src/observabilidade/index.ts",
+    "./bairros": "./src/config/bairros.ts"
   }
 }

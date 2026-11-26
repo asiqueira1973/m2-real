@@ -737,6 +737,27 @@ $$;
 ALTER FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."m2_itbi_reatribuir_bairros"("p_hashes" "text"[], "p_bairros" smallint[], "p_origens" "public"."m2_origem_bairro"[]) RETURNS integer
+    LANGUAGE "sql"
+    SET "search_path" TO ''
+    AS $$
+  with novo as (
+    select * from unnest(p_hashes, p_bairros, p_origens) as n(hash_linha, bairro_id, origem)
+  ), mudou as (
+    update public.m2_transacoes t
+       set bairro_id = n.bairro_id, origem_bairro = n.origem
+      from novo n
+     where t.hash_linha = n.hash_linha
+       and (t.bairro_id is distinct from n.bairro_id or t.origem_bairro is distinct from n.origem)
+    returning 1
+  )
+  select count(*)::integer from mudou;
+$$;
+
+
+ALTER FUNCTION "public"."m2_itbi_reatribuir_bairros"("p_hashes" "text"[], "p_bairros" smallint[], "p_origens" "public"."m2_origem_bairro"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."m2_itbi_substituir_ano"("ano" integer, "execucao_id" "uuid", "hashes" "text"[]) RETURNS integer
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -2240,6 +2261,11 @@ GRANT ALL ON FUNCTION "public"."m2_entra_cliente"("p_sub" "text", "p_email" "tex
 REVOKE ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."m2_fila_revisao"("bairro" integer, "motivo" "public"."m2_motivo_revisao", "janela_meses" integer, "limite" integer, "deslocamento" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."m2_itbi_reatribuir_bairros"("p_hashes" "text"[], "p_bairros" smallint[], "p_origens" "public"."m2_origem_bairro"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."m2_itbi_reatribuir_bairros"("p_hashes" "text"[], "p_bairros" smallint[], "p_origens" "public"."m2_origem_bairro"[]) TO "service_role";
 
 
 

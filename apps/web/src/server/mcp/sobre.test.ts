@@ -27,7 +27,8 @@ describe("ferramenta sobre", () => {
   it("explica bairros, fontes, método, os 5 selos e a cobertura atual, com o envelope da 13.2", async () => {
     resetHealthCache();
     const r = await runTool(banco(), "sobre", {});
-    expect(r.bairros).toHaveLength(10);
+    expect(r.bairros).toHaveLength(BAIRROS_COBERTOS.length);
+    expect(BAIRROS_COBERTOS).toHaveLength(14);
     expect(r.atualizacao).toMatchObject({ venda_mais_recente: "2026-10-06", itbi: "mensal (dia 8)" });
     expect((r.fontes as unknown[]).length).toBe(4);
     expect((r.selos as { selo: string }[]).map((s) => s.selo)).toEqual(["Confirmada", "Calibrada", "Indicativa", "Estimada", "Sem dado"]);
@@ -36,7 +37,7 @@ describe("ferramenta sobre", () => {
     // Os rótulos da seção 15 não alteram os nomes já legíveis dos selos.
     expect((withSealLabels(r) as typeof r).selos).toEqual(r.selos);
   });
-  it("instruções do servidor citam os 10 bairros e mandam usar sobre e buscar_predio", () => {
+  it("instruções do servidor citam os bairros cobertos e mandam usar sobre e buscar_predio", () => {
     for (const b of BAIRROS_COBERTOS) expect(INSTRUCOES_MCP).toContain(b);
     expect(INSTRUCOES_MCP).toMatch(/`sobre`/);
     expect(INSTRUCOES_MCP).toMatch(/`buscar_predio`/);

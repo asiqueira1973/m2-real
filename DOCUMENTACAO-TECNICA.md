@@ -45,7 +45,7 @@ Convenções que valem para todas as tabelas, e por isso não se repetem abaixo:
 
 ### 1.2 Tabelas
 
-#### `m2_bairros` — os 10 bairros cobertos
+#### `m2_bairros` — os 14 bairros cobertos
 Seed em `supabase/seed.sql` (tabela 11.2), idempotente por `slug`.
 
 | Coluna | Tipo | Significado |
@@ -136,7 +136,7 @@ Criado por `supabase/seed/primeiro_admin.sql` (o usuário precisa existir no Aut
 | `fracao_ideal` | numeric(8,6), nulo | Fração ideal |
 | `andar_inferido` | smallint, nulo | Andar tirado do complemento (regra 11.7, ver 5.11) |
 
-#### `m2_transacoes` — uma guia de ITBI dos 10 bairros (todas as naturezas e usos)
+#### `m2_transacoes` — uma guia de ITBI dos 14 bairros (todas as naturezas e usos)
 | Coluna | Tipo | Significado |
 |---|---|---|
 | `hash_linha` | text, unique | SHA-256 dos valores originais da linha, unidos por `\|` (regra 11.1, idempotência) |
@@ -239,7 +239,7 @@ Substituída inteira a cada calibração. Unique (`bairro_id`, `decada_construca
 
 | Coluna | Tipo | Significado |
 |---|---|---|
-| `bairro_id` | smallint, fk, nulo | Bairro; nulo = os 10 bairros |
+| `bairro_id` | smallint, fk, nulo | Bairro; nulo = os 14 bairros |
 | `decada_construcao` | smallint, nulo | 1970, 1980…; nulo = todas |
 | `vagas_cadastro_proprio` | boolean | Grupo de prédios com ou sem vaga com cadastro próprio |
 | `fator_mediano`, `fator_p25`, `fator_p75` | numeric(5,3) | Mediana e quartis (interpolação linear) dos fatores |
@@ -338,7 +338,7 @@ Linhas com mais de 2 dias são apagadas pela própria função de uso.
 | Prédio/planta → anúncios | Um prédio tem vários anúncios; um anúncio aponta para no máximo um prédio e no máximo uma planta | `m2_anuncios.predio_id`, `planta_id` |
 | Prédio/unidade → editais | Um prédio tem vários editais; um edital aponta para no máximo um prédio e no máximo uma unidade (a planta vem da unidade) | `m2_editais_leilao.predio_id`, `unidade_id` |
 | Planta → calibrações | Uma planta tem um histórico de várias calibrações; cada calibração é de uma planta | `m2_calibracoes.planta_id` |
-| Bairro → fatores de referência | Um bairro tem vários grupos de fator (por década e vaga); os grupos com `bairro_id` nulo valem para os 10 bairros | `m2_fatores_referencia.bairro_id` (nulo) |
+| Bairro → fatores de referência | Um bairro tem vários grupos de fator (por década e vaga); os grupos com `bairro_id` nulo valem para os 14 bairros | `m2_fatores_referencia.bairro_id` (nulo) |
 | Bairro → cobertura | Um bairro tem uma foto de cobertura por calibração | `m2_cobertura_bairros.bairro_id` |
 | Usuário → perfil → chaves | Cada usuário do Auth tem no máximo um perfil (apagado junto com o usuário); um admin cria várias chaves | `m2_perfis.id` → `auth.users`; `m2_chaves_api.criada_por` |
 | Conta de cliente → tokens | Uma conta Google tem vários tokens (um por conexão autorizada); cada token é de uma conta. Apagar a conta apaga os tokens | `m2_tokens_mcp.cliente_id` |
@@ -744,7 +744,7 @@ Junta tudo o que os planos registraram como decisão do usuário, divergência o
 | Guias de execuções que falharam | Continuam apontando para a execução `falhou` | Seção 12: "as gravações ficam" |
 | Vagas de guias apagadas | `m2_itbi_substituir_ano` apaga a venda da guia removida mas não limpa `transacoes_vagas_ids` de outras vendas | Array sem FK; a próxima calibração recalcula tudo |
 | `linhas_gravadas` com retry | Pode sair subcontada | O lote já gravado volta como existente no `on conflict` |
-| Critério 13.289/11.355 | Lido como guias de **apartamento**; o banco guarda todas as guias dos 10 bairros | Nenhuma outra leitura reproduzia o número |
+| Critério 13.289/11.355 | Lido como guias de **apartamento**; o banco guarda todas as guias dos 14 bairros | Nenhuma outra leitura reproduzia o número |
 | Robustez | `withRetry` e lotes de 1.000 SQLs | Timeout de 8 s do PostgREST; max_rows corta em silêncio |
 
 ### 8.4 Consolidação
@@ -773,7 +773,7 @@ Junta tudo o que os planos registraram como decisão do usuário, divergência o
 |---|---|---|
 | Modelo | `claude-sonnet-5` | "Modelo Sonnet" da geração atual |
 | Fixture do Canário 906 | PDF **gerado em memória** (`shared/pdfTexto.ts`) com o trecho público da página do lote; teste offline com a resposta já filtrada; teste vivo opcional (`RUN_LIVE=1`) | O laudo em PDF não é mais publicado |
-| Edital sem prédio | Fica `sem_predio`, não "descartado" | Sem prédio não dá para saber se é de fora dos 10 bairros; assim aparece em "Evidências sem vínculo" |
+| Edital sem prédio | Fica `sem_predio`, não "descartado" | Sem prédio não dá para saber se é de fora dos 14 bairros; assim aparece em "Evidências sem vínculo" |
 | Ordem dos filtros da 11.19 | 180 dias antes do corte dos 100 de (b) | A rodada seguinte pega os próximos da fila em vez de ficar vazia |
 | Chave da unidade (11.20) | "AP <n>[letra]" + " BL <b>"; sem bloco e número repetido em blocos → `casado_predio`; matrícula de várias unidades passa ao passo 2 | Interpretação declarada |
 | PDF + página | O documento prevalece; PDFs lidos em ordem até achar área | — |

@@ -84,7 +84,8 @@ export async function main(argv: readonly string[]): Promise<number> {
         return 0;
       }
       case "ingestao-itbi": {
-        // Uso: itbi [ano] [--arquivo planilha.xlsx]; sem arquivo, baixa da página ITBI_PAGINA_URL.
+        // Uso: itbi [ano] [--arquivo planilha.xlsx] [--forcar]; sem arquivo, baixa da página ITBI_PAGINA_URL.
+        // --forcar (8.14): reprocessa com o hash igual e reatribui o bairro das guias já gravadas.
         const ano = args[0] && !args[0].startsWith("--") ? Number(args[0]) : undefined;
         if (ano !== undefined && !Number.isInteger(ano)) throw new Error("Ano inválido: npm run ingestao -- itbi [2025] [--arquivo planilha.xlsx]");
         const arquivo = option(args, "arquivo");
@@ -93,6 +94,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           ano,
           arquivo: arquivo ? userPath(arquivo) : undefined,
           paginaUrl: process.env.ITBI_PAGINA_URL || undefined,
+          forcar: args.includes("--forcar"),
         });
         // Seção 9.2: sem planilha nova, a calibração não roda — o workflow lê "calibrar".
         if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, githubOutputLine("calibrar", itbiChanged(resumo)));

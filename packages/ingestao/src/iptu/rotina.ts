@@ -6,7 +6,7 @@
  *     ou IPTU_ARQUIVO_URL (tentativa de download); ou o bruto já guardado no Storage.
  *  2. Guarda o bruto em m2_brutos/iptu/<ano>.zip|.csv, mantendo a versão anterior
  *     (retenção de 2 versões, seção 17).
- *  3. Lê em stream, filtra pelos CEPs dos 10 bairros, monta prédios/unidades/plantas
+ *  3. Lê em stream, filtra pelos CEPs dos bairros cobertos, monta prédios/unidades/plantas
  *     (11.2, 11.3, 11.4, 11.6, 11.7) e grava de forma idempotente.
  *  4. Tudo dentro de runRoutine: execução registrada; erro → "falhou" + exit ≠ 0 (seção 12).
  */
@@ -63,7 +63,7 @@ export async function runIptu(db: M2Client, opts: IptuOptions) {
     const gravados = await writeBuildings(db, buildings);
 
     console.log(
-      `IPTU ${opts.ano}: ${lidas.linhasLidas} linhas lidas, ${lidas.rows.length} nos CEPs dos 10 bairros, ` +
+      `IPTU ${opts.ano}: ${lidas.linhasLidas} linhas lidas, ${lidas.rows.length} nos CEPs dos bairros cobertos, ` +
         `${gravados.predios} prédios, ${gravados.unidades} unidades, plantas: ${gravados.plantasNovas} novas / ${gravados.plantasAtualizadas} mantidas.`,
     );
     return {
