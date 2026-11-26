@@ -7,9 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
   read: vi.fn(),
-  insert: vi.fn(async () => 1),
-  replace: vi.fn(async () => 0),
-  reassign: vi.fn(async () => 1),
+  insert: vi.fn(async (..._a: unknown[]) => 1),
+  replace: vi.fn(async (..._a: unknown[]) => 0),
+  reassign: vi.fn(async (..._a: unknown[]) => 1),
   hash: "hash-da-planilha",
 }));
 vi.mock("../shared/xlsx.js", () => ({ listSheets: async () => [{ nome: "JAN-2025" }] }));
