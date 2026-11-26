@@ -1186,19 +1186,21 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 ## 28. Roadmap: próximas releases
 
-**28.1 Editais de leilão: movido para o MVP na versão 1.1 (épico 8.5.1, regras 11.19 e 11.20).** Texto original preservado: Coletar editais de leilão judicial e bancário dos 14 bairros (os sites publicam a matrícula e às vezes um laudo com área privativa). Extrair área privativa, vagas e endereço por OCR/LLM, casar com a planta e dar selo `confirmada` com fonte própria (`edital_leilao`, novo valor do enum `fonte_dado`). O próprio ITBI aponta os casos: natureza "4.Arrematação". Exemplo encontrado: laudo de um apartamento na Rua Canário, 906, apto 52, com 184,32 m² privativos e 2 vagas.
+**28.1 Editais de leilão: movido para o MVP na versão 1.1 (épico 8.5.1, regras 11.19 e 11.20).** Texto original preservado: Coletar editais de leilão judicial e bancário dos 10 bairros (os sites publicam a matrícula e às vezes um laudo com área privativa). Extrair área privativa, vagas e endereço por OCR/LLM, casar com a planta e dar selo `confirmada` com fonte própria (`edital_leilao`, novo valor do enum `fonte_dado`). O próprio ITBI aponta os casos: natureza "4.Arrematação". Exemplo encontrado: laudo de um apartamento na Rua Canário, 906, apto 52, com 184,32 m² privativos e 2 vagas.
 
 **28.2 Cartório (ONR).** O Provimento CNJ 195/2025 (art. 343-J do Provimento 149/2023) criou a informação eletrônica de transações registradas, com data, preço, fração, tipo, matrícula e endereço, cobrada por transação (o menor valor entre uma pesquisa e 1/20 da certidão digital). Usos: auditoria mensal por amostra (medir o erro da base) e preço registrado para outras cidades. Depende de P1.
 
 **28.3 Modelo do fator.** Substituir a mediana por grupo (11.10) por um modelo com ano, padrão, pavimentos, área do terreno, número de unidades e vagas, treinado nas plantas calibradas, com intervalo de erro por prédio.
 
-**28.4 Expansão geográfica.** Novos bairros de São Paulo (basta incluir na tabela `bairros`) e, depois, Rio de Janeiro (ITBI do Rio via transparência), BH e Porto Alegre.
+**28.4 Expansão geográfica.** Novos bairros de São Paulo (basta incluir na tabela `bairros` e em `config/bairros.ts`; Moema, Vila Nova Conceição, Brooklin e Campo Belo entraram no 8.14) e, depois, Rio de Janeiro (ITBI do Rio via transparência), BH e Porto Alegre.
 
 **28.5 Produto externo.** Planos por chave de API com preço fixo e página pública. (Perfis de cliente e limites de uso gratuitos foram antecipados no 8.10.)
 
 **28.6 Preço pedido x preço fechado.** Usar os anúncios de venda coletados para medir, por prédio, a diferença entre o preço pedido e o fechado.
 
 **28.7 Desconto de vagas.** Depende de P2.
+
+**28.8 Plano pago do Firecrawl (backlog; decisão adiada pelo usuário em 26/11/2026).** Hoje, no plano gratuito, a coleta usa 1.000 créditos/mês divididos com o otcb e o Prelo, com teto de 50 créditos por execução semanal em anúncios e em leilões (`FIRECRAWL_MAX_CREDITOS_EXECUCAO`). Com 14 bairros, mais prédios disputam o mesmo teto, e a área privativa (e com ela as medianas de m², 11.10 e 11.17) demora mais para aparecer. O plano Hobby (R$ 111/mês, 5.000 créditos) permitiria subir o teto para ~200 por execução e calibrar cerca de quatro vezes mais rápido. Só a variável muda; nenhum código. Gatilho para decidir: quando as medianas por bairro forem prioridade de produto.
 
 ---
 
