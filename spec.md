@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.7 (Moema, Vila Nova Conceição, Brooklin e Campo Belo, épico 8.14) |
+| Versão | 1.8 (coleta de anúncios mais barata: markdown no Firecrawl e extração com o Claude, épico 8.15) |
 | Responsável de produto | Alexandre Siqueira |
 | Status | pronto para revisão |
 | Data | 21/11/2026 |
@@ -104,7 +104,7 @@ GitHub Actions (cron)                        Supabase (Postgres + Auth + Storage
 │  itbi · iptu · anuncios ·   │    role      │ funções e triggers (seção 7.4)   │
 │  calibracao · cobertura     │              │ Storage: arquivos brutos          │
 └─────────────────────────────┘              └───────────────▲──────────────────┘
-           │ Firecrawl API (busca + extração)                │
+           │ Firecrawl API (busca + markdown) + Claude API   │
            ▼                                                  │
    lopes / quintoandar / loft · sites de leilão               │
            │ PDFs de edital/laudo/matrícula                   │
@@ -129,7 +129,7 @@ Vercel ┌───────────────────────�
 | Banco | Supabase (Postgres 15+), projeto próprio | Stack padrão do usuário; RLS, Auth e Storage num lugar só | — |
 | Painel + MCP | Um app Next.js (App Router) na Vercel | Um deploy só; o usuário já hospeda apps pagos na Vercel | Dois apps separados |
 | MCP | `mcp-handler@^2` + `@modelcontextprotocol/server@^2` + `zod@^4` em `app/api/mcp/route.ts` | mcp-handler 2.x serve o protocolo stateless de 2026-07-28 e o Streamable HTTP de 2025 num único handler, sem Redis | `mcp-handler` 1.x / SDK 1.x |
-| Coleta de anúncios | **Firecrawl** (`/search` + `/scrape` com extração por schema JSON) | O usuário já usa Firecrawl e tem referência própria; a extração estruturada evita escrever um parser por site | Playwright próprio (mais manutenção, mais bloqueio) |
+| Coleta de anúncios | **Firecrawl** (`/search` + `/scrape` só com markdown, 1 crédito) e **Claude API** (Haiku, saída estruturada no schema da 13.3) | O usuário já usa Firecrawl e tem referência própria; a extração pelo modelo evita escrever um parser por site. Épico 8.15: a extração JSON do próprio Firecrawl custava 5 créditos por página; ler só o markdown e extrair com o Haiku baixa o custo de ~23 para ~6 créditos por prédio (no máximo 7) | Playwright próprio (mais manutenção, mais bloqueio); extração JSON do Firecrawl (5 créditos por página) |
 | Leitura de PDFs de leilão | **Claude API** (Messages com documento PDF, modelo Sonnet), em memória, com o schema da 13.4 | Editais e matrículas costumam ser PDFs escaneados; o modelo lê imagem e texto sem OCR separado. O PDF é descartado depois da extração | OCR próprio (Tesseract) + regex: frágil com matrículas carimbadas ou manuscritas |
 | UI do painel | Tailwind + shadcn/ui | Componentes de tabela e formulário prontos | — |
 | Projeto de referência | Prelo (servidor MCP próprio do usuário) | Reaproveitar o padrão de ferramentas MCP de consulta | — |
@@ -614,11 +614,12 @@ Fluxo: abrir a página de dados do ITBI da Fazenda → listar os links .xlsx →
 ### 8.5 Coleta de anúncios e páginas de condomínio
 **Objetivo:** evidências de área privativa por prédio.
 
-Fluxo: escolher até 150 prédios por prioridade (regra 11.13) → para cada um, buscar no Firecrawl `"<logradouro>, <número>" <bairro> São Paulo` restrito aos domínios da allowlist → para até 5 resultados por prédio, fazer `/scrape` com extração pelo schema da 13.3 → normalizar e gravar em `anuncios` → casar com prédio e planta (regra 11.8).
+Fluxo: escolher até 150 prédios por prioridade (regra 11.13) → para cada um, buscar no Firecrawl `"<logradouro>, <número>" <bairro> São Paulo` restrito aos domínios da allowlist → para até 5 resultados por prédio, fazer `/scrape` só com o markdown (1 crédito) → limpar o markdown (sem imagens nem endereços de link) e cortá-lo em 12 mil caracteres → extrair os campos da 13.3 com a Claude API (Haiku, saída estruturada) → normalizar e gravar em `anuncios` → casar com prédio e planta (regra 11.8).
 - [ ] Para a Joaquim Antunes, 577, ao menos uma página coletada com área privativa 94 m² (± 2) casada com o prédio.
 - [ ] Nenhum campo além dos da tabela `anuncios` é gravado (teste confere as chaves do objeto antes do insert).
 - [ ] Só domínios da allowlist são acessados (teste unitário do filtro).
 - [ ] A execução respeita o limite de créditos por rodada (variável `FIRECRAWL_MAX_CREDITOS_EXECUCAO`) e termina como `concluida`, com o total usado, quando o atinge.
+- [ ] (8.15) A execução respeita o teto de páginas lidas pelo Claude (`CLAUDE_MAX_DOCUMENTOS_EXECUCAO`) do mesmo jeito. Erro permanente da Claude API (4xx que não seja 408/409/429) descarta só a página; erro transitório pula o prédio sem atualizar `ultima_coleta_em`.
 - [ ] Prédio coletado tem `ultima_coleta_em` atualizado e não é recoletado antes de 90 dias.
 
 ### 8.5.1 Coleta de editais de leilão
@@ -840,7 +841,9 @@ Autenticação: token OAuth (6.5), com os limites da regra 11.22, ou chave de AP
 
 Todas as respostas incluem `fonte: "ITBI Prefeitura de SP + IPTU GeoSampa + calibração Fechou por Quanto"` e `atualizado_em` (última calibração concluída).
 
-### 13.3 Schema de extração do Firecrawl
+### 13.3 Schema de extração dos anúncios
+
+Desde o épico 8.15, o schema abaixo é a saída estruturada pedida à Claude API sobre o markdown da página (todos os campos anuláveis). Nos editais de leilão, as páginas de lote continuam com a extração JSON do Firecrawl.
 
 ```json
 {
@@ -949,8 +952,8 @@ Rótulos dos selos no painel e no MCP: Confirmada, Calibrada, Indicativa, Estima
 | Painel: abrir ficha do prédio | ≤ 2 s |
 | Volume esperado | ~6 mil prédios, ~150 mil unidades, ~80 mil guias (2021–2026), ~10 mil anúncios/ano, algumas centenas de editais/ano |
 | Armazenamento | caber no plano Supabase Pro (8 GB); os brutos ficam no Storage com retenção de 2 versões por fonte/ano |
-| Custo Firecrawl | teto por execução em `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (padrão 600) |
-| Custo Claude API (leilões) | teto de documentos por execução em `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` (padrão 150) |
+| Custo Firecrawl | teto por execução em `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (padrão 600). Anúncios (8.15): busca de 2 créditos + 1 crédito por página, ~6 por prédio (no máximo 7) |
+| Custo Claude API (leilões e anúncios) | teto de documentos por execução em `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` (padrão 150), contado separadamente em cada rotina. Anúncios: Haiku, ~4 mil tokens de entrada por página, menos de US$ 0,01 |
 | Navegadores | Chrome, Safari e Edge, versões atuais; desktop (≥ 1280 px); celular só leitura |
 | Idioma | pt-BR |
 | Acessibilidade | contraste AA; foco visível; selos com texto, não só cor |
@@ -1134,7 +1137,7 @@ O catálogo é fechado: o endereço, o texto da pergunta e os argumentos da ferr
 | A2 | Histórico do ITBI a partir de 2021 | 5 anos dão vendas suficientes por prédio sem pesar no banco | Dá para voltar a 2006; aumenta volume e tempo |
 | A3 | Só apartamentos residenciais entram nas análises | Foco da tese | As outras guias já ficam gravadas |
 | A4 | Coleta em 3 domínios: Lopes, QuintoAndar e Loft | Foram os que apareceram com páginas de condomínio e área útil nos testes | Acrescente domínios na allowlist |
-| A5 | Firecrawl para busca e extração | Já usado pelo usuário | Trocar exige reescrever `anuncios/` |
+| A5 | Firecrawl para busca e leitura das páginas; extração dos anúncios pela Claude API (8.15) | Já usado pelo usuário; a extração do Firecrawl custava 5 vezes mais por página | Trocar o Firecrawl exige reescrever a busca e a leitura em `anuncios/` |
 | A6 | Limiares: 3% (planta e concordância), 8% (indicativa), 12% (casamento), 10% (coerência), 8 plantas (grupo de fator), 0,6–1,6 (fora da curva) | Tirados da análise dos dois prédios e de bom senso; ajustáveis em `config/regras.ts` | Ajustar depois de ver a fila de revisão real |
 | A7 | Prédio = mesmo setor + quadra + número de condomínio, com ≥ 4 apartamentos | É como o IPTU agrupa condomínios; ≥ 4 tira casas geminadas | Ver P3 |
 | A8 | Admin no painel; clientes MCP entram com Google pelo OAuth (revista em 23/11/2026, épico 8.10) | A chave manual impedia qualquer pessoa de instalar o MCP sozinha | Planos pagos continuam no 28.5 |
@@ -1200,7 +1203,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 **28.7 Desconto de vagas.** Depende de P2.
 
-**28.8 Plano pago do Firecrawl (backlog; decisão adiada pelo usuário em 26/11/2026).** Hoje, no plano gratuito, a coleta usa 1.000 créditos/mês divididos com o otcb e o Prelo, com teto de 50 créditos por execução semanal em anúncios e em leilões (`FIRECRAWL_MAX_CREDITOS_EXECUCAO`). Com 14 bairros, mais prédios disputam o mesmo teto, e a área privativa (e com ela as medianas de m², 11.10 e 11.17) demora mais para aparecer. O plano Hobby (R$ 111/mês, 5.000 créditos) permitiria subir o teto para ~200 por execução e calibrar cerca de quatro vezes mais rápido. Só a variável muda; nenhum código. Gatilho para decidir: quando as medianas por bairro forem prioridade de produto.
+**28.8 Plano pago do Firecrawl (backlog; decisão adiada pelo usuário em 26/11/2026).** Hoje, no plano gratuito, a coleta usa 1.000 créditos/mês divididos com o otcb e o Prelo, com teto de 50 créditos por execução semanal em anúncios e em leilões (`FIRECRAWL_MAX_CREDITOS_EXECUCAO`). Com 14 bairros, mais prédios disputam o mesmo teto, e a área privativa (e com ela as medianas de m², 11.10 e 11.17) demora mais para aparecer. O plano Hobby (R$ 111/mês, 5.000 créditos) permitiria subir o teto para ~200 por execução e calibrar cerca de quatro vezes mais rápido. Só a variável muda; nenhum código. Gatilho para decidir: quando as medianas por bairro forem prioridade de produto. **Atualização do épico 8.15 (27/11/2026):** a coleta de anúncios passou a ler só o markdown (1 crédito por página) e a extrair os campos com o Claude. O custo caiu de ~23 para ~6 créditos por prédio. No plano gratuito, os 50 créditos semanais passam de ~2 para ~8 prédios por rodada. Com o Hobby e ~4.000 créditos/mês para a coleta (1.000 ficam para outros usos), seriam ~600 a 650 prédios por mês, o que já encosta no teto de 150 prédios por rodada semanal (8.5): os prédios com 50% das vendas (942) em ~1,5 mês, os com 80% (2.696) em ~4,5 meses e todos os 5.763 com venda em ~9 a 10 meses. Para isso, além de `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (~1.000 por rodada semanal), é preciso subir `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` para ~700 (150 prédios × até 5 páginas; o padrão de 150 páginas dá ~35 prédios por rodada). Essa variável hoje vale também para os PDFs de leilão, que usam o Sonnet e custam mais; separar o teto por rotina é uma decisão a tomar junto.
 
 ---
 

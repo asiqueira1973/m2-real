@@ -1,6 +1,7 @@
 # Rotina "coleta-anuncios" (seção 4.4): toda segunda, 05:40 em São Paulo (08:40 UTC), e manual.
 # Teto do Firecrawl por execução na variável FIRECRAWL_MAX_CREDITOS_EXECUCAO (50, decisão do
-# usuário em 22/11/2026: plano grátis dividido com outros apps). Depois, calibração.
+# usuário em 22/11/2026: plano grátis dividido com outros apps). Épico 8.15: o Firecrawl lê só o
+# markdown e o Claude extrai os campos; teto de páginas em CLAUDE_MAX_DOCUMENTOS_EXECUCAO. Depois, calibração.
 name: coleta-anuncios
 on:
   schedule:
@@ -18,7 +19,9 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       FIRECRAWL_MAX_CREDITOS_EXECUCAO: ${{ vars.FIRECRAWL_MAX_CREDITOS_EXECUCAO }}
+      CLAUDE_MAX_DOCUMENTOS_EXECUCAO: ${{ vars.CLAUDE_MAX_DOCUMENTOS_EXECUCAO }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

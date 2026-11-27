@@ -1,12 +1,14 @@
 /**
  * Rotina coleta-anuncios (seção 4.4; épico 8.5).
  * Fluxo: prioridade (11.13) → até 150 prédios → busca restrita à allowlist → até 5 páginas por
- * prédio raspadas com o schema da 13.3 → allowlist de campos → casamento (11.8) → gravação →
- * ultima_coleta_em. Para no teto de créditos e conclui (seção 17); prédio com erro de API é pulado
+ * prédio lidas só em markdown (1 crédito; épico 8.15) → campos da 13.3 extraídos pelo Claude →
+ * allowlist de campos → casamento (11.8) → gravação → ultima_coleta_em. Para de ler páginas no
+ * teto CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17). Para no teto de créditos e conclui (seção 17); prédio com erro de API é pulado
  * sem atualizar ultima_coleta_em (seção 12). Execução registrada com fonte "anuncio" (runRoutine).
  */
+import Anthropic, { AnthropicError } from "@anthropic-ai/sdk";
 import type { M2Client } from "@m2-real/db/server";
-import { CASAMENTO_SIMILARIDADE_MINIMA, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
+import { CASAMENTO_SIMILARIDADE_MINIMA, CLAUDE_MAX_DOCUMENTOS_PADRAO, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
 import { fetchAllPages } from "../calibracao/dados.js";
 import { decadeOf, groupFor, type FatorReferencia } from "../calibracao/fatores.js";
 import { loadReferenceFactors } from "../calibracao/plantas.js";
@@ -14,8 +16,9 @@ import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
 import { casarAnuncio, type Casamento, type PlantaDoPredio } from "./casamento.js";
 import { allowedDomain, siteFilter } from "./dominios.js";
-import { CAMPOS_EXTRAIDOS, checkTotalArea, PROMPT_ANUNCIO, SCHEMA_ANUNCIO, toAnuncio, type AnuncioExtraido } from "./extracao.js";
+import { CAMPOS_EXTRAIDOS, checkTotalArea, type AnuncioExtraido } from "./extracao.js";
 import { createFirecrawl, ErroFirecrawl, TetoDeCreditos, type Firecrawl } from "./firecrawl.js";
+import { isDiscardableReadError, lerAnuncio, type LeitorClaude } from "./leitor.js";
 import { collectionPriority, pickBuildings, type SeloPlanta } from "./prioridade.js";
 
 /** Colunas de m2_anuncios que a coleta grava (7.2). O teste confere que a linha não tem outras. */
@@ -26,10 +29,15 @@ export const COLUNAS_ANUNCIO = [
 
 export interface ColetaOptions {
   apiKey: string;
+  /** ANTHROPIC_API_KEY (épico 8.15: a extração da 13.3 é do Claude). */
+  anthropicApiKey?: string;
   maxCreditos?: number;
+  /** CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17): páginas lidas pelo Claude por execução. */
+  maxDocumentos?: number;
   /** chave_predio de um prédio específico (testes e evidência do critério). */
   predio?: string;
   firecrawl?: Firecrawl;
+  claude?: LeitorClaude;
   agora?: () => Date;
 }
 
@@ -86,7 +94,10 @@ export function searchQuery(p: PredioAlvo): string {
 export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
   const agora = opts.agora ?? (() => new Date());
   const maxCreditos = opts.maxCreditos ?? FIRECRAWL_MAX_CREDITOS_PADRAO;
+  const maxDocumentos = opts.maxDocumentos ?? CLAUDE_MAX_DOCUMENTOS_PADRAO;
   const fc = opts.firecrawl ?? createFirecrawl({ apiKey: opts.apiKey, maxCreditos });
+  let claude = opts.claude;
+  const leitor = (): LeitorClaude => (claude ??= new Anthropic({ apiKey: opts.anthropicApiKey }));
 
   return runRoutine(supabaseExecutionStore(db), "coleta-anuncios", "anuncio", null, async (exec) => {
     const alvos = opts.predio ? await buildingByKey(db, opts.predio) : await prioritizedBuildings(db, agora());
@@ -99,16 +110,32 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
     let concluidos = 0;
     let pulados = 0;
     let parouNoTeto = false;
+    let parouNoTetoClaude = false;
 
     for (const alvo of alvos) {
       try {
+        if (paginas >= maxDocumentos) throw new TetoDeDocumentos(); // seção 17: nem a busca é paga
         const resultados = await fc.buscar(searchQuery(alvo), COLETA_RESULTADOS_POR_PREDIO);
         for (const r of resultados) {
           const dominio = allowedDomain(r.url);
           if (!dominio) { descartados++; continue; } // fora da allowlist: nunca é raspado
-          const { json, markdown } = await fc.extrairComTexto(r.url, SCHEMA_ANUNCIO, PROMPT_ANUNCIO);
+          // Seção 17: no teto de páginas do Claude a rodada para como no teto de créditos (o prédio
+          // fica sem ultima_coleta_em e volta na próxima).
+          if (paginas >= maxDocumentos) throw new TetoDeDocumentos();
+          const markdown = await fc.lerMarkdown(r.url); // 8.15: só o markdown, 1 crédito
           paginas++; // só conta depois do scrape: se o teto parar a rodada aqui, a página não foi raspada
-          const anuncio = checkTotalArea(toAnuncio(json), markdown); // 13.3: área total nunca vira área privativa
+          let extraido: AnuncioExtraido | null;
+          try {
+            extraido = await lerAnuncio(leitor(), markdown);
+          } catch (erro) {
+            // Erro permanente da API (4xx que não seja 408/409/429) ou saída inválida: descarta só a
+            // página. Erro transitório sobe e pula o prédio, que volta na próxima rodada (seção 12).
+            if (!isDiscardableReadError(erro)) throw erro;
+            console.warn(`Página ignorada pela Claude API (${r.url}): ${(erro as Error).message}`);
+            descartados++;
+            continue;
+          }
+          const anuncio = checkTotalArea(extraido, markdown); // 13.3: área total nunca vira área privativa
           if (!anuncio) { descartados++; continue; } // "outro" ou sem área (13.3; seção 12)
           const casamento = await matchAd(db, anuncio, fatores);
           if ((await saveAd(db, buildAnuncioRow(r.url, dominio, exec.id, anuncio, casamento, agora()))) === "gravado") gravados++;
@@ -121,19 +148,28 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
         concluidos++;
       } catch (erro) {
         if (erro instanceof TetoDeCreditos) { parouNoTeto = true; break; }
-        if (erro instanceof ErroFirecrawl) { pulados++; console.warn(`Prédio ${alvo.id} pulado: ${erro.message}`); continue; }
+        if (erro instanceof TetoDeDocumentos) { parouNoTetoClaude = true; break; }
+        if (erro instanceof ErroFirecrawl || erro instanceof AnthropicError) {
+          pulados++;
+          console.warn(`Prédio ${alvo.id} pulado: ${(erro as Error).message}`);
+          continue;
+        }
         throw erro;
       }
     }
 
     console.log(
       `Coleta de anúncios: ${concluidos} de ${alvos.length} prédios coletados, ${pulados} pulados por erro da API; ` +
-        `${paginas} páginas raspadas, ${gravados} gravadas, ${descartados} descartadas; ` +
-        `créditos usados: ${fc.creditosUsados()} de ${maxCreditos}${parouNoTeto ? " (parou no teto)" : ""}.`,
+        `${paginas} páginas raspadas e lidas pelo Claude (teto ${maxDocumentos}${parouNoTetoClaude ? ", parou no teto" : ""}), ` +
+        `${gravados} gravadas, ${descartados} descartadas; ` +
+        `créditos do Firecrawl: ${fc.creditosUsados()} de ${maxCreditos}${parouNoTeto ? " (parou no teto)" : ""}.`,
     );
     return { linhasLidas: paginas, linhasGravadas: gravados, linhasDescartadas: descartados };
   });
 }
+
+/** Teto CLAUDE_MAX_DOCUMENTOS_EXECUCAO atingido (seção 17): a rodada para e conclui. */
+class TetoDeDocumentos extends Error {}
 
 /** Prédio pela chave (opção --predio). */
 async function buildingByKey(db: M2Client, chave: string): Promise<PredioAlvo[]> {

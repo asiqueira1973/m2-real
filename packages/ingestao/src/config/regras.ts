@@ -196,6 +196,18 @@ export const FIRECRAWL_CUSTO_BUSCA = 2;
 /** Custo previsto de um scrape com extração JSON (créditos), idem. */
 export const FIRECRAWL_CUSTO_SCRAPE = 5;
 
+/** Épico 8.15: custo previsto de um scrape só com markdown (créditos), idem. A extração sai do Claude. */
+export const FIRECRAWL_CUSTO_SCRAPE_MARKDOWN = 1;
+
+/** Épico 8.15 / 13.3: o markdown do anúncio enviado ao Claude é cortado neste tamanho (limita tokens e custo). */
+export const ANUNCIO_MARKDOWN_MAX_CARACTERES = 12_000;
+
+/** Limite técnico: tokens de saída da extração do anúncio (a resposta é só o JSON da 13.3). */
+export const ANUNCIO_MAX_TOKENS_RESPOSTA = 1024;
+
+/** Épico 8.15 / seção 4.2: extração dos anúncios com o Haiku (texto curto, campos simples). */
+export const MODELO_EXTRACAO_ANUNCIO = "claude-haiku-4-5";
+
 // ---------------------------------------------------------------------------
 // Épico 8.5.1 — editais de leilão (regras 11.19 e 11.20; seções 4.2, 17 e 18.4; assunção A10).
 // ---------------------------------------------------------------------------

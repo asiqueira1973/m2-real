@@ -1,27 +1,29 @@
 /**
  * Extração de anúncios e páginas de condomínio (épico 8.5; seção 13.3; princípio 4).
- * O schema pede só os campos da 13.3; a resposta passa por uma ALLOWLIST positiva antes de virar
+ * O schema pede só os campos da 13.3 (desde o 8.15, saída estruturada do Claude sobre o markdown);
+ * a resposta passa por uma ALLOWLIST positiva antes de virar
  * linha de m2_anuncios: qualquer chave fora da lista é ignorada (hook guard-coleta.sh e teste).
  */
+import { z } from "zod";
 
-/** Schema de extração da 13.3 (a regra "área útil/privativa, nunca área total" vai no prompt). */
-export const SCHEMA_ANUNCIO = {
-  type: "object",
-  properties: {
-    tipo_pagina: { type: "string", enum: ["anuncio", "pagina_condominio", "outro"] },
-    logradouro: { type: "string" },
-    numero: { type: "integer" },
-    nome_condominio: { type: "string" },
-    finalidade: { type: "string", enum: ["venda", "aluguel"] },
-    area_privativa_m2: { type: "number" },
-    area_privativa_min_m2: { type: "number" },
-    area_privativa_max_m2: { type: "number" },
-    quartos: { type: "integer" },
-    vagas: { type: "integer" },
-    andar: { type: "integer" },
-    preco: { type: "number" },
-  },
-} as const;
+/**
+ * Épico 8.15: o mesmo schema da 13.3 para a extração com o Claude (saída estruturada). Mesmos
+ * campos e enums; tudo anulável, porque a página nem sempre informa.
+ */
+export const SCHEMA_ANUNCIO_CLAUDE = z.object({
+  tipo_pagina: z.enum(["anuncio", "pagina_condominio", "outro"]),
+  logradouro: z.string().nullable(),
+  numero: z.number().int().nullable(),
+  nome_condominio: z.string().nullable(),
+  finalidade: z.enum(["venda", "aluguel"]).nullable(),
+  area_privativa_m2: z.number().nullable(),
+  area_privativa_min_m2: z.number().nullable(),
+  area_privativa_max_m2: z.number().nullable(),
+  quartos: z.number().int().nullable(),
+  vagas: z.number().int().nullable(),
+  andar: z.number().int().nullable(),
+  preco: z.number().nullable(),
+});
 
 /** Instrução da extração (13.3): só os campos do schema; área útil/privativa, nunca total. */
 export const PROMPT_ANUNCIO =
@@ -29,7 +31,9 @@ export const PROMPT_ANUNCIO =
   "alugar, 'pagina_condominio' para a página de um condomínio/edifício, 'outro' para qualquer outra página. " +
   "area_privativa_m2 é a área útil ou privativa do apartamento; nunca use a área total. Se a página traz área total " +
   "e área útil/privativa, use só a útil/privativa. Se a página do condomínio lista uma faixa de áreas (ex.: 70 a 89 m²), " +
-  "preencha area_privativa_min_m2 e area_privativa_max_m2. preco é o valor pedido (venda ou aluguel). " +
+  "preencha area_privativa_min_m2 e area_privativa_max_m2. Considere só o imóvel ou o condomínio principal da página: " +
+  "ignore listas de outros imóveis ou condomínios (semelhantes, próximos, recomendados). " +
+  "preco é o valor pedido (venda ou aluguel). " +
   "Deixe vazio o que a página não informa.";
 
 /** Campos de m2_anuncios que vêm da extração (7.2). Nenhum outro campo é aceito (princípio 4). */
@@ -65,7 +69,7 @@ export type AnuncioExtraido = {
 
 /**
  * Converte a resposta da extração numa linha de m2_anuncios, só com os campos permitidos.
- * Recebe: o objeto devolvido pelo Firecrawl (qualquer formato). Devolve: os campos de
+ * Recebe: o objeto devolvido pela extração (qualquer formato). Devolve: os campos de
  * CAMPOS_EXTRAIDOS, ou nulo se a página for "outro" (13.3) ou não trouxer nenhum campo de
  * área (seção 12: "página sem nenhum campo de área → não grava").
  */

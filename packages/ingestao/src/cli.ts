@@ -38,6 +38,15 @@ export function parseArgs(argv: readonly string[]): { rotina: Rotina; args: stri
 }
 
 /**
+ * Teto lido de variável de ambiente (seção 17). Recebe: o texto da variável. Devolve: o número, ou
+ * undefined (vale o padrão de regras.ts) se vier vazio, não numérico ou ≤ 0. Um NaN desligaria o teto.
+ */
+export function limitFromEnv(v: string | undefined): number | undefined {
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
  * Lê "--opcao valor" dos argumentos restantes.
  * Recebe: argumentos e o nome da opção (sem "--"). Devolve: o valor ou undefined.
  */
@@ -101,12 +110,19 @@ export async function main(argv: readonly string[]): Promise<number> {
         return 0;
       }
       case "coleta-anuncios": {
-        // Uso: anuncios [--predio <chave_predio>]; teto em FIRECRAWL_MAX_CREDITOS_EXECUCAO (seção 17).
+        // Uso: anuncios [--predio <chave_predio>]; tetos em FIRECRAWL_MAX_CREDITOS_EXECUCAO e
+        // CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17). Épico 8.15: a extração é do Claude.
         const apiKey = process.env.FIRECRAWL_API_KEY;
         if (!apiKey) throw new Error("FIRECRAWL_API_KEY não definida (seção 18.4).");
-        const teto = process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO ? Number(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO) : undefined;
+        if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não definida (seção 18.4).");
         const { runAdsCollection } = await import("./anuncios/rotina.js");
-        await runAdsCollection(createServiceClient(), { apiKey, maxCreditos: teto, predio: option(args, "predio") });
+        await runAdsCollection(createServiceClient(), {
+          apiKey,
+          anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+          maxCreditos: limitFromEnv(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
+          maxDocumentos: limitFromEnv(process.env.CLAUDE_MAX_DOCUMENTOS_EXECUCAO),
+          predio: option(args, "predio"),
+        });
         return 0;
       }
       case "coleta-leiloes": {
@@ -115,15 +131,14 @@ export async function main(argv: readonly string[]): Promise<number> {
         const firecrawlApiKey = process.env.FIRECRAWL_API_KEY;
         if (!firecrawlApiKey) throw new Error("FIRECRAWL_API_KEY não definida (seção 18.4).");
         if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não definida (seção 18.4).");
-        const numero = (v: string | undefined) => (v ? Number(v) : undefined);
         const dominios = process.env.LEILAO_DOMINIOS?.split(",").map((d) => d.trim()).filter(Boolean);
         const { runAuctionCollection } = await import("./leiloes/rotina.js");
         await runAuctionCollection(createServiceClient(), {
           firecrawlApiKey,
           anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-          maxCreditos: numero(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
-          maxAlvos: numero(process.env.LEILAO_MAX_ALVOS_EXECUCAO),
-          maxDocumentos: numero(process.env.CLAUDE_MAX_DOCUMENTOS_EXECUCAO),
+          maxCreditos: limitFromEnv(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
+          maxAlvos: limitFromEnv(process.env.LEILAO_MAX_ALVOS_EXECUCAO),
+          maxDocumentos: limitFromEnv(process.env.CLAUDE_MAX_DOCUMENTOS_EXECUCAO),
           dominios: dominios?.length ? dominios : undefined,
           predio: option(args, "predio"),
         });
