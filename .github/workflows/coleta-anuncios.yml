@@ -15,7 +15,8 @@ permissions:
 jobs:
   anuncios:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Plano Hobby (27/11/2026): ~115 prédios por rodada a ~35 s cada (~70 min) + calibração. 60 min cortava a rodada.
+    timeout-minutes: 150
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
