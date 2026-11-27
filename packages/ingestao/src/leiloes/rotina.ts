@@ -8,7 +8,7 @@
  * O PDF nunca sai da memória: nada aqui escreve em disco nem no Storage (seção 20).
  * Execução registrada com rotina coleta-leiloes e fonte edital_leilao (runRoutine).
  */
-import Anthropic, { AnthropicError, APIError } from "@anthropic-ai/sdk";
+import Anthropic, { AnthropicError } from "@anthropic-ai/sdk";
 import type { M2Client } from "@m2-real/db/server";
 import {
   CASAMENTO_SIMILARIDADE_MINIMA, CLAUDE_MAX_DOCUMENTOS_PADRAO, FIRECRAWL_MAX_CREDITOS_PADRAO, LEILAO_ALVOS_JANELA_MESES,
@@ -17,6 +17,7 @@ import {
 import { fetchAllPages } from "../calibracao/dados.js";
 import { allowedDomain, siteFilter } from "../anuncios/dominios.js";
 import { createFirecrawl, ErroFirecrawl, TetoDeCreditos, type Firecrawl } from "../anuncios/firecrawl.js";
+import { isPermanentApiError } from "../shared/claude.js";
 import { runRoutine, supabaseExecutionStore } from "../shared/execucao.js";
 import { withRetry, type RetryOptions } from "../shared/retry.js";
 import { pickAuctionTargets } from "./alvos.js";
@@ -186,14 +187,6 @@ export async function runAuctionCollection(db: M2Client, opts: ColetaLeiloesOpti
     );
     return { linhasLidas: paginas, linhasGravadas: gravados, linhasDescartadas: descartados };
   });
-}
-
-/**
- * Erro da Claude API que não melhora ao repetir: status 4xx, menos 408 (tempo), 409 e 429 (limite).
- * Recebe: o erro. Devolve: verdadeiro se for permanente.
- */
-function isPermanentApiError(erro: unknown): boolean {
-  return erro instanceof APIError && typeof erro.status === "number" && erro.status >= 400 && erro.status < 500 && ![408, 409, 429].includes(erro.status);
 }
 
 /** Link absoluto (http/https) a partir do link da página, ou nulo. */

@@ -6,7 +6,7 @@
  * - robots.txt: o Firecrawl respeita por padrão; nenhuma opção aqui muda isso (seção 20).
  * fetch e a espera são injetáveis para os testes rodarem sem rede.
  */
-import { FIRECRAWL_CUSTO_BUSCA, FIRECRAWL_CUSTO_SCRAPE, FIRECRAWL_ESPERAS_S } from "../config/regras.js";
+import { FIRECRAWL_CUSTO_BUSCA, FIRECRAWL_CUSTO_SCRAPE, FIRECRAWL_CUSTO_SCRAPE_MARKDOWN, FIRECRAWL_ESPERAS_S } from "../config/regras.js";
 
 const BASE = "https://api.firecrawl.dev/v2";
 
@@ -79,22 +79,21 @@ export function createFirecrawl(deps: FirecrawlDeps) {
     },
 
     /**
-     * Raspa uma página com extração JSON (13.3). Recebe: URL, schema e prompt.
+     * Raspa só o markdown da página (épico 8.15: 1 crédito; a extração da 13.3 é feita pelo Claude).
+     * Recebe: URL. Devolve: o markdown (vazio se a API não trouxer).
+     */
+    async lerMarkdown(url: string): Promise<string> {
+      const json = await chamar("/scrape", { url, formats: ["markdown"], onlyMainContent: true }, FIRECRAWL_CUSTO_SCRAPE_MARKDOWN);
+      return (json.data as { markdown?: string } | undefined)?.markdown ?? "";
+    },
+
+    /**
+     * Raspa uma página com extração JSON (13.3; editais de leilão). Recebe: URL, schema e prompt.
      * Devolve: o objeto extraído (data.json), ou nulo se a API não trouxer extração.
      */
     async extrair(url: string, schema: unknown, prompt: string): Promise<unknown> {
       const json = await chamar("/scrape", { url, formats: [{ type: "json", schema, prompt }], onlyMainContent: true }, FIRECRAWL_CUSTO_SCRAPE);
       return (json.data as { json?: unknown } | undefined)?.json ?? null;
-    },
-
-    /**
-     * Igual a extrair, pedindo também o markdown da página (para a checagem "área total × útil"
-     * da 13.3, em extracao.ts). Recebe: URL, schema e prompt. Devolve: { json, markdown }.
-     */
-    async extrairComTexto(url: string, schema: unknown, prompt: string): Promise<{ json: unknown; markdown: string }> {
-      const json = await chamar("/scrape", { url, formats: [{ type: "json", schema, prompt }, "markdown"], onlyMainContent: true }, FIRECRAWL_CUSTO_SCRAPE);
-      const data = json.data as { json?: unknown; markdown?: string } | undefined;
-      return { json: data?.json ?? null, markdown: data?.markdown ?? "" };
     },
   };
 }

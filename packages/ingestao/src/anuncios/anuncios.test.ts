@@ -150,47 +150,199 @@ describe("cliente do Firecrawl: teto de créditos e tentativas (seções 12 e 17
 // Bug da 1ª rodada real com teto (22/11/2026): "11 páginas raspadas, 10 gravadas, 0 descartadas".
 // A página era contada antes do scrape; quando o teto parava a rodada naquela chamada, ficava
 // contada sem ter sido raspada. Raspada = scrape feito: lidas = gravadas + descartadas depois do scrape.
+import { AnthropicError, APIError } from "@anthropic-ai/sdk";
+import { ANUNCIO_MARKDOWN_MAX_CARACTERES } from "../config/regras.js";
+import { lerAnuncio, trimMarkdown, type LeitorClaude } from "./leitor.js";
 import { runAdsCollection } from "./rotina.js";
+
+// Épico 8.15 (mudança de especificação declarada no plano): o scrape pede só o markdown (1 crédito)
+// e a extração da 13.3 é do Claude. O teste do teto foi refeito para esse caminho.
+const fakeDb = (aoConcluir: (r: { linhasLidas: number; linhasGravadas: number; linhasDescartadas: number }) => void, atualizados: string[] = []) => {
+  const tabela = (t: string) => {
+    const q: Record<string, unknown> = {};
+    const encadear = () => q;
+    Object.assign(q, {
+      select: encadear, eq: encadear, gte: encadear, in: encadear, ilike: encadear, not: encadear, limit: encadear, order: encadear, upsert: encadear, lt: encadear,
+      update: (linha: Record<string, unknown>) => { if (t === "m2_predios" && "ultima_coleta_em" in linha) atualizados.push(t); return q; },
+      insert: () => ({ select: () => ({ single: async () => ({ data: { id: "e1" }, error: null }) }) }),
+      maybeSingle: async () => ({ data: { id: "p1", logradouro: "RUA X", numero: 1, bairro: { nome: "Pinheiros" }, casado_manual: false }, error: null }),
+      single: async () => ({ data: { fator_predio: null }, error: null }),
+      then: (ok: (v: unknown) => void) => ok({ data: [], error: null }),
+    });
+    return q;
+  };
+  return {
+    from: (t: string) => {
+      const q = tabela(t);
+      if (t === "m2_execucoes_ingestao") {
+        (q as { update: unknown }).update = (linha: Record<string, unknown>) => {
+          if (linha.status === "concluida") aoConcluir({ linhasLidas: linha.linhas_lidas as number, linhasGravadas: linha.linhas_gravadas as number, linhasDescartadas: linha.linhas_descartadas as number });
+          const fim = { data: [], error: null };
+          const eq = () => ({ lt: () => ({ select: async () => fim }), then: (ok: (v: unknown) => void) => ok(fim) });
+          return { eq };
+        };
+      }
+      return q;
+    },
+    rpc: async () => ({ data: [], error: null }),
+  } as unknown as Parameters<typeof runAdsCollection>[0];
+};
+
+/** Firecrawl falso: a busca devolve `urls`; o scrape devolve um markdown e registra o corpo pedido. */
+const fakeFirecrawl = (maxCreditos: number, urls: string[], corpos: unknown[] = []) =>
+  createFirecrawl({
+    apiKey: "k", maxCreditos, esperar: async () => {},
+    fetch: async (url, init) => {
+      if (String(url).endsWith("/search")) return new Response(JSON.stringify({ creditsUsed: 2, data: { web: urls.map((u) => ({ url: u })) } }), { status: 200 });
+      corpos.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ data: { markdown: "Condomínio Edifício Mondrian, R Joaquim Antunes 577. Área útil 94 m².", metadata: { creditsUsed: 1 } } }), { status: 200 });
+    },
+  });
+
+/** Claude falso: cada chamada executa `resposta` (devolve a saída ou lança o erro). */
+const fakeClaude = (resposta: () => unknown, chamadas: unknown[] = []) =>
+  ({ messages: { parse: async (corpo: unknown) => { chamadas.push(corpo); return resposta(); } } }) as unknown as LeitorClaude;
+const saidaMondrian = () => ({ stop_reason: "end_turn", parsed_output: LOPES_MONDRIAN });
+const LOPES = ["a", "b", "c"].map((x) => `https://www.lopes.com.br/${x}`);
 
 describe("coleta: contagem da execução quando o teto para a rodada no meio do prédio", () => {
   it("página não raspada por causa do teto não conta como lida", async () => {
-    let resultado: { linhasLidas: number; linhasGravadas: number; linhasDescartadas: number } | null = null;
-    const tabela = () => {
-      const q: Record<string, unknown> = {};
-      const encadear = () => q;
-      Object.assign(q, {
-        select: encadear, eq: encadear, ilike: encadear, not: encadear, limit: encadear, order: encadear, update: encadear, upsert: encadear, lt: encadear,
-        insert: () => ({ select: () => ({ single: async () => ({ data: { id: "e1" }, error: null }) }) }),
-        maybeSingle: async () => ({ data: { id: "p1", logradouro: "RUA X", numero: 1, bairro: { nome: "Pinheiros" }, casado_manual: false }, error: null }),
-        single: async () => ({ data: { fator_predio: null }, error: null }),
-        then: (ok: (v: unknown) => void) => ok({ data: [], error: null }),
-      });
-      return q;
+    let resultado: unknown = null;
+    // Teto de 4: busca (2) + 2 scrapes de markdown (2) cabem; o 3º scrape não.
+    const fc = fakeFirecrawl(4, LOPES);
+    await runAdsCollection(fakeDb((r) => (resultado = r)), { apiKey: "k", firecrawl: fc, claude: fakeClaude(saidaMondrian), predio: "001-001-01-1" });
+    expect(resultado).toEqual({ linhasLidas: 2, linhasGravadas: 2, linhasDescartadas: 0 });
+    expect(fc.creditosUsados()).toBe(4);
+  });
+});
+
+describe("épico 8.15: scrape só em markdown e extração pelo Claude", () => {
+  it("o scrape pede só markdown e conteúdo principal; cada página custa 1 crédito", async () => {
+    const corpos: Record<string, unknown>[] = [];
+    const fc = fakeFirecrawl(100, LOPES, corpos);
+    const chamadas: Record<string, unknown>[] = [];
+    let resultado: unknown = null;
+    await runAdsCollection(fakeDb((r) => (resultado = r)), { apiKey: "k", firecrawl: fc, claude: fakeClaude(saidaMondrian, chamadas), predio: "001-001-01-1" });
+    expect(corpos).toHaveLength(3);
+    for (const c of corpos) expect(c).toEqual({ url: expect.any(String), formats: ["markdown"], onlyMainContent: true });
+    expect(fc.creditosUsados()).toBe(2 + 3); // busca + 3 páginas
+    expect(chamadas).toHaveLength(3);
+    expect(chamadas[0]).toMatchObject({ model: "claude-haiku-4-5" });
+    expect(resultado).toEqual({ linhasLidas: 3, linhasGravadas: 3, linhasDescartadas: 0 });
+  });
+
+  it("teto de páginas do Claude (CLAUDE_MAX_DOCUMENTOS_EXECUCAO): para sem raspar a página seguinte e sem marcar o prédio", async () => {
+    const corpos: unknown[] = [];
+    const atualizados: string[] = [];
+    let resultado: unknown = null;
+    await runAdsCollection(fakeDb((r) => (resultado = r), atualizados), {
+      apiKey: "k", firecrawl: fakeFirecrawl(100, LOPES, corpos), claude: fakeClaude(saidaMondrian), maxDocumentos: 2, predio: "001-001-01-1",
+    });
+    expect(corpos).toHaveLength(2);
+    expect(atualizados).toEqual([]);
+    expect(resultado).toEqual({ linhasLidas: 2, linhasGravadas: 2, linhasDescartadas: 0 });
+  });
+
+  it("erro permanente da Claude API (400) descarta só a página; o prédio é concluído", async () => {
+    let n = 0;
+    const atualizados: string[] = [];
+    let resultado: unknown = null;
+    const claude = fakeClaude(() => { if (++n === 1) throw new APIError(400, { type: "error" }, "invalid_request", new Headers()); return saidaMondrian(); });
+    await runAdsCollection(fakeDb((r) => (resultado = r), atualizados), { apiKey: "k", firecrawl: fakeFirecrawl(100, LOPES), claude, predio: "001-001-01-1" });
+    expect(resultado).toEqual({ linhasLidas: 3, linhasGravadas: 2, linhasDescartadas: 1 });
+    expect(atualizados).toEqual(["m2_predios"]);
+  });
+
+  it("saída estruturada inválida (erro do SDK sem status) descarta só a página, sem travar o prédio", async () => {
+    let n = 0;
+    const atualizados: string[] = [];
+    let resultado: unknown = null;
+    const claude = fakeClaude(() => { if (++n === 1) throw new AnthropicError("Failed to parse structured output"); return saidaMondrian(); });
+    await runAdsCollection(fakeDb((r) => (resultado = r), atualizados), { apiKey: "k", firecrawl: fakeFirecrawl(100, LOPES), claude, predio: "001-001-01-1" });
+    expect(resultado).toEqual({ linhasLidas: 3, linhasGravadas: 2, linhasDescartadas: 1 });
+    expect(atualizados).toEqual(["m2_predios"]);
+  });
+
+  it("no teto de páginas, o prédio seguinte nem faz a busca (não gasta créditos)", async () => {
+    const urls: string[] = [];
+    const fc = createFirecrawl({
+      apiKey: "k", maxCreditos: 100, esperar: async () => {},
+      fetch: async (url) => {
+        urls.push(String(url));
+        if (String(url).endsWith("/search")) return new Response(JSON.stringify({ creditsUsed: 2, data: { web: LOPES.slice(0, 2).map((u) => ({ url: u })) } }), { status: 200 });
+        return new Response(JSON.stringify({ data: { markdown: "Área útil 94 m²", metadata: { creditsUsed: 1 } } }), { status: 200 });
+      },
+    });
+    // Dois prédios-alvo pela prioridade (11.13): com o teto de 2 páginas, o primeiro esgota o teto e o segundo não busca.
+    const base = fakeDb(() => {});
+    const dados: Record<string, unknown[]> = {
+      m2_vendas_consolidadas: [{ id: "v1", predio_id: "p1" }, { id: "v2", predio_id: "p2" }],
+      m2_plantas: [],
+      m2_predios: ["p1", "p2"].map((id) => ({ id, logradouro: "RUA X", numero: 1, ultima_coleta_em: null, bairro: { nome: "Pinheiros" } })),
     };
     const db = {
+      ...base,
       from: (t: string) => {
-        const q = tabela();
-        if (t === "m2_execucoes_ingestao") {
-          (q as { update: unknown }).update = (linha: Record<string, unknown>) => {
-            if (linha.status === "concluida") resultado = { linhasLidas: linha.linhas_lidas as number, linhasGravadas: linha.linhas_gravadas as number, linhasDescartadas: linha.linhas_descartadas as number };
-            const fim = { data: [], error: null };
-            const eq = () => ({ lt: () => ({ select: async () => fim }), then: (ok: (v: unknown) => void) => ok(fim) });
-            return { eq };
-          };
-        }
+        const q = base.from(t as never) as unknown as Record<string, unknown>;
+        if (t in dados) q.range = async () => ({ data: dados[t], error: null });
         return q;
       },
-      rpc: async () => ({ data: [], error: null }),
     } as unknown as Parameters<typeof runAdsCollection>[0];
-    // Teto de 12: busca (2) + 2 scrapes (10) cabem; o 3º scrape não.
-    const fc = createFirecrawl({
-      apiKey: "k", maxCreditos: 12, esperar: async () => {},
-      fetch: async (url) => new Response(JSON.stringify(String(url).endsWith("/search")
-        ? { creditsUsed: 2, data: { web: ["a", "b", "c"].map((x) => ({ url: `https://www.lopes.com.br/${x}` })) } }
-        : { data: { json: LOPES_MONDRIAN, metadata: { creditsUsed: 5 } } }), { status: 200 }),
-    });
-    await runAdsCollection(db, { apiKey: "k", firecrawl: fc, predio: "001-001-01-1" });
-    expect(resultado).toEqual({ linhasLidas: 2, linhasGravadas: 2, linhasDescartadas: 0 });
+    await runAdsCollection(db, { apiKey: "k", firecrawl: fc, claude: fakeClaude(saidaMondrian), maxDocumentos: 2 });
+    expect(urls.filter((u) => u.endsWith("/search"))).toHaveLength(1);
+    expect(fc.creditosUsados()).toBe(4);
+  });
+
+  it("erro transitório da Claude API (529) pula o prédio sem marcar ultima_coleta_em (seção 12)", async () => {
+    const atualizados: string[] = [];
+    let resultado: unknown = null;
+    const claude = fakeClaude(() => { throw new APIError(529, { type: "error" }, "overloaded", new Headers()); });
+    await runAdsCollection(fakeDb((r) => (resultado = r), atualizados), { apiKey: "k", firecrawl: fakeFirecrawl(100, LOPES), claude, predio: "001-001-01-1" });
+    expect(atualizados).toEqual([]);
+    expect(resultado).toEqual({ linhasLidas: 1, linhasGravadas: 0, linhasDescartadas: 0 });
+  });
+});
+
+describe("lerAnuncio (épico 8.15; 13.3)", () => {
+  it("saída válida passa pela allowlist: chaves extras somem", async () => {
+    const claude = fakeClaude(() => ({ stop_reason: "end_turn", parsed_output: { ...LOPES_MONDRIAN, corretor: "x", telefone: "1" } }));
+    const a = await lerAnuncio(claude, "texto");
+    expect(a).toEqual(toAnuncio(LOPES_MONDRIAN));
+    expect(Object.keys(a!)).not.toContain("corretor");
+  });
+  it("recusa, saída vazia e markdown vazio → nulo (sem chamar o Claude no vazio)", async () => {
+    expect(await lerAnuncio(fakeClaude(() => ({ stop_reason: "refusal", parsed_output: null })), "texto")).toBeNull();
+    expect(await lerAnuncio(fakeClaude(() => ({ stop_reason: "end_turn", parsed_output: null })), "texto")).toBeNull();
+    const chamadas: unknown[] = [];
+    expect(await lerAnuncio(fakeClaude(saidaMondrian, chamadas), "   ")).toBeNull();
+    expect(chamadas).toHaveLength(0);
+  });
+  it("markdown é cortado em ANUNCIO_MARKDOWN_MAX_CARACTERES", async () => {
+    const chamadas: { messages: { content: { text: string }[] }[] }[] = [];
+    await lerAnuncio(fakeClaude(saidaMondrian, chamadas as unknown[]), "x".repeat(ANUNCIO_MARKDOWN_MAX_CARACTERES + 500));
+    const texto = chamadas[0]!.messages[0]!.content[0]!.text;
+    expect(texto.match(/x/g)).toHaveLength(ANUNCIO_MARKDOWN_MAX_CARACTERES);
+    expect(trimMarkdown("curto")).toBe("curto");
+  });
+  it("erro da API sobe para a rotina decidir", async () => {
+    await expect(lerAnuncio(fakeClaude(() => { throw new Error("rede"); }), "texto")).rejects.toThrow("rede");
+  });
+});
+
+describe("lerMarkdown no cliente do Firecrawl", () => {
+  it("custo previsto de 1 crédito respeita o teto", async () => {
+    const fc = createFirecrawl({ apiKey: "k", maxCreditos: 1, esperar: async () => {}, fetch: async () => new Response(JSON.stringify({ data: { markdown: "m" } }), { status: 200 }) });
+    expect(await fc.lerMarkdown("https://lopes.com.br/x")).toBe("m");
+    expect(fc.creditosUsados()).toBe(1);
+    await expect(fc.lerMarkdown("https://lopes.com.br/y")).rejects.toBeInstanceOf(TetoDeCreditos);
+  });
+  it("429 repete com as esperas e depois desiste; resposta sem markdown → texto vazio", async () => {
+    const esperas: number[] = [];
+    const fc = createFirecrawl({ apiKey: "k", maxCreditos: 100, fetch: async () => new Response("", { status: 429 }), esperar: async (ms) => { esperas.push(ms); } });
+    await expect(fc.lerMarkdown("https://lopes.com.br/x")).rejects.toBeInstanceOf(ErroFirecrawl);
+    expect(esperas).toEqual([10_000, 30_000, 90_000]);
+    const vazio = createFirecrawl({ apiKey: "k", maxCreditos: 100, esperar: async () => {}, fetch: async () => new Response(JSON.stringify({ data: {} }), { status: 200 }) });
+    expect(await vazio.lerMarkdown("https://lopes.com.br/x")).toBe("");
   });
 });
 
@@ -256,5 +408,26 @@ describe("13.3: área total nunca vira área privativa (página de exemplo salva
   });
   it("página sem 'área total' não é tocada (ex.: página real da Lopes do Mondrian)", () => {
     expect(checkTotalArea(toAnuncio(LOPES_MONDRIAN), "Área privativa 94 a 100 m²")?.area_privativa).toBe(94);
+  });
+});
+
+describe("épico 8.15: fixtures reais no caminho markdown → Claude → checagem da 13.3", () => {
+  const fixture = (nome: string) => readFileSync(join(import.meta.dirname, "..", "..", "fixtures", nome), "utf8");
+
+  it("Lopes do Mondrian (Joaquim Antunes, 577): o texto enviado ao Claude mantém endereço e área, sem sintaxe de imagem nem URLs (a extração em si foi validada com o Claude real no plano 8.15)", async () => {
+    const pagina = fixture("anuncio-lopes-mondrian.md");
+    const enviado = trimMarkdown(pagina);
+    expect(enviado).toContain("R Joaquim Antunes, 577");
+    expect(enviado).toContain("94m²");
+    expect(enviado).toContain("em R Joaquim Antunes, no bairro");
+    expect(enviado).not.toMatch(/https?:|!\[/);
+    const a = checkTotalArea(await lerAnuncio(fakeClaude(saidaMondrian), pagina), pagina);
+    expect(a).toMatchObject({ area_privativa: 94, numero_extraido: 577 });
+  });
+
+  it("se o Claude pegar a área total (132), a checagem da 13.3 troca pela útil (87)", async () => {
+    const pagina = fixture("anuncio-area-total-e-util.md");
+    const claude = fakeClaude(() => ({ stop_reason: "end_turn", parsed_output: { ...LOPES_MONDRIAN, tipo_pagina: "anuncio", area_privativa_m2: 132, area_privativa_min_m2: null, area_privativa_max_m2: null } }));
+    expect(checkTotalArea(await lerAnuncio(claude, pagina), pagina)?.area_privativa).toBe(87);
   });
 });

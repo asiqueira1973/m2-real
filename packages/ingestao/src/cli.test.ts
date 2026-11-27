@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseArgs } from "./cli.js";
+import { limitFromEnv, parseArgs } from "./cli.js";
 import { ROTINAS } from "./config/regras.js";
 
 describe("cli: rotinas da seção 4.4", () => {
@@ -24,5 +24,12 @@ describe("cli: rotinas da seção 4.4", () => {
   it("recusa rotina desconhecida ou ausente, listando as válidas", () => {
     expect(() => parseArgs(["apagar-tudo"])).toThrow(/Rotina inválida.*ingestao-itbi/);
     expect(() => parseArgs([])).toThrow(/Rotina inválida/);
+  });
+});
+
+describe("tetos lidos das variáveis (seção 17)", () => {
+  it("número positivo vale; vazio, texto, zero ou negativo caem no padrão (um NaN desligaria o teto)", () => {
+    expect(limitFromEnv("50")).toBe(50);
+    expect([limitFromEnv(undefined), limitFromEnv(""), limitFromEnv("abc"), limitFromEnv("0"), limitFromEnv("-5")]).toEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 });
