@@ -110,8 +110,9 @@ export async function main(argv: readonly string[]): Promise<number> {
         return 0;
       }
       case "coleta-anuncios": {
-        // Uso: anuncios [--predio <chave_predio>]; tetos em FIRECRAWL_MAX_CREDITOS_EXECUCAO e
-        // CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17). Épico 8.15: a extração é do Claude.
+        // Uso: anuncios [--predio <chave_predio>]; tetos próprios da coleta de anúncios em
+        // ANUNCIO_MAX_CREDITOS_EXECUCAO (sem ela, FIRECRAWL_MAX_CREDITOS_EXECUCAO) e
+        // ANUNCIO_MAX_PAGINAS_EXECUCAO (seção 17). Épico 8.15: separados dos leilões (plano Hobby).
         const apiKey = process.env.FIRECRAWL_API_KEY;
         if (!apiKey) throw new Error("FIRECRAWL_API_KEY não definida (seção 18.4).");
         if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não definida (seção 18.4).");
@@ -119,8 +120,8 @@ export async function main(argv: readonly string[]): Promise<number> {
         await runAdsCollection(createServiceClient(), {
           apiKey,
           anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-          maxCreditos: limitFromEnv(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
-          maxDocumentos: limitFromEnv(process.env.CLAUDE_MAX_DOCUMENTOS_EXECUCAO),
+          maxCreditos: limitFromEnv(process.env.ANUNCIO_MAX_CREDITOS_EXECUCAO) ?? limitFromEnv(process.env.FIRECRAWL_MAX_CREDITOS_EXECUCAO),
+          maxDocumentos: limitFromEnv(process.env.ANUNCIO_MAX_PAGINAS_EXECUCAO),
           predio: option(args, "predio"),
         });
         return 0;

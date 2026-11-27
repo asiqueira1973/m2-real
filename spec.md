@@ -619,7 +619,7 @@ Fluxo: escolher até 150 prédios por prioridade (regra 11.13) → para cada um,
 - [ ] Nenhum campo além dos da tabela `anuncios` é gravado (teste confere as chaves do objeto antes do insert).
 - [ ] Só domínios da allowlist são acessados (teste unitário do filtro).
 - [ ] A execução respeita o limite de créditos por rodada (variável `FIRECRAWL_MAX_CREDITOS_EXECUCAO`) e termina como `concluida`, com o total usado, quando o atinge.
-- [ ] (8.15) A execução respeita o teto de páginas lidas pelo Claude (`CLAUDE_MAX_DOCUMENTOS_EXECUCAO`) do mesmo jeito. Erro permanente da Claude API (4xx que não seja 408/409/429) descarta só a página; erro transitório pula o prédio sem atualizar `ultima_coleta_em`.
+- [ ] (8.15) A execução respeita o teto de páginas lidas pelo Claude (`ANUNCIO_MAX_PAGINAS_EXECUCAO`, padrão 150) do mesmo jeito. Os anúncios têm tetos próprios, separados dos leilões: `ANUNCIO_MAX_CREDITOS_EXECUCAO` (sem ela, vale `FIRECRAWL_MAX_CREDITOS_EXECUCAO`) e `ANUNCIO_MAX_PAGINAS_EXECUCAO`. Erro permanente da Claude API (4xx que não seja 408/409/429) descarta só a página; erro transitório pula o prédio sem atualizar `ultima_coleta_em`.
 - [ ] Prédio coletado tem `ultima_coleta_em` atualizado e não é recoletado antes de 90 dias.
 
 ### 8.5.1 Coleta de editais de leilão
@@ -953,7 +953,7 @@ Rótulos dos selos no painel e no MCP: Confirmada, Calibrada, Indicativa, Estima
 | Volume esperado | ~6 mil prédios, ~150 mil unidades, ~80 mil guias (2021–2026), ~10 mil anúncios/ano, algumas centenas de editais/ano |
 | Armazenamento | caber no plano Supabase Pro (8 GB); os brutos ficam no Storage com retenção de 2 versões por fonte/ano |
 | Custo Firecrawl | teto por execução em `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (padrão 600). Anúncios (8.15): busca de 2 créditos + 1 crédito por página, ~6 por prédio (no máximo 7) |
-| Custo Claude API (leilões e anúncios) | teto de documentos por execução em `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` (padrão 150), contado separadamente em cada rotina. Anúncios: Haiku, ~4 mil tokens de entrada por página, menos de US$ 0,01 |
+| Custo Claude API (leilões e anúncios) | leilões: teto de PDFs por execução em `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` (padrão 150). Anúncios: teto próprio de páginas em `ANUNCIO_MAX_PAGINAS_EXECUCAO` (padrão 150); Haiku, ~4 mil tokens de entrada por página, menos de US$ 0,01 |
 | Navegadores | Chrome, Safari e Edge, versões atuais; desktop (≥ 1280 px); celular só leitura |
 | Idioma | pt-BR |
 | Acessibilidade | contraste AA; foco visível; selos com texto, não só cor |
@@ -1006,7 +1006,8 @@ m2-real/
 | `SUPABASE_SERVICE_ROLE_KEY` | web (servidor), Actions | **secreta** |
 | `GITHUB_TOKEN_DISPATCH`, `GITHUB_REPO` | web (servidor) | **secreta** / não |
 | `FIRECRAWL_API_KEY` | Actions | **secreta** |
-| `FIRECRAWL_MAX_CREDITOS_EXECUCAO` | Actions | não |
+| `FIRECRAWL_MAX_CREDITOS_EXECUCAO` | Actions | não (leilões; anúncios, se `ANUNCIO_MAX_CREDITOS_EXECUCAO` faltar) |
+| `ANUNCIO_MAX_CREDITOS_EXECUCAO`, `ANUNCIO_MAX_PAGINAS_EXECUCAO` | Actions | não (8.15: tetos da coleta de anúncios) |
 | `ANTHROPIC_API_KEY` | Actions | **secreta** |
 | `CLAUDE_MAX_DOCUMENTOS_EXECUCAO`, `LEILAO_MAX_ALVOS_EXECUCAO` | Actions | não |
 | `LEILAO_DOMINIOS` | Actions | não (allowlist, assunção A10) |
@@ -1203,7 +1204,7 @@ O agente de código deve **perguntar em vez de assumir** quando cruzar com estes
 
 **28.7 Desconto de vagas.** Depende de P2.
 
-**28.8 Plano pago do Firecrawl (backlog; decisão adiada pelo usuário em 26/11/2026).** Hoje, no plano gratuito, a coleta usa 1.000 créditos/mês divididos com o otcb e o Prelo, com teto de 50 créditos por execução semanal em anúncios e em leilões (`FIRECRAWL_MAX_CREDITOS_EXECUCAO`). Com 14 bairros, mais prédios disputam o mesmo teto, e a área privativa (e com ela as medianas de m², 11.10 e 11.17) demora mais para aparecer. O plano Hobby (R$ 111/mês, 5.000 créditos) permitiria subir o teto para ~200 por execução e calibrar cerca de quatro vezes mais rápido. Só a variável muda; nenhum código. Gatilho para decidir: quando as medianas por bairro forem prioridade de produto. **Atualização do épico 8.15 (27/11/2026):** a coleta de anúncios passou a ler só o markdown (1 crédito por página) e a extrair os campos com o Claude. O custo caiu de ~23 para ~6 créditos por prédio. No plano gratuito, os 50 créditos semanais passam de ~2 para ~8 prédios por rodada. Com o Hobby e ~4.000 créditos/mês para a coleta (1.000 ficam para outros usos), seriam ~600 a 650 prédios por mês, o que já encosta no teto de 150 prédios por rodada semanal (8.5): os prédios com 50% das vendas (942) em ~1,5 mês, os com 80% (2.696) em ~4,5 meses e todos os 5.763 com venda em ~9 a 10 meses. Para isso, além de `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (~1.000 por rodada semanal), é preciso subir `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` para ~700 (150 prédios × até 5 páginas; o padrão de 150 páginas dá ~35 prédios por rodada). Essa variável hoje vale também para os PDFs de leilão, que usam o Sonnet e custam mais; separar o teto por rotina é uma decisão a tomar junto.
+**28.8 Plano pago do Firecrawl (backlog; decisão adiada pelo usuário em 26/11/2026).** Hoje, no plano gratuito, a coleta usa 1.000 créditos/mês divididos com o otcb e o Prelo, com teto de 50 créditos por execução semanal em anúncios e em leilões (`FIRECRAWL_MAX_CREDITOS_EXECUCAO`). Com 14 bairros, mais prédios disputam o mesmo teto, e a área privativa (e com ela as medianas de m², 11.10 e 11.17) demora mais para aparecer. O plano Hobby (R$ 111/mês, 5.000 créditos) permitiria subir o teto para ~200 por execução e calibrar cerca de quatro vezes mais rápido. Só a variável muda; nenhum código. Gatilho para decidir: quando as medianas por bairro forem prioridade de produto. **Atualização do épico 8.15 (27/11/2026):** a coleta de anúncios passou a ler só o markdown (1 crédito por página) e a extrair os campos com o Claude. O custo caiu de ~23 para ~6 créditos por prédio. No plano gratuito, os 50 créditos semanais passam de ~2 para ~8 prédios por rodada. Com o Hobby e ~4.000 créditos/mês para a coleta (1.000 ficam para outros usos), seriam ~600 a 650 prédios por mês, o que já encosta no teto de 150 prédios por rodada semanal (8.5): os prédios com 50% das vendas (942) em ~1,5 mês, os com 80% (2.696) em ~4,5 meses e todos os 5.763 com venda em ~9 a 10 meses. Para isso, além de `FIRECRAWL_MAX_CREDITOS_EXECUCAO` (~1.000 por rodada semanal), é preciso subir `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` para ~700 (150 prédios × até 5 páginas; o padrão de 150 páginas dá ~35 prédios por rodada). Essa variável hoje vale também para os PDFs de leilão, que usam o Sonnet e custam mais; separar o teto por rotina é uma decisão a tomar junto. **Decisão (27/11/2026):** o usuário assinou o Hobby e pediu os tetos separados. Os anúncios ganharam `ANUNCIO_MAX_CREDITOS_EXECUCAO` = 800 e `ANUNCIO_MAX_PAGINAS_EXECUCAO` = 700. São 3.200 créditos num mês de 4 segundas e 4.000 num de 5. Os leilões continuam em `FIRECRAWL_MAX_CREDITOS_EXECUCAO` = 50 e `CLAUDE_MAX_DOCUMENTOS_EXECUCAO` = 150. Com ~7 créditos por prédio, são ~115 prédios por rodada e ~500 por mês: os prédios com 50% das vendas em ~2 meses e os com 80% em ~5,5 meses.
 
 ---
 
