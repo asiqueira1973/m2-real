@@ -231,7 +231,7 @@ describe("épico 8.15: scrape só em markdown e extração pelo Claude", () => {
     expect(resultado).toEqual({ linhasLidas: 3, linhasGravadas: 3, linhasDescartadas: 0 });
   });
 
-  it("teto de páginas do Claude (CLAUDE_MAX_DOCUMENTOS_EXECUCAO): para sem raspar a página seguinte e sem marcar o prédio", async () => {
+  it("teto de páginas do Claude (ANUNCIO_MAX_PAGINAS_EXECUCAO): para sem raspar a página seguinte e sem marcar o prédio", async () => {
     const corpos: unknown[] = [];
     const atualizados: string[] = [];
     let resultado: unknown = null;

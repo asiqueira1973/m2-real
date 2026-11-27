@@ -199,6 +199,13 @@ export const FIRECRAWL_CUSTO_SCRAPE = 5;
 /** Épico 8.15: custo previsto de um scrape só com markdown (créditos), idem. A extração sai do Claude. */
 export const FIRECRAWL_CUSTO_SCRAPE_MARKDOWN = 1;
 
+/**
+ * Épico 8.15: teto padrão de páginas de anúncio lidas pelo Claude por execução
+ * (ANUNCIO_MAX_PAGINAS_EXECUCAO; seção 17). Separado do teto de PDFs de leilão a pedido do usuário
+ * (27/11/2026): os PDFs usam o Sonnet e custam mais.
+ */
+export const ANUNCIO_MAX_PAGINAS_PADRAO = 150;
+
 /** Épico 8.15 / 13.3: o markdown do anúncio enviado ao Claude é cortado neste tamanho (limita tokens e custo). */
 export const ANUNCIO_MARKDOWN_MAX_CARACTERES = 12_000;
 

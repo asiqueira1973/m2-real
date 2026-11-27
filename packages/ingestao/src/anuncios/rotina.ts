@@ -3,12 +3,12 @@
  * Fluxo: prioridade (11.13) → até 150 prédios → busca restrita à allowlist → até 5 páginas por
  * prédio lidas só em markdown (1 crédito; épico 8.15) → campos da 13.3 extraídos pelo Claude →
  * allowlist de campos → casamento (11.8) → gravação → ultima_coleta_em. Para de ler páginas no
- * teto CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17). Para no teto de créditos e conclui (seção 17); prédio com erro de API é pulado
+ * teto ANUNCIO_MAX_PAGINAS_EXECUCAO (seção 17). Para no teto de créditos e conclui (seção 17); prédio com erro de API é pulado
  * sem atualizar ultima_coleta_em (seção 12). Execução registrada com fonte "anuncio" (runRoutine).
  */
 import Anthropic, { AnthropicError } from "@anthropic-ai/sdk";
 import type { M2Client } from "@m2-real/db/server";
-import { CASAMENTO_SIMILARIDADE_MINIMA, CLAUDE_MAX_DOCUMENTOS_PADRAO, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
+import { CASAMENTO_SIMILARIDADE_MINIMA, ANUNCIO_MAX_PAGINAS_PADRAO, COLETA_RESULTADOS_POR_PREDIO, FIRECRAWL_MAX_CREDITOS_PADRAO, PRIORIDADE_JANELA_MESES } from "../config/regras.js";
 import { fetchAllPages } from "../calibracao/dados.js";
 import { decadeOf, groupFor, type FatorReferencia } from "../calibracao/fatores.js";
 import { loadReferenceFactors } from "../calibracao/plantas.js";
@@ -32,7 +32,7 @@ export interface ColetaOptions {
   /** ANTHROPIC_API_KEY (épico 8.15: a extração da 13.3 é do Claude). */
   anthropicApiKey?: string;
   maxCreditos?: number;
-  /** CLAUDE_MAX_DOCUMENTOS_EXECUCAO (seção 17): páginas lidas pelo Claude por execução. */
+  /** ANUNCIO_MAX_PAGINAS_EXECUCAO (seção 17): páginas lidas pelo Claude por execução. */
   maxDocumentos?: number;
   /** chave_predio de um prédio específico (testes e evidência do critério). */
   predio?: string;
@@ -94,7 +94,7 @@ export function searchQuery(p: PredioAlvo): string {
 export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
   const agora = opts.agora ?? (() => new Date());
   const maxCreditos = opts.maxCreditos ?? FIRECRAWL_MAX_CREDITOS_PADRAO;
-  const maxDocumentos = opts.maxDocumentos ?? CLAUDE_MAX_DOCUMENTOS_PADRAO;
+  const maxDocumentos = opts.maxDocumentos ?? ANUNCIO_MAX_PAGINAS_PADRAO;
   const fc = opts.firecrawl ?? createFirecrawl({ apiKey: opts.apiKey, maxCreditos });
   let claude = opts.claude;
   const leitor = (): LeitorClaude => (claude ??= new Anthropic({ apiKey: opts.anthropicApiKey }));
@@ -168,7 +168,7 @@ export async function runAdsCollection(db: M2Client, opts: ColetaOptions) {
   });
 }
 
-/** Teto CLAUDE_MAX_DOCUMENTOS_EXECUCAO atingido (seção 17): a rodada para e conclui. */
+/** Teto ANUNCIO_MAX_PAGINAS_EXECUCAO atingido (seção 17): a rodada para e conclui. */
 class TetoDeDocumentos extends Error {}
 
 /** Prédio pela chave (opção --predio). */
